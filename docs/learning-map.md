@@ -5,18 +5,18 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 25.10.2026. Примірники: alpine, anthropic-api, argon2, aspnetcore, astro, astro-markdown-pipeline, auth,
-bcrypt, binance-spot, biome, bullmq, cares, casl, certbot, class-transformer, class-validator, clerk, csharp,
-csrf-csrf, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express,
-express-rate-limit, fastify, ffmpeg, foundry, frontend-architecture, github-actions, gvisor, helmet, i18next, icu,
-ioredis, iron-session, jose, jsonschema, kafka, kafkajs, kraken-spot, kubernetes, libreoffice, libuv,
-lightweight-charts, linux, llhttp, mdn, mikro-orm, mongodb, mongoose, motion, msw, nestjs, nestjs-cls, nestjs-pino,
-next-intl, next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuget,
-nuqs, nvidia-container-toolkit, ollama, openapi-typescript, openssl, opentelemetry, oracle-cloud, orval, owasp,
-partysocket, passport, patterns, playwright, postgrator, postgres-image, postgresql, prisma, react, react-hook-form,
-react-native, react-router, react-window, redis, redux, rxjs, sentry, shadcn, socketio, sqlserver, storybook, stripe,
-supabase, supertest, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract,
-testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm, webdev,
-webstandards, ws, zod, zustand.
+bcrypt, binance-spot, biome, bullmq, cares, casl, certbot, class-transformer, class-validator, clerk,
+confluent-kafka-javascript, csharp, csrf-csrf, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript,
+entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, foundry, frontend-architecture,
+github-actions, gvisor, helmet, i18next, icu, ioredis, iron-session, jose, jsonschema, kafka, kafkajs, kraken-spot,
+kubernetes, libreoffice, libuv, lightweight-charts, linux, llhttp, mdn, mikro-orm, mongodb, mongoose, motion, msw,
+nestjs, nestjs-cls, nestjs-pino, next-intl, next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres,
+node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, ollama, openapi-typescript, openssl,
+opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, playwright, postgrator, postgres-image,
+postgresql, prisma, react, react-hook-form, react-native, react-router, react-window, redis, redux, rxjs, sentry,
+shadcn, socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router,
+tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, viem, vite,
+vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 
