@@ -108,15 +108,29 @@ def title_of(meta: dict, url: str) -> str:
 
 
 _MDX_STATEMENT = re.compile(r"^(import|export)\s")
+_STRING = re.compile(r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`")
+
+
+def _depth(line: str) -> int:
+    """На скільки рядок відкриває дужок більше, ніж закриває; дужки в рядках-літералах не
+    рахуються."""
+    s = _STRING.sub("", line)
+    return sum(s.count(c) for c in "([{") - sum(s.count(c) for c in ")]}")
 
 
 def mdx_statements_out(text: str) -> str:
     """MDX без операторів `import`/`export` верхнього рівня — це код сторінки, а не текст.
     Рядки всередині огорож коду лишаються: `import { z } from "zod"` у прикладі — частина
-    прикладу, і без нього приклад не збирається."""
+    прикладу, і без нього приклад не збирається. Оператор на кількох рядках («import {⏎ A,⏎}
+    from …», «export const metadata = docsMetadata({⏎ title: …⏎});») прибирається цілим, доки
+    дужки не закриються: інакше його хвіст лишався в тексті сторінки, а назвою ставала «page»."""
     out: list[str] = []
     fence = ""
+    depth = 0
     for ln in text.split("\n"):
+        if depth > 0:
+            depth += _depth(ln)
+            continue
         m = _FENCE.match(ln)
         if fence:
             if _closes(ln, fence):
@@ -124,6 +138,7 @@ def mdx_statements_out(text: str) -> str:
         elif m:
             fence = m.group(1)
         elif _MDX_STATEMENT.match(ln):
+            depth = _depth(ln)
             continue
         out.append(ln)
     return "\n".join(out)

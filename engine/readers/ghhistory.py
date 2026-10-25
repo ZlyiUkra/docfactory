@@ -146,6 +146,7 @@ import json
 import re
 import sys
 from html import unescape
+from textwrap import dedent
 from urllib.parse import quote, urlsplit
 
 from engine.readers import (Item, _astromdx, _baseui, _biomemdx, _jsonschemaorg, _markup, _mdbook,
@@ -642,6 +643,64 @@ def _component_labels(text: str, labels: dict) -> str:
     return tags.sub(lambda m: f"\n{labels[m.group(1)]}:\n", text)
 
 
+_PROP_ATTR = r"""\w+(?:=(?:"[^"]*"|'[^']*'|\{[^{}]*\}))?"""
+_PROPERTY = re.compile(r"<Property((?:\s+" + _PROP_ATTR + r")*)\s*(?:/>|>(.*?)</Property>)", re.S)
+_PROP_PAIR = re.compile(r"""(\w+)(?:=(?:"([^"]*)"|'([^']*)'|\{([^{}]*)\}))?""")
+
+
+_PROTOCOL_TITLE = re.compile(r"""^export\s+const\s+metadata\s*=.*?\btitle:\s*(["'`])(.*?)\1""",
+                             re.S | re.M)
+_PROTOCOL_NOTE = re.compile(r"^(#{1,6} .*?)\s*\{\{(.*?)\}\}\s*$", re.M)
+_PROTOCOL_KV = re.compile(r"""(\w+):\s*(["'])(.*?)\2""")
+
+
+def _protocol_mdx(text: str) -> tuple[str, str]:
+    """(текст, назва) сторінки сайту на шаблоні Tailwind UI Protocol (docs.uploadthing.com).
+
+    - `<Property name="token" type="string" since="7.0" defaultValue="…">опис</Property>` →
+      «`token` (`string`; default `…`; since 7.0): опис». Ім'я, тип, типове значення й версія
+      появи стоять лише в атрибутах: без цього від опції лишався опис без назви, а питання
+      «з якої версії» не мало б відповіді;
+    - заголовок «## `createUploadthing` {{ tag: 'function', since: '5.0' }}» → «## createUploadthing
+      (function, since 5.0)», «{{ anchor: false }}» просто знімається;
+    - назва — з `export const metadata = docsMetadata({ title: … })`: першим рядком сторінки
+      буває `<HeroPattern />`, і без цього назвою ставало ім'я файла «page»."""
+    m = _PROTOCOL_TITLE.search(text)
+    title = m.group(2) if m else ""
+
+    def note(m):
+        kv = dict((k, v) for k, _, v in _PROTOCOL_KV.findall(m.group(2)))
+        bits = [kv["tag"]] if kv.get("tag") else []
+        if kv.get("since"):
+            bits.append(f"since {kv['since']}")
+        # Ім'я в заголовку члена API — без лапок коду: «onUploadComplete (since 5.0)» пошук
+        # з title_match упізнає як ідентифікатор, а «`onUploadComplete`» — ні.
+        head = m.group(1).replace("`", "")
+        return f"{head} ({', '.join(bits)})" if bits else head
+    text = _PROTOCOL_NOTE.sub(note, text)
+
+    def put(m):
+        attrs = {k: next((g for g in (a, b, c) if g is not None), "true")
+                 for k, a, b, c in _PROP_PAIR.findall(m.group(1))}
+        bits = [f"`{attrs['type']}`"] if attrs.get("type") else []
+        default = attrs.get("defaultValue") or attrs.get("default")
+        if default:
+            bits.append(f"default `{default}`")
+        if attrs.get("required") == "true":
+            bits.append("required")
+        if attrs.get("since"):
+            bits.append(f"since {attrs['since']}")
+        head = f"`{attrs.get('name', '')}`" + (f" ({'; '.join(bits)})" if bits else "")
+        body = dedent((m.group(2) or "").strip("\n")).strip()
+        if not body:
+            return f"\n{head}\n"
+        # Опис з блоком коду лишається рядками, інакше огорожа злилася б з текстом.
+        if "```" in body:
+            return f"\n{head}:\n\n{body}\n"
+        return f"\n{head}: {' '.join(ln.strip() for ln in body.split(chr(10)))}\n"
+    return _PROPERTY.sub(put, text), title
+
+
 def _admonitions(text: str) -> str:
     """Виноски Docusaurus (`:::tip Назва` … `:::`) → підпис «Tip: Назва» і абзаци. Інакше
     двокрапки лишалися б у тексті окремими рядками. Код не чіпається."""
@@ -1077,6 +1136,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
+            if source.get("protocol_mdx") is True:
+                rest, protocol_title = _protocol_mdx(rest)
+                named = named or protocol_title
             if labels:
                 rest = _component_labels(rest, labels)
             if source.get("admonitions") is True:
