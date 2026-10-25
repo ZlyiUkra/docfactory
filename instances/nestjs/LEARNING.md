@@ -367,7 +367,7 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 |------------|--------|------------|
 | Mongoose, MikroORM, Drizzle | інша база чи інший стиль ORM; у корпусі є `Mongo` і `MikroORM`; є примірники `drizzle`, `mikro-orm` і родина Mongo: `mongodb`, `node-mongodb`, `mongoose` | не вчиться |
 | GraphQL (`@nestjs/graphql`) | клієнтів багато, і кожен хоче свою форму даних | не вчиться |
-| мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями; є примірники `kafka`, `kafkajs`, `confluent-kafka-javascript`, `platformatic-kafka`, `rabbitmq`, `amqplib`, `amqp-connection-manager` | не вчиться |
+| мікросервіси: Kafka, RabbitMQ, NATS | кілька сервісів обмінюються повідомленнями; є примірники `kafka`, `kafkajs`, `confluent-kafka-javascript`, `platformatic-kafka`, `rabbitmq`, `amqplib`, `amqp-connection-manager`, `golevelup-nestjs-rabbitmq` | не вчиться |
 | CQRS | складний домен, читання й запис розділені | не вчиться |
 | `@socket.io/redis-streams-adapter` | адаптер, що переживає короткий обрив Redis без втрати повідомлень; є примірник `socketio` | Ф7 Д6, згадкою |
 | NestJS Observe | траси й помилки продакшну; глава `Distributed tracing` (12) | не вчиться |
@@ -514,7 +514,9 @@ Nest дає каркас: модулі, DI, маршрути, обгортки. 
 - amqplib (клієнт RabbitMQ для Node.js, на якому стоїть транспорт RMQ Nest: сайт на час кожної мінорної версії 0.0–2.2,
   README кожної версії, журнал змін, реєстр npm) — `amqplib`;
 - amqp-connection-manager (перепідключення поверх amqplib, друга половина транспорту RMQ Nest: README кожної версії
-  1.0–5.0, нотатки релізів, реєстр npm) — `amqp-connection-manager`.
+  1.0–5.0, нотатки релізів, реєстр npm) — `amqp-connection-manager`;
+- @golevelup/nestjs-rabbitmq (модуль Nest для RabbitMQ з `@RabbitSubscribe` і `@RabbitRPC` замість транспорту RMQ:
+  сторінка модуля, README кожної версії 1.6–9.1, журнал змін, реєстр npm) — `golevelup-nestjs-rabbitmq`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту. Для частини з них у документації Nest є
 глава про інтеграцію (NATS), але не документація самої бібліотеки:
