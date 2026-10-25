@@ -449,6 +449,15 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `confluent-kafka-javascript` | `confluent-kafka-javascript-docs` | 8888 | клієнт Confluent `@confluentinc/kafka-javascript` на librdkafka |
 | `platformatic-kafka` | `platformatic-kafka-docs` | 8889 | клієнт `@platformatic/kafka` на чистому TypeScript |
 
+**Родина RabbitMQ** — сам брокер і три бібліотеки для Node.js:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `rabbitmq` | `rabbitmq-docs` | 8890 | сам RabbitMQ 3.11–4.4: типи черг, обмінники, підтвердження, кластер, `rabbitmq.conf`, нотатки релізів |
+| `amqplib` | `amqplib-docs` | 8891 | клієнт amqplib для Node.js (на ньому транспорт RMQ NestJS) |
+| `amqp-connection-manager` | `amqp-connection-manager-docs` | 8892 | перепідключення поверх amqplib, друга половина транспорту RMQ NestJS |
+| `golevelup-nestjs-rabbitmq` | `golevelup-nestjs-rabbitmq-docs` | 8893 | модуль NestJS `@golevelup/nestjs-rabbitmq` з `@RabbitSubscribe` і `@RabbitRPC` |
+
 **Родина .NET** — платформа, мова, веб, дані, тестування й менеджер пакетів Microsoft. Кожен примірник окремий, бо має
 власні версії й власний сайт, але питання про C# впирається в бібліотеку класів, про EF — у SQL Server, про тест із
 базою — у Testcontainers, про пакет — у NuGet:
