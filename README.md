@@ -3057,6 +3057,24 @@ RabbitMQ і разом з amqplib стоїть під транспортом Rab
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/amqp-connection-manager/README.md](instances/amqp-connection-manager/README.md).
 
+### golevelup-nestjs-rabbitmq
+
+Документація @golevelup/nestjs-rabbitmq — модуля NestJS для RabbitMQ від Golevelup на amqplib і amqp-connection-manager
+з обробниками `@RabbitSubscribe` і `@RabbitRPC` (golevelup/nestjs); четвертий і останній примірник родини RabbitMQ:
+сторінка модуля на golevelup.github.io/nestjs, README кожної стабільної версії 1.6–9.1 з npm, журнал змін, реєстр npm.
+116 документів, 311 фрагментів; нових читачів не потрібно.
+
+- порт `8893`; запис у Claude Code — `golevelup-nestjs-rabbitmq-docs`, адреса `http://127.0.0.1:8893/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версія — мажор (`version: "5"`), мінор (`"9.1"`) або точна (`"5.7.0"`); лінії 9 і 5 мають майже порівну завантажень
+  npm за тиждень до 25.10.2026 (27 % і 25 %), тож промпт велить відповідати для обох;
+- не входять: NestJS і його `Transport.RMQ`, amqplib, amqp-connection-manager, сам RabbitMQ (окремі примірники там, де
+  вони є), інші пакети golevelup/nestjs;
+- приклад питання агентові: `./df golevelup-nestjs-rabbitmq ask "How do I bind a @RabbitSubscribe handler to a
+  routing key and nack a message on error?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/golevelup-nestjs-rabbitmq/README.md](instances/golevelup-nestjs-rabbitmq/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
