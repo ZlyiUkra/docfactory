@@ -3023,6 +3023,23 @@ rabbitmq-server): сайт rabbitmq.com версій 3.13–4.4 і старий 
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/rabbitmq/README.md](instances/rabbitmq/README.md).
 
+### amqplib
+
+Документація amqplib — клієнта AMQP 0-9-1 для Node.js, яким працюють з RabbitMQ і на якому стоїть транспорт RabbitMQ
+мікросервісів NestJS (amqp-node/amqplib); другий примірник родини RabbitMQ після `rabbitmq`: сторінки сайту (гілка
+`gh-pages`) на час кожної мінорної версії 0.0–2.2, README кожної стабільної версії з npm, журнал змін, реєстр npm. 88
+документів, 398 фрагментів; нових читачів не потрібно.
+
+- порт `8891`; запис у Claude Code — `amqplib-docs`, адреса `http://127.0.0.1:8891/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "2"`), мінор (`"0.10"`) або точна (`"0.10.9"`); лінія 0.10 має близько 64 % завантажень npm
+  за тиждень до 25.10.2026, лінія 2 — 22 %, тож промпт велить відповідати для обох;
+- не входять: сам RabbitMQ (примірник `rabbitmq`), amqp-connection-manager, NestJS, Node.js, приклади репозиторію;
+- приклад питання агентові: `./df amqplib ask "How do I use a confirm channel and wait for confirms, and did it change
+  between 0.10 and 2.x?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/amqplib/README.md](instances/amqplib/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
