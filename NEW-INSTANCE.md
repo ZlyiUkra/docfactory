@@ -173,6 +173,13 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **A product removed from a documentation site** (Upstash Kafka) comes from the commit before the removal:
   `commits?path=<folder>` gives the deleting commit, its parent is the snapshot; the source carries no version.
   Mintlify writes its «Documentation index» block in either case — the reader matches both.
+- **One call shown in many languages** (resend.com: every endpoint in eleven) — `drop_code` of `sitemap-mintlify` lists
+  the code-block titles to leave out (`["PHP", "Python", …]`); census the titles of a few pages first, and drop by name,
+  never keep by name: guides title their blocks with file paths (`app/api/send/route.ts`).
+- **Check `dist.unpackedSize` before a README source of npm.** A package that once bundled its app (react-email 1.x–4.x
+  with the preview server) has tarballs over the 50 MB limit, and the whole source fails on the first of them. If the
+  README repeats the site, drop the source — and remove its tarballs from `raw/` before the archive (they are found by
+  the `url` in the header of each stored file), or they make up most of it.
 - **A site that keeps every version as a folder of one commit** (kafka.apache.org on Hugo: `content/en/07` …
   `content/en/44`) — one source per folder with its `version`, all of them in one `families` group; the tree of one
   folder is `trees/SHA:content%2Fen%2F41?recursive=1` (the slashes encoded). Pages that only name generated HTML
@@ -1138,6 +1145,14 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Продукт, прибраний із сайту документації** (Upstash Kafka), беруть із коміту перед видаленням:
   `commits?path=<тека>` дає коміт видалення, його батько — знімок; версії джерело не несе. Блок «Documentation index»
   Mintlify пише і з великої, і з малої літери — читач упізнає обидва.
+- **Один виклик багатьма мовами** (resend.com: кожен ендпойнт одинадцятьма) — поле `drop_code` читача
+  `sitemap-mintlify` перелічує заголовки блоків коду, що не беруться (`["PHP", "Python", …]`); спершу перепис
+  заголовків кількох сторінок, і відкидати за назвою, а не лишати за назвою: посібники підписують блоки шляхом файла
+  (`app/api/send/route.ts`).
+- **Перед джерелом README з npm — глянути `dist.unpackedSize`.** Пакет, що колись носив у собі застосунок (react-email
+  1.x–4.x із сервером перегляду), має тарболи понад межу в 50 МБ, і все джерело падає на першому з них. Якщо README
+  повторює сайт — джерело прибрати, а його тарболи прибрати з `raw/` до архіву (їх видно за `url` у шапці кожного
+  збереженого файла), інакше вони й будуть більшістю архіву.
 - **Сайт, що тримає кожну версію текою одного коміту** (kafka.apache.org на Hugo: `content/en/07` … `content/en/44`)
   — по джерелу на теку з її `version`, усі в одній групі `families`; дерево однієї теки —
   `trees/SHA:content%2Fen%2F41?recursive=1` (риски закодовано). Сторінки, що лише називають згенерований HTML
@@ -2080,6 +2095,14 @@ errada.
 - **Um produto removido do site de documentação** (Upstash Kafka) vem do commit anterior à remoção:
   `commits?path=<pasta>` dá o commit que apagou, o pai dele é o snapshot; a fonte não leva versão. O Mintlify
   escreve o bloco «Documentation index» com maiúscula ou minúscula — o leitor reconhece os dois.
+- **Uma chamada mostrada em muitas linguagens** (resend.com: cada endpoint em onze) — o campo `drop_code` do leitor
+  `sitemap-mintlify` lista os títulos dos blocos de código que não entram (`["PHP", "Python", …]`); primeiro um censo
+  dos títulos de algumas páginas, e descartar pelo nome, nunca manter pelo nome: os guias intitulam os blocos com o
+  caminho do arquivo (`app/api/send/route.ts`).
+- **Antes de uma fonte de README do npm, ver `dist.unpackedSize`.** Um pacote que já levou o próprio aplicativo
+  (react-email 1.x–4.x com o servidor de pré-visualização) tem tarballs acima do limite de 50 MB, e a fonte inteira cai
+  no primeiro deles. Se o README repete o site, tirar a fonte — e tirar os tarballs dela de `raw/` antes do arquivo
+  (acham-se pelo `url` no cabeçalho de cada arquivo guardado), senão eles serão a maior parte do arquivo.
 - **Um site que guarda cada versão como pasta de um mesmo commit** (kafka.apache.org em Hugo: `content/en/07` …
   `content/en/44`) — uma fonte por pasta com a sua `version`, todas num grupo de `families`; a árvore de uma pasta é
   `trees/SHA:content%2Fen%2F41?recursive=1` (barras codificadas). Páginas que só nomeiam HTML gerado com um
