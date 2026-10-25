@@ -3040,6 +3040,23 @@ rabbitmq-server): сайт rabbitmq.com версій 3.13–4.4 і старий 
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/amqplib/README.md](instances/amqplib/README.md).
 
+### amqp-connection-manager
+
+Документація amqp-connection-manager — бібліотеки для Node.js, що обгортає amqplib автоматичним перепідключенням до
+RabbitMQ і разом з amqplib стоїть під транспортом RabbitMQ мікросервісів NestJS (jwalton/node-amqp-connection-manager);
+третій примірник родини RabbitMQ: README кожної стабільної версії 1.0–5.0 з npm, нотатки релізів GitHub, реєстр npm. 82
+документи, 195 фрагментів; нових читачів не потрібно.
+
+- порт `8892`; запис у Claude Code — `amqp-connection-manager-docs`, адреса `http://127.0.0.1:8892/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версія — мажор (`version: "4"`), мінор (`"4.1"`) або точна (`"5.0.1"`); лінії 4.1 і 5 мають майже порівну
+  завантажень npm за тиждень до 25.10.2026 (46 % і 45 %), тож промпт велить відповідати для обох;
+- не входять: amqplib (примірник `amqplib`), сам RabbitMQ (примірник `rabbitmq`), NestJS;
+- приклад питання агентові: `./df amqp-connection-manager ask "How do I re-declare my queues after a reconnect with
+  addSetup, and what happens to messages published while disconnected?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/amqp-connection-manager/README.md](instances/amqp-connection-manager/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
