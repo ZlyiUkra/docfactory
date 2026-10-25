@@ -2941,6 +2941,24 @@ Kafka Connect, Kafka Streams; apache/kafka-site, apache/kafka): сайт kafka.a
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/kafka/README.md](instances/kafka/README.md).
 
+### kafkajs
+
+Документація KafkaJS — клієнта Apache Kafka для Node.js на чистому JavaScript, на якому працює транспорт Kafka
+мікросервісів NestJS (tulios/kafkajs, kafka.js.org); другий примірник родини Kafka після `kafka`: сторінки сайту з тегу
+кожної мінорної версії 0.1–2.2 (28 тегів), README кожної стабільної версії з npm, журнал змін 0.1.0–2.2.4, реєстр npm.
+196 документів, 709 фрагментів; нових читачів не потрібно.
+
+- порт `8887`; запис у Claude Code — `kafkajs-docs`, адреса `http://127.0.0.1:8887/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "1"`), мінор (`"1.16"`) або точна (`"2.2.4"`); 2.2.4 від 27.02.2023 — останній випуск і
+  близько 92 % завантажень npm за тиждень до 25.10.2026, тож промпт велить відповідати для 2.2;
+- не входять: сам Apache Kafka (примірник `kafka`), librdkafka, інші клієнти, NestJS, Node.js, типи й приклади
+  репозиторію;
+- приклад питання агентові: `./df kafkajs ask "How do I commit offsets manually with eachBatch, and since which version
+  is resolveOffset there?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/kafkajs/README.md](instances/kafkajs/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
