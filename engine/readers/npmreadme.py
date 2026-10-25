@@ -8,7 +8,11 @@
                стає `gitHead`, а коли реєстр коміту не записав, — цим тегом; `skip_versions` —
                вираз версій, які не беруться (напр. `-canary`); `min_chars` — найкоротший текст,
                що вважається README: коротший (заглушка «дивись сайт») — привід узяти наступний
-               шаблон.
+               шаблон; `version_prefix` — рядок перед кожною версією документа («client-»),
+               як у `npm-tarball-files`: коли пакетів у примірнику кілька й кожен має свою
+               нумерацію. Без поля версії ті самі, що й були. `gzip: true` — опис пакета
+               тягнеться стиснутим, як у `npm-versions`: опис sanity із тисячами збірок canary
+               важить понад 50 МБ, вище стелі відповіді `MAX_BYTES`. Без поля звернення те саме.
 
 Навіщо. README, що публікується в npm разом із пакетом, — найстаріша документація
 бібліотеки: у перших версіях іншої не було, а сайт з'явився пізніше. Реєстр віддає текст
@@ -56,8 +60,10 @@ def npm_readme(source: dict, ctx) -> list[Item]:
     tag = str(source.get("tag") or "")
     skip = re.compile(source["skip_versions"]) if source.get("skip_versions") else None
     min_chars = int(source.get("min_chars") or 0)
+    vp = str(source.get("version_prefix") or "")
     try:
-        packument = json.loads(ctx.text(source["url"]))
+        packument = json.loads(ctx.text(source["url"], gzip=True) if source.get("gzip") is True
+                               else ctx.text(source["url"]))
     except ValueError as exc:
         raise SystemExit(f"{source['url']}: відповідь не JSON ({exc}).")
     times = packument.get("time") or {}
@@ -118,7 +124,8 @@ def npm_readme(source: dict, ctx) -> list[Item]:
             body = _markup.markdown_body(rest)
             span = found[-1] if len(found) == 1 else f"{found[-1]} … {found[0]}"
             full = f"{label} {span}" + (f": {title}" if title else "")
-            return _markup.document(full, url, ctx.stamp, body, ", ".join(found))
+            return _markup.document(full, url, ctx.stamp, body,
+                                    ", ".join(vp + v for v in found))
 
         items.append(Item(id=f"{source['id']}/{name}",
                           file=f"{source['id']}--{name}.txt", make=make))
