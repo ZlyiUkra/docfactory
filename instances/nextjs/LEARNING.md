@@ -345,7 +345,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Resend, React Email | листи; у 8 і 4 шаблонах; є примірники `resend` і `react-email` |
 | Vercel AI SDK | чат і генерація тексту; у 58 шаблонах; є примірник `vercel-ai-sdk` |
 | UploadThing або сховище S3 | завантаження файлів користувачів; для UploadThing є примірник `uploadthing` |
-| Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity` |
+| Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity`, для Payload — `payload` |
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій |
 | Turborepo | кілька застосунків в одному репозиторії |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут |
@@ -466,12 +466,15 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   `next-sanity`; реєстр npm, релізи) — `sanity`;
 - UploadThing (файлові маршрути, `UploadButton` і `UploadDropzone`, `UTApi`, адаптери, регіони й ACL: сайт
   docs.uploadthing.com з тегу кожної мінорної 3.0–7.7, журнали змін десяти пакетів, реєстр npm, приклади) —
-  `uploadthing`.
+  `uploadthing`;
+- Payload (колекції й поля, контроль доступу, хуки, Local API, REST і GraphQL, чернетки, локалізація, міграції,
+  адмін-панель, Lexical: тека docs/ з тегу кожної мінорної 0.0–3.92, README 44 пакетів, релізи, приклади й шаблони,
+  реєстр npm) — `payload`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Payload, Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets,
-  Prometheus, Grafana, Loki.
+- з «знати, що існує»: Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus,
+  Grafana, Loki.
 
 ---
 
