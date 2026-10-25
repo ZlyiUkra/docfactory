@@ -458,6 +458,13 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `amqp-connection-manager` | `amqp-connection-manager-docs` | 8892 | перепідключення поверх amqplib, друга половина транспорту RMQ NestJS |
 | `golevelup-nestjs-rabbitmq` | `golevelup-nestjs-rabbitmq-docs` | 8893 | модуль NestJS `@golevelup/nestjs-rabbitmq` з `@RabbitSubscribe` і `@RabbitRPC` |
 
+**Родина NATS** — сам сервер і клієнт для Node.js; транспорт NATS для NestJS — у `@nestjs/microservices`, тобто в `nestjs`:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `nats` | `nats-docs` | 8894 | сам NATS 2.11–2.15: core NATS, JetStream, KV, Object Store, кластери, безпека, конфігурація, релізи |
+| `nats-js` | `nats-js-docs` | 8895 | клієнт nats.js: пакет `nats` 2.x (на ньому транспорт NATS NestJS) і пакети `@nats-io/*` 3.x |
+
 **Родина .NET** — платформа, мова, веб, дані, тестування й менеджер пакетів Microsoft. Кожен примірник окремий, бо має
 власні версії й власний сайт, але питання про C# впирається в бібліотеку класів, про EF — у SQL Server, про тест із
 базою — у Testcontainers, про пакет — у NuGet:
@@ -3083,6 +3090,44 @@ RabbitMQ і разом з amqplib стоїть під транспортом Rab
   routing key and nack a message on error?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/golevelup-nestjs-rabbitmq/README.md](instances/golevelup-nestjs-rabbitmq/README.md).
+
+### nats
+
+Документація NATS — системи обміну повідомленнями nats-server з core NATS і JetStream (nats.docs.v2, nats.docs,
+nats-architecture-and-design, nats-server); перший примірник родини NATS: довідник docs.nats.io версій 2.11, 2.12, 2.14
+і 2.15, розділи Learn, Concepts і Tutorials, стара документація GitBook (репозиторій заархівовано в серпні 2026), ADR
+команди й нотатки кожного стабільного релізу nats-server 0.5.6–2.15.1. 3449 документів (1375 неповторних), 7433
+фрагменти; нових читачів не потрібно.
+
+- порт `8894`; запис у Claude Code — `nats-docs`, адреса `http://127.0.0.1:8894/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "2"`), мінор (`"2.14"`) або точна (`"2.12.15"`); завантажень за версіями сервер не має, тож
+  промпт відповідає для ліній, які проєкт латає: 2.15 і 2.14;
+- не входять: клієнтські бібліотеки як окремі проєкти (nats.js — примірник `nats-js`), транспорт NATS у NestJS, приклади
+  коду мов клієнтів, які сайт вставляє під час збирання, Kubernetes і Go;
+- приклад питання агентові: `./df nats ask "How do I make a JetStream stream drop a message once one worker has acked
+  it, and since which version can a single message carry its own TTL?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/nats/README.md](instances/nats/README.md).
+
+### nats-js
+
+Документація nats.js — офіційного клієнта NATS для JavaScript і TypeScript в обох лініях: пакет `nats` 2.x, на якому
+стоїть транспорт NATS мікросервісів NestJS, і модульні пакети `@nats-io/*` 3.x (nats-io/nats.js, nats-io/nats.deno);
+другий і останній примірник родини NATS: README кожної стабільної версії `nats` 0.2–2.29 з npm, README, jetstream.md і
+services.md спільного клієнта nats-base-client з тегу nats.deno кожної мінорної 2.0–2.29, README пакетів `@nats-io/*` з
+migration.md з тегів 3.0–3.4, довідник TypeDoc 3.4, приклади JavaScript сайту docs.nats.io, реєстр npm і релізи. 585
+документів, 3114 фрагментів; нових читачів не потрібно.
+
+- порт `8895`; запис у Claude Code — `nats-js-docs`, адреса `http://127.0.0.1:8895/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "2"` — пакет `nats`, `"3"` — `@nats-io/*`), мінор (`"3.4"`) або точна (`"3.3.1"`); обидві
+  лінії мають сотні тисяч завантажень npm за тиждень до 25.10.2026, тож промпт велить відповідати для обох;
+- не входять: сам сервер NATS (примірник `nats`), транспорт NATS у NestJS, клієнти інших мов, код і тести репозиторію;
+- приклад питання агентові: `./df nats-js ask "How do I consume a JetStream consumer and ack each message, and how did
+  this change from nats 2.x to @nats-io/jetstream?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/nats-js/README.md](instances/nats-js/README.md).
 
 ## Захист
 
