@@ -31,8 +31,9 @@
                    іншими коментарями HTML вони зникали б, і примірник не знав би версій;
                    `jsx_props: true` — компоненти, чий зміст лежить у властивостях
                    (`<APIMethod path method>`, `<TypeTable type>`, `<DatabaseTable fields>`
-                   документації Better Auth), стають текстом: рядком ендпоінта і списками
-                   опцій та полів таблиць; `component_labels` — об'єкт «тег → підпис»:
+                   документації Better Auth, `<PropertiesTable content>` довідника AI SDK),
+                   стають текстом: рядком ендпоінта і списками опцій та полів таблиць;
+                   `component_labels` — об'єкт «тег → підпис»:
                    рядок-тег вкладки (`<Code.Next>`) стає підписом («Next.js:»);
                    `admonitions: true` — виноски Docusaurus (`:::tip Назва` … `:::`) стають
                    підписом «Tip: Назва» замість рядків із двокрапками;
@@ -246,8 +247,9 @@ _JS_NAME = re.compile(r"[A-Za-z_$][\w$]*")
 _JS_NUMBER = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 _JS_EXPORT = re.compile(r"^export\s+const\s+([A-Za-z_$][\w$]*)\s*=\s*", re.M)
 _PROP_TABLE = re.compile(r"<(TypeTable|DatabaseTable|PropsTable|DataAttributesTable|KeyboardTable"
-                         r"|CssVariablesTable|Highlights|PropsReferenceTable)\b")
-_TABLE_PROP = {"TypeTable": "type", "DatabaseTable": "fields", "Highlights": "features"}
+                         r"|CssVariablesTable|Highlights|PropsReferenceTable|PropertiesTable)\b")
+_TABLE_PROP = {"TypeTable": "type", "DatabaseTable": "fields", "Highlights": "features",
+               "PropertiesTable": "content"}
 _PACKAGE_RELEASE = re.compile(r'^[ \t]*<PackageRelease\s+name="([^"]+)"\s+version="([^"]+)"'
                               r'\s*/>[ \t]*$', re.M)
 _PR_LINK = re.compile(r"<PRLink\s+id=\{(\d+)\}\s*/>")
@@ -445,6 +447,32 @@ def _type_rows(table: dict, depth: int = 0) -> list[str]:
     return rows
 
 
+def _properties_rows(items: list, depth: int = 0) -> list[str]:
+    """`<PropertiesTable content={[…]} />` AI SDK: параметри й поля результату функцій. Поле
+    `properties` — типи з власними полями (`{type, parameters: […]}`): вкладеним списком, бо
+    інакше поля повідомлень, кроків і частин відповіді лишилися б без жодного опису."""
+    rows = []
+    for spec in items:
+        if not isinstance(spec, dict) or not spec.get("name"):
+            continue
+        bits = [f"`{' '.join(str(spec['type']).split())}`"] if spec.get("type") else []
+        if spec.get("isOptional") == "true":
+            bits.append("optional")
+        desc = " ".join(str(spec.get("description") or "").split())
+        rows.append(f"{'  ' * depth}- `{spec['name']}`" + (f" ({', '.join(bits)})" if bits else "")
+                    + (f" — {desc}" if desc else ""))
+        for sub in spec.get("properties") or ():
+            if not isinstance(sub, dict):
+                continue
+            sub_desc = " ".join(str(sub.get("description") or "").split())
+            if sub.get("type"):
+                rows.append(f"{'  ' * (depth + 1)}- `{' '.join(str(sub['type']).split())}`"
+                            + (f" — {sub_desc}" if sub_desc else ":"))
+            if isinstance(sub.get("parameters"), list):
+                rows += _properties_rows(sub["parameters"], depth + 2)
+    return rows
+
+
 def _reference_rows(table: dict) -> list[str]:
     """`<PropsReferenceTable data={{…}}>` Base UI: параметри й значення хуків та утиліт. Тип і
     типове значення — кодом: `RenderProp<State>` без лапок розмітка прийняла б за тег."""
@@ -524,6 +552,8 @@ def _jsx_props(text: str) -> str:
     у JSX, атрибути стану — `<DataAttributesTable>`, клавіші — `<KeyboardTable>`, змінні CSS —
     `<CssVariablesTable>`, можливості — `<Highlights features={[…]} />`; у журналі випусків пакет
     і версія — `<PackageRelease name version />` (стає підзаголовком), номер PR — `<PRLink id>`.
+    Довідник AI SDK тримає параметри й поля результату функції в масиві `<PropertiesTable
+    content={[…]} />` з вкладеними типами — без нього сторінка `generateText` лишалася б порожньою.
     Демо (`<HeroContainer>`, `<HeroCodeBlock>`) знімається: це живий компонент сайту, а не
     текст; `<ThemesPropsTable defs>` теж — його дані лежать у коді Radix Themes, не на сторінці.
     Заодно: `{" "}` — пробіл JSX, а `[!code highlight]` (після `//`, `#` або коментаря) — позначка
@@ -586,6 +616,8 @@ def _jsx_props(text: str) -> str:
             rows = ([f"Table `{named.group(1)}`:", ""] if named else []) + _db_rows(value)
         elif kind == "PropsReferenceTable" and isinstance(value, dict):
             rows = _reference_rows(value)
+        elif kind == "PropertiesTable" and isinstance(value, list):
+            rows = _properties_rows(value)
         elif kind not in ("TypeTable", "DatabaseTable") and isinstance(value, list):
             rows = _radix_rows(kind, value)
         else:
