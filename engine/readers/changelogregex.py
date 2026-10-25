@@ -88,6 +88,11 @@ def changelog_regex(source: dict, ctx) -> list[Item]:
         if also:
             heading = f"{version}, {also} ({date})" if date else f"{version}, {also}"
         chunk = text[head.end():heads[i + 1].start() if i + 1 < len(heads) else len(text)]
+        # Changesets ставить заголовок кожної версії, навіть коли пакет лише підтягнуто за
+        # іншими («## 6.9.5» і одразу «## 6.9.4»): у такому записі нічого сказати, і
+        # документом він не стане, тож і в перелік не йде — інакше щоразу був би збій.
+        if not chunk.strip():
+            continue
         name = lead + re.sub(r"[^\w.-]+", "-", version)
 
         # Рядок заголовка без підкреслення reStructuredText («Version 2.63.3» над «=====»).
