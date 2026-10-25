@@ -172,8 +172,8 @@ Astro — фреймворк, що працює з HTML і мережею нап
 - **День 9 — `Internationalization`.** Маршрути мов, типові локалі, `astro:i18n`. *Вправа:* дві мови з
   перемикачем, без дублювання контенту. *Сервери MCP:* `astro-docs`.
 - **День 10 — `CMS` оглядово.** Як колекція підключається до зовнішнього джерела. *Вправа:* перенести дві
-  статті з файлів у будь-який безкоштовний CMS і показати їх тією самою сторінкою. *Сервери MCP:*
-  `astro-docs`.
+  статті з файлів у Sanity (чи інший безкоштовний CMS) і показати їх тією самою сторінкою. *Сервери MCP:*
+  `astro-docs`, `sanity-docs`.
 
 # Фаза 3. Сервер — 12 днів
 
@@ -367,11 +367,13 @@ Cloudflare.
 - хешування паролів: пакети npm argon2 і `@node-rs/argon2`, еталонна реалізація Argon2 і його специфікація —
   `argon2`;
 - Upstash (Redis по HTTP для serverless, `@upstash/ratelimit`, QStash, Workflow, Vector: сайт, блог, код і README
-  кожного SDK) — `upstash`.
+  кожного SDK) — `upstash`;
+- Sanity (CMS: Studio і типи схеми, Content Lake, GROQ, посібник «Use Sanity with Astro»: сайт sanity.io/docs,
+  довідник API reference.sanity.io, README пакетів, реєстр npm, релізи) — `sanity`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
 - платформи розгортання: Cloudflare, Vercel, Netlify;
 - спостереження: Lighthouse;
-- контент: Starlight, CMS, Shiki, remark і rehype поза документацією Astro.
+- контент: Starlight, інші CMS, Shiki, remark і rehype поза документацією Astro.

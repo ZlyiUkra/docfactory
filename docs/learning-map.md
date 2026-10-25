@@ -101,7 +101,7 @@ viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 |------|------------------|
 | 0. База, якої Astro не дає | `mdn` (1–4), `webstandards` (1, 4), `webdev` (3–4), `typescript` (5), `nodejs` (6), `vite` (6) |
 | 1. Ядро Astro | `tailwind` (6), `react` (10), `vite` (14) |
-| 2. Контент | `zod` (2), `webdev` (6–7), `mdn` (7) |
+| 2. Контент | `zod` (2), `webdev` (6–7), `mdn` (7), `sanity` (10) |
 | 3. Сервер | `mdn` (3–4, 12), `zod` (7), `webstandards` (12) |
 | 4. Дані й авторизація | `postgresql` (2–3), `clerk` (6), `supabase` (6), `mdn` (7, 9), `webstandards` (7, 9), `argon2` (7), `upstash` (9) |
 | 5. Продуктивність і якість | `mdn` (3–4, 8), `webdev` (4, 8), `vitest` (6), `playwright` (7), `webstandards` (8) |
@@ -136,6 +136,6 @@ Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy, Prometheus.
 ### Astro
 
 1. Платформи розгортання: Cloudflare (3), Vercel і Netlify (по 1) — документація Astro описує лише адаптери до них.
-2. Контент поза документацією Astro: remark і rehype (3), CMS (2), Shiki (1).
+2. Контент поза документацією Astro: remark і rehype (3), Shiki (1).
 3. Lighthouse (1).
 4. Лише в переліку плану, без днів: Vue, Svelte, Solid, Preact (острови не на React).
