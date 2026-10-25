@@ -183,6 +183,11 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   length. An excerpt of hundreds of thousands of characters means a code block that never closed — in Kafka 2.5 it
   was HTML broken on the site itself (`<code><code></code>` without `<pre>`), and the whole protocol page became one
   excerpt.
+- **Code examples the site inserts at build time** (docs.nats.io: `<div class="nats-example" data-type=…>` filled
+  from the client repositories by `scripts/fetch-examples.js`) are not in the page source. The server instance takes the
+  prose; the examples of the language the family needs go into the client instance, from the folder the build script
+  names (`docs-io-nats-examples/` of nats.js). The live `.md` of such a site repeats every example in eight languages —
+  that is why the pages come from the repository, not from the site.
 - **Documentation in Snooty rST** (MongoDB: the server manual, mongosh, Database Tools, the drivers) — the
   `snooty-history` reader: `.txt` pages, `include`/`literalinclude`/`sharedinclude` (shared snippets from
   `10gen/docs-shared`), tabs in both notations, YAML steps and extracts of the old branches, `{+x+}` constants from
@@ -1141,6 +1146,11 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Найдовший уривок після першого збирання** — дешева перевірка читача: відсортувати `index/passages.json` за довжиною
   тексту. Уривок на сотні тисяч символів — це блок коду, що не закрився: у Kafka 2.5 HTML зіпсовано на самому сайті
   (`<code><code></code>` без `<pre>`), і вся сторінка протоколу ставала одним уривком.
+- **Приклади коду, які сайт вставляє під час збирання** (docs.nats.io: `<div class="nats-example" data-type=…>`, що їх
+  заповнює `scripts/fetch-examples.js` з репозиторіїв клієнтів), у тексті сторінки відсутні. Примірник сервера бере
+  прозу; приклади тієї мови, що потрібна родині, ідуть у примірник клієнта — з теки, яку називає скрипт збирання
+  (`docs-io-nats-examples/` nats.js). Живий `.md` такого сайту повторює кожен приклад вісьмома мовами — тому сторінки
+  беруться з репозиторію, а не з сайту.
 - **Документація у форматі Snooty rST** (MongoDB: посібник сервера, mongosh, Database Tools, драйвери) — читач
   `snooty-history`: сторінки `.txt`, `include`/`literalinclude`/`sharedinclude` (спільні вставки з
   `10gen/docs-shared`), вкладки обох записів, YAML-кроки й витяги старих гілок, константи `{+x+}` із `snooty.toml` і
@@ -2079,6 +2089,11 @@ errada.
   `index/passages.json` pelo tamanho do texto. Um trecho de centenas de milhares de caracteres é um bloco de código que
   nunca fechou — no Kafka 2.5 o HTML vinha quebrado do próprio site (`<code><code></code>` sem `<pre>`), e a página
   inteira do protocolo virava um só trecho.
+- **Exemplos de código que o site insere na montagem** (docs.nats.io: `<div class="nats-example" data-type=…>`
+  preenchidos a partir dos repositórios dos clientes por `scripts/fetch-examples.js`) não estão no texto da página. A
+  instância do servidor fica com a prosa; os exemplos da linguagem de que a família precisa vão para a instância do
+  cliente, da pasta que o script de montagem indica (`docs-io-nats-examples/` do nats.js). O `.md` vivo de um site
+  assim repete cada exemplo em oito linguagens — por isso as páginas vêm do repositório, não do site.
 - **Documentação em Snooty rST** (MongoDB: manual do servidor, mongosh, Database Tools, drivers) — o leitor
   `snooty-history`: páginas `.txt`, `include`/`literalinclude`/`sharedinclude` (trechos partilhados de
   `10gen/docs-shared`), abas nas duas notações, passos e extratos YAML dos ramos antigos, constantes `{+x+}` de
