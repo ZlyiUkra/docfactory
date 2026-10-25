@@ -195,6 +195,10 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   since 5.0)» without code quotes, so `title_match` recognises it as an identifier («as a model» 9 → 10 of 10 on
   `onUploadComplete`). One source per minor from its last tag; when the site moved between frameworks (Nextra
   `docs/src/pages/x.mdx` → App Router `docs/src/app/(docs)/x/page.mdx`), `slug_rewrite` brings both keys to one name.
+- **Dozens of tags of one documentation folder** (`payload`: `docs/` at the last tag of 163 minors) — one
+  `ghdocs-history` source per major with every minor's tag in `tags`, newest first, not a source per tag: the reader
+  fetches a file met in several tags of one source once, so 2956 downloads instead of ~18 000 (five hours at 0.3 s).
+  The newest tag goes first — the reader takes the file's address from it.
 - **A site that keeps every version as a folder of one commit** (kafka.apache.org on Hugo: `content/en/07` …
   `content/en/44`) — one source per folder with its `version`, all of them in one `families` group; the tree of one
   folder is `trees/SHA:content%2Fen%2F41?recursive=1` (the slashes encoded). Pages that only name generated HTML
@@ -1183,6 +1187,10 @@ and what a taken port and a failed connection look like. A domain list in the ro
   лапок коду, тож `title_match` упізнає його як ідентифікатор («як модель» 9 → 10 із 10 на `onUploadComplete`). По
   джерелу на мінорну з її останнього тегу; коли сайт переїхав між фреймворками (Nextra `docs/src/pages/x.mdx` → App
   Router `docs/src/app/(docs)/x/page.mdx`), `slug_rewrite` зводить обидва ключі до одного імені.
+- **Десятки тегів однієї теки документації** (`payload`: `docs/` на останньому тезі 163 мінорних) — одне джерело
+  `ghdocs-history` на мажор з тегами всіх його мінорних у `tags`, найновіший першим, а не джерело на тег: файл,
+  що трапився в кількох тегах одного джерела, читач тягне один раз, — 2956 завантажень замість ~18 000 (п'ять годин
+  при 0,3 с). Найновіший тег першим, бо з нього читач бере адресу файла.
 - **Сайт, що тримає кожну версію текою одного коміту** (kafka.apache.org на Hugo: `content/en/07` … `content/en/44`)
   — по джерелу на теку з її `version`, усі в одній групі `families`; дерево однієї теки —
   `trees/SHA:content%2Fen%2F41?recursive=1` (риски закодовано). Сторінки, що лише називають згенерований HTML
@@ -2149,6 +2157,10 @@ errada.
   since 5.0)» sem aspas de código, e assim `title_match` o reconhece como identificador («como modelo» 9 → 10 de 10 em
   `onUploadComplete`). Uma fonte por minor a partir da sua última tag; quando o site mudou de framework (Nextra
   `docs/src/pages/x.mdx` → App Router `docs/src/app/(docs)/x/page.mdx`), `slug_rewrite` leva as duas chaves a um só nome.
+- **Dezenas de tags de uma mesma pasta de documentação** (`payload`: `docs/` na última tag de 163 minors) — uma
+  fonte `ghdocs-history` por major com as tags de todas as suas minors em `tags`, a mais nova primeiro, e não uma fonte
+  por tag: o leitor baixa uma vez o arquivo que aparece em várias tags da mesma fonte, e assim são 2956 downloads em vez
+  de ~18 000 (cinco horas a 0,3 s). A tag mais nova vai primeiro — é dela que o leitor tira o endereço do arquivo.
 - **Um site que guarda cada versão como pasta de um mesmo commit** (kafka.apache.org em Hugo: `content/en/07` …
   `content/en/44`) — uma fonte por pasta com a sua `version`, todas num grupo de `families`; a árvore de uma pasta é
   `trees/SHA:content%2Fen%2F41?recursive=1` (barras codificadas). Páginas que só nomeiam HTML gerado com um
