@@ -3194,6 +3194,28 @@ ai-sdk.dev з тегу кожної мінорної `ai` 2.1–7.0 (AI SDK Core
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/vercel-ai-sdk/README.md](instances/vercel-ai-sdk/README.md).
 
+### sanity
+
+Документація Sanity — платформи вмісту: Sanity Studio, Content Lake, мова запитів GROQ і бібліотеки JavaScript
+(sanity-io/*): усі 687 сторінок www.sanity.io/docs (Studio й типи схеми, Content Lake, GROQ, довідники HTTP API і CLI,
+Visual Editing, Functions, Blueprints, посібники для фреймворків), довідник API reference.sanity.io (3612 сторінок
+TypeDoc), README кожної стабільної версії дев'яти пакетів (`sanity`, `groq`, `@sanity/vision`, `@sanity/cli`,
+`@sanity/client`, `next-sanity`, `@sanity/image-url`, `@sanity/visual-editing`, `@portabletext/react`), їхній реєстр npm
+і релізи семи репозиторіїв. 7888 документів, 49 042 фрагменти; новий читач `sitemap-md-suffix` (markdown-двійник за
+довільним суфіксом адреси, чистка виразами, межа глибини заголовків), читачеві `npm-readme` додано поля
+`version_prefix` і `gzip`.
+
+- порт `8899`; запис у Claude Code — `sanity-docs`, адреса `http://127.0.0.1:8899/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "6"`) чи мінор (`"6.20"`) для `sanity`, `groq` і `@sanity/vision`, решта пакетів — з
+  іменем пакета (`"client-8"`, `"next-sanity-13"`); лінія 6 `sanity` тримає 52 % завантажень за тиждень до
+  25.10.2026;
+- не входять: Next.js, React, Astro, Nuxt і Vercel як окремі проєкти, код і тести пакетів, курси sanity.io/learn;
+- приклад питання агентові: `./df sanity ask "How do I define a reference field with a filter in a Sanity schema, and
+  how do I follow that reference in a GROQ query?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/sanity/README.md](instances/sanity/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
