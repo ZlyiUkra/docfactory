@@ -92,6 +92,23 @@ Apache Kafka — KafkaJS, librdkafka, Spring for Apache Kafka, транспор�
 для лінії, яку підтримує проєкт: 4 (найновіша 4.4; сторінка завантажень на жовтень 2026 називає підтримуваними 4.3,
 4.2 і 4.1). Коли питання про ZooKeeper чи старий кластер — ще й для 3.9, останньої версії з ZooKeeper.
 
+## Родина Kafka: піднімати разом
+
+Цей примірник — частина родини Kafka: сам Apache Kafka і три клієнти для Node.js. Питання про клієнта впирається в
+поведінку брокера (`acks`, `min.insync.replicas`, ребаланс груп, транзакції), а питання про брокер часто звучить мовою
+клієнта. Тому примірники родини піднімають у Claude Code разом, а `.mcp.json` цієї теки перелічує всі чотири сервери:
+підключивши будь-який із них, Claude Code бачить решту.
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `kafka` | `kafka-docs` | 8886 | сам Apache Kafka 0.7–4.4: брокери, KRaft, конфігурація, протокол, Connect, Streams |
+| `kafkajs` | `kafkajs-docs` | 8887 | клієнт KafkaJS для Node.js (на ньому транспорт Kafka NestJS) |
+| `confluent-kafka-javascript` | `confluent-kafka-javascript-docs` | 8888 | клієнт Confluent `@confluentinc/kafka-javascript` на librdkafka |
+| `platformatic-kafka` | `platformatic-kafka-docs` | 8889 | клієнт `@platformatic/kafka` на чистому TypeScript |
+
+`prompts/loaded.txt` каже моделі, що цей набір — частина родини, і які сервери її доповнюють. Повний перелік родин — у
+розділі «Родини примірників» кореневого [README](../../README.md).
+
 ## Архівний режим: сервер без корпусу
 
 Корпус примірника в архіві від самого початку: у `corpus/` лежить лише паспорт `index.json`, а сервер підіймається з

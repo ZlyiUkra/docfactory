@@ -440,6 +440,15 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `node-mongodb` | `node-mongodb-docs` | 8851 | офіційний драйвер Node.js (пакет `mongodb`) і `bson` |
 | `mongoose` | `mongoose-docs` | 8852 | Mongoose і додатки: `@nestjs/mongoose`, Typegoose, memory-server, плагіни |
 
+**Родина Kafka** — сам Apache Kafka і три клієнти для Node.js:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `kafka` | `kafka-docs` | 8886 | сам Apache Kafka 0.7–4.4: брокери, KRaft, конфігурація, протокол, Connect, Streams |
+| `kafkajs` | `kafkajs-docs` | 8887 | клієнт KafkaJS для Node.js (на ньому транспорт Kafka NestJS) |
+| `confluent-kafka-javascript` | `confluent-kafka-javascript-docs` | 8888 | клієнт Confluent `@confluentinc/kafka-javascript` на librdkafka |
+| `platformatic-kafka` | `platformatic-kafka-docs` | 8889 | клієнт `@platformatic/kafka` на чистому TypeScript |
+
 **Родина .NET** — платформа, мова, веб, дані, тестування й менеджер пакетів Microsoft. Кожен примірник окремий, бо має
 власні версії й власний сайт, але питання про C# впирається в бібліотеку класів, про EF — у SQL Server, про тест із
 базою — у Testcontainers, про пакет — у NuGet:
