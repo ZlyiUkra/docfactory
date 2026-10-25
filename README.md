@@ -3216,6 +3216,28 @@ TypeDoc), README кожної стабільної версії дев'яти п
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/sanity/README.md](instances/sanity/README.md).
 
+### uploadthing
+
+Документація UploadThing — сервісу й бібліотеки завантаження файлів для фулстек-застосунків на TypeScript
+(pingdotgg/uploadthing): сайт docs.uploadthing.com з останнього тегу кожної мінорної `uploadthing` 3.0–7.7 (початок
+роботи з Next.js, Astro, Expo, Nuxt, Remix, SolidStart, SvelteKit і TanStack Start, файлові маршрути, завантаження з
+клієнта й сервера, адаптери Express, Fastify, Fetch і H3, авторизація, помилки, регіони й ACL, оформлення, довідник
+`uploadthing/server`, `uploadthing/client`, `UTApi`, React, Solid, Svelte, Vue, Expo і OpenAPI, перехід на v7, FAQ,
+блог), журнали змін десяти пакетів, їхній реєстр npm і приклади `examples/`. 694 документи, 1790 фрагментів; читачеві
+`ghdocs-history` додано поле `protocol_mdx` (теги `<Property>`, позначки заголовків і назви сторінок шаблону Tailwind UI
+Protocol), спільний розбір MDX прибирає багаторядкові `import`/`export` цілими.
+
+- порт `8900`; запис у Claude Code — `uploadthing-docs`, адреса `http://127.0.0.1:8900/mcp`; інструменти `search_docs`
+  і `read_section`;
+- версія — мажор (`version: "7"`), мінор (`"7.7"`) чи точна (`"6.13.3"`); лінія 7 тримає 90 % завантажень за тиждень
+  до 25.10.2026;
+- не входять: README пакетів з npm (заглушки з посиланням на сайт), релізи GitHub (повторюють журнали), код і тести
+  пакетів, Next.js, React, Nuxt, Express і S3 як окремі проєкти;
+- приклад питання агентові: `./df uploadthing ask "How do I restrict a file route to two images of 4MB and check the
+  user in middleware before the upload?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/uploadthing/README.md](instances/uploadthing/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
