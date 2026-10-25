@@ -465,6 +465,13 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `nats` | `nats-docs` | 8894 | сам NATS 2.11–2.15: core NATS, JetStream, KV, Object Store, кластери, безпека, конфігурація, релізи |
 | `nats-js` | `nats-js-docs` | 8895 | клієнт nats.js: пакет `nats` 2.x (на ньому транспорт NATS NestJS) і пакети `@nats-io/*` 3.x |
 
+**Родина Resend** — сервіс надсилання листів із його SDK для Node.js і React Email, яким листи верстають:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `resend` | `resend-docs` | 8896 | API Resend, дашборд, вебхуки, домени й доставлюваність, SDK `resend` для Node.js 0.1–6.34 |
+| `react-email` | `react-email-docs` | 8897 | React Email 2.1–6.11: компоненти, `render()`, CLI і перегляд, інтеграції з поштовими сервісами |
+
 **Родина .NET** — платформа, мова, веб, дані, тестування й менеджер пакетів Microsoft. Кожен примірник окремий, бо має
 власні версії й власний сайт, але питання про C# впирається в бібліотеку класів, про EF — у SQL Server, про тест із
 базою — у Testcontainers, про пакет — у NuGet:
@@ -3128,6 +3135,44 @@ migration.md з тегів 3.0–3.4, довідник TypeDoc 3.4, прикла
   this change from nats 2.x to @nats-io/jetstream?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/nats-js/README.md](instances/nats-js/README.md).
+
+### resend
+
+Документація Resend — API надсилання листів для розробників — і його SDK для Node.js, пакета `resend` (resend.com/docs,
+resend/resend-node); перший примірник родини Resend: усі 423 сторінки сайту (надсилання з Node.js та інших середовищ,
+довідник REST API, вебхуки, дашборд, домени й DNS, доставлюваність), README кожної стабільної версії `resend` 0.1–6.34,
+реєстр npm і релізи resend-node. 559 документів, 3045 фрагментів; нових читачів не потрібно — читачеві
+`sitemap-mintlify` додано поле `drop_code`, яке не бере приклади восьми мов, крім Node.js, cURL і CLI.
+
+- порт `8896`; запис у Claude Code — `resend-docs`, адреса `http://127.0.0.1:8896/mcp`; інструменти `search_docs` і
+  `read_section`;
+- сторінки сайту версії не мають; версія пакета — мажор (`version: "6"`), мінор (`"6.34"`) або точна (`"4.8.0"`); лінія 6
+  тримає 81 % завантажень npm за тиждень до 25.10.2026, тож промпт відповідає для 6.x;
+- не входять: React Email (примірник `react-email`), Next.js, Nodemailer і поштові сервіси як окремі проєкти, SDK інших
+  мов;
+- приклад питання агентові: `./df resend ask "How do I send a scheduled email with an idempotency key from Node.js, and
+  how do I verify the webhook that reports its delivery?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/resend/README.md](instances/resend/README.md).
+
+### react-email
+
+Документація React Email — бібліотеки для верстки HTML-листів на React і TypeScript від команди Resend
+(resend/react-email); другий примірник родини Resend: сайт react.email/docs з тегу кожної мінорної 2.1–6.11
+(компоненти та їхні props, `render()`, CLI і сервер перегляду, інтеграції з поштовими сервісами), README
+`@react-email/components` і `@react-email/render` кожної версії, журнали змін семи пакетів, реєстр npm. 654 документи,
+1517 фрагментів; нових читачів не потрібно — читач `changelog-regex` тепер пропускає порожні записи журналів changesets.
+
+- порт `8897`; запис у Claude Code — `react-email-docs`, адреса `http://127.0.0.1:8897/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "6"`), мінор (`"6.11"`) або точна (`"5.2.10"`); лінія 6 тримає 60 % завантажень npm за
+  тиждень до 25.10.2026, тож промпт відповідає для 6.x, а для коду на `@react-email/components` — ще й для 5.x;
+- не входять: сам Resend (примірник `resend`), React, Tailwind CSS і поштові сервіси як окремі проєкти, README самого
+  пакета `react-email` (тарболи частини версій понад 50 МБ);
+- приклад питання агентові: `./df react-email ask "How do I render a template with the Tailwind component to HTML and
+  plain text, and what changes when I update from 5.x to 6.0?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/react-email/README.md](instances/react-email/README.md).
 
 ## Захист
 
