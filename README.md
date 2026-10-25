@@ -3174,6 +3174,26 @@ resend/resend-node); перший примірник родини Resend: усі
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/react-email/README.md](instances/react-email/README.md).
 
+### vercel-ai-sdk
+
+Документація AI SDK від Vercel — набору TypeScript для застосунків і агентів на мовних моделях (vercel/ai): сайт
+ai-sdk.dev з тегу кожної мінорної `ai` 2.1–7.0 (AI SDK Core, UI, RSC, агенти, довідник API, посібники міграції,
+кулінарна книга, провайдери), README останньої версії кожної мінорної `ai` і 88 пакетів `@ai-sdk/*`, журнали змін усіх
+89 пакетів з останнього тегу кожного мажору, реєстр npm. 25 369 документів, 47 870 фрагментів; нових читачів не
+потрібно — `jsx_props` читача `ghdocs-history` тепер розбирає `<PropertiesTable>` довідника API.
+
+- порт `8898`; запис у Claude Code — `vercel-ai-sdk-docs`, адреса `http://127.0.0.1:8898/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версія — мажор (`version: "7"`), мінор (`"4.3"`) або точна (`"6.0.315"`), пакети `@ai-sdk/*` — з іменем пакета
+  (`"openai-3"`); лінії 7 і 6 майже рівні (44 % і 42 % завантажень `ai` за тиждень до 25.10.2026), тож промпт велить
+  відповідати для обох;
+- не входять: власні API провайдерів, React, Next.js, Vue, Svelte, Zod і платформа Vercel як окремі проєкти, код
+  пакетів і `examples/`;
+- приклад питання агентові: `./df vercel-ai-sdk ask "How do I let a model call a tool several times with stopWhen, and
+  what replaced maxSteps after 4.x?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/vercel-ai-sdk/README.md](instances/vercel-ai-sdk/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
