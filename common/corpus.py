@@ -342,7 +342,11 @@ def _table_rows(para: str, ceiling: int) -> list[str]:
     """Абзац, що цілком є таблицею markdown, — шматки з цілих рядків не довші за межу
     (рядок, довший за межу сам, лишається цілим). Будь-який інший абзац — як є."""
     lines = para.split("\n")
-    if not all(ln.lstrip().startswith("|") for ln in lines):
+    # Таблиця GFM буває й без крайніх рисок (CONFIGURATION.md librdkafka: «Property | C/P | …»);
+    # її впізнає другий рядок-розділювач «-----|-----|…».
+    bare = (len(lines) > 2 and all("|" in ln for ln in lines)
+            and re.fullmatch(r"\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*", lines[1]) is not None)
+    if not bare and not all(ln.lstrip().startswith("|") for ln in lines):
         return [para]
     pieces, current, size = [], [], 0
     for ln in lines:
