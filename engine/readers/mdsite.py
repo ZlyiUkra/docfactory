@@ -22,7 +22,9 @@ from engine.readers import Item, _markup, register
 
 _MD_LINK = re.compile(r"\((https://[^)\s]+\.md)\)")
 _MD_ITEM = re.compile(r"^- \[[^\]]*\]\(([^)\s]+\.md)\)", re.M)
-_TITLE = re.compile(r"\s*# (.+)\n")
+# Markdown-двійник сторінки Sphinx на docs.confluent.io ставить перед заголовком якорі
+# `<a id="javascript-client"></a>`; без них у виразі сторінка лишалася без назви й не записувалася.
+_TITLE = re.compile(r"\s*(?:<a id=\"[^\"]*\"></a>\s*)*# (.+)\n")
 _HREF = re.compile(r'href="([^"#?]+)"')
 _DATED = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/([^/]+)$")
 # Кожна markdown-сторінка react.dev закінчується тим самим посиланням на мапу сайту.
