@@ -16,8 +16,8 @@ nvidia-container-toolkit, ollama, openapi-typescript, openssl, opentelemetry, or
 passport, patterns, platformatic-kafka, playwright, postgrator, postgres-image, postgresql, prisma, rabbitmq, react,
 react-email, react-hook-form, react-native, react-router, react-window, redis, redux, resend, rxjs, sentry, shadcn,
 socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router,
-tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, viem, vite,
-vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, vercel-ai-sdk,
+viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 

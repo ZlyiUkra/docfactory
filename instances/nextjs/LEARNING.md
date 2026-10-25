@@ -343,7 +343,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 |------------|--------------|
 | Stripe | платежі; у 15 шаблонах; є примірник `stripe` |
 | Resend, React Email | листи; у 8 і 4 шаблонах; є примірники `resend` і `react-email` |
-| Vercel AI SDK | чат і генерація тексту; у 58 шаблонах |
+| Vercel AI SDK | чат і генерація тексту; у 58 шаблонах; є примірник `vercel-ai-sdk` |
 | UploadThing або сховище S3 | завантаження файлів користувачів |
 | Sanity, Payload, Contentful | вміст редагують не розробники |
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій |
@@ -457,12 +457,15 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Resend (сервіс надсилання листів: сайт resend.com/docs — надсилання з Next.js, довідник API, вебхуки, домени й
   доставлюваність; README кожної версії SDK `resend`, реєстр npm, релізи) — `resend`;
 - React Email (верстка листів на React: сайт react.email/docs з тегу кожної мінорної 2.1–6.11 — компоненти, `render()`,
-  CLI, інтеграції; README пакетів, журнали змін, реєстр npm) — `react-email`.
+  CLI, інтеграції; README пакетів, журнали змін, реєстр npm) — `react-email`;
+- Vercel AI SDK (текст, структурована відповідь, інструменти й агенти на мовних моделях, `useChat` для чату: сайт
+  ai-sdk.dev з тегу кожної мінорної 2.1–7.0 з довідником API й посібниками міграції; README і журнали змін `ai` і 88
+  пакетів `@ai-sdk/*` — провайдерів і хуків для React, Vue, Svelte; реєстр npm) — `vercel-ai-sdk`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Vercel AI SDK, UploadThing, Sanity, Payload, Contentful, tRPC, next-safe-action,
-  Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
+- з «знати, що існує»: UploadThing, Sanity, Payload, Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux,
+  Sealed Secrets, Prometheus, Grafana, Loki.
 
 ---
 
