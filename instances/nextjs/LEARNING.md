@@ -342,7 +342,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Бібліотека | Коли згадати |
 |------------|--------------|
 | Stripe | платежі; у 15 шаблонах; є примірник `stripe` |
-| Resend, React Email | листи; у 8 і 4 шаблонах |
+| Resend, React Email | листи; у 8 і 4 шаблонах; є примірники `resend` і `react-email` |
 | Vercel AI SDK | чат і генерація тексту; у 58 шаблонах |
 | UploadThing або сховище S3 | завантаження файлів користувачів |
 | Sanity, Payload, Contentful | вміст редагують не розробники |
@@ -453,12 +453,16 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   нотатки релізів GitHub, приклади samples/, зокрема next-app-with-fetch, реєстр npm) — `orval`;
 - openapi-typescript (типи TypeScript з OpenAPI і клієнт openapi-fetch: сайт openapi-ts.dev з тегу кожної мінорної
   версії 6.2–7.13, README кожної версії шести пакетів, журнали змін, приклад openapi-fetch для Next.js, реєстр npm) —
-  `openapi-typescript`.
+  `openapi-typescript`;
+- Resend (сервіс надсилання листів: сайт resend.com/docs — надсилання з Next.js, довідник API, вебхуки, домени й
+  доставлюваність; README кожної версії SDK `resend`, реєстр npm, релізи) — `resend`;
+- React Email (верстка листів на React: сайт react.email/docs з тегу кожної мінорної 2.1–6.11 — компоненти, `render()`,
+  CLI, інтеграції; README пакетів, журнали змін, реєстр npm) — `react-email`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Resend і React Email, Vercel AI SDK, UploadThing, Sanity, Payload, Contentful,
-  tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
+- з «знати, що існує»: Vercel AI SDK, UploadThing, Sanity, Payload, Contentful, tRPC, next-safe-action,
+  Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Grafana, Loki.
 
 ---
 

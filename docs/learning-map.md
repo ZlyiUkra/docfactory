@@ -14,10 +14,10 @@ mikro-orm, mongodb, mongoose, motion, msw, nats, nats-js, nestjs, nestjs-cls, ne
 nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs,
 nvidia-container-toolkit, ollama, openapi-typescript, openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket,
 passport, patterns, platformatic-kafka, playwright, postgrator, postgres-image, postgresql, prisma, rabbitmq, react,
-react-hook-form, react-native, react-router, react-window, redis, redux, rxjs, sentry, shadcn, socketio, sqlserver,
-storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract,
-testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, viem, vite, vitest, wagmi, wasm, webdev,
-webstandards, ws, zod, zustand.
+react-email, react-hook-form, react-native, react-router, react-window, redis, redux, resend, rxjs, sentry, shadcn,
+socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router,
+tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, typeorm, typescript, upstash, v8, viem, vite,
+vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 
