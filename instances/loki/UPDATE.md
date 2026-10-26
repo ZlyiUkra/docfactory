@@ -1,8 +1,10 @@
 # Оновлення корпусу loki
 
 Документація береться із закріплених тегів: поле `tags` джерел `loki-docs-3`, `loki-docs-2` і `loki-docs-early` тримає
-останній тег `vX.Y.Z` кожної мінорної Loki, джерела `loki-readme` — ті самі теги. Релізи GitHub і журнал змін чарту
-(гілка main) беруться щоразу заново.
+останній тег `vX.Y.Z` кожної мінорної Loki, джерела `loki-readme` — ті самі теги. Так само закріплено теги чарту для
+OSS (`community-chart`, теги `loki-X.Y.Z` grafana-community/helm-charts, версії з префіксом `community-chart-`) і Loki
+Operator (`operator-docs`, теги `operator/vX.Y.Z`, префікс `operator-`). Релізи GitHub, журнали змін чарту й оператора
+(гілка main), README і реєстр npm `pino-loki` і `winston-loki` беруться щоразу заново.
 
 Правило: **нічого не видаляється.** Ані `refresh`, ані `vectors`, ані `manifest` нічого не стирають самі.
 
@@ -23,7 +25,8 @@
 # Ctrl+C у терміналі з serve, і знову: ./df loki serve
 ```
 
-Якщо вийшла нова версія (на 26.10.2026 найновіша — Loki 3.7.9), її треба замінити в `prompts/search.txt` (абзац
+Якщо вийшла нова версія (на 26.10.2026 найновіші — Loki 3.7.9, чарт для OSS 20.0.1, Loki Operator 0.12.0,
+`pino-loki` 3.0.0, `winston-loki` 6.1.7), її треба замінити в `prompts/search.txt` (абзац
 «Which version to search first») і в `prompts/agent.txt`.
 
 Якщо `smoke` скаржиться на число фрагментів, корпус підріс. Нове число записують у `checks.json` полем

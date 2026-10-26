@@ -3459,15 +3459,18 @@ README flux2 для Flux 0.x, стабільні релізи; специфік�
 конфігурації, сховище й схеми, мітки й structured metadata, надсилання логів через Alloy, Promtail, Fluent Bit і
 OpenTelemetry, LogQL, правила сповіщень і запису, утримання й видалення логів, мультитенантність, ліміти, HTTP API,
 `logcli`), звичайна тека `docs/` 0.1–1.5, README з тегу кожної мінорної, стабільні релізи GitHub і журнал змін чарту
-Helm `loki` 3.0–7.5. Читач `ghdocs-history-grafana` отримав поле `shared_source`: довідник конфігурації Loki
-вставляється шматком із `source="loki"`. 2126 документів, 9832 фрагменти.
+Helm `loki` 3.0–7.5; README чарту `loki` для OSS з grafana-community/helm-charts (туди він переїхав у березні 2026) з
+тегу кожної мінорної 7.0–20.0; документація Loki Operator (`LokiStack`, сайт loki-operator.dev) 0.4–0.12 і його журнал
+змін; сторонні транспорти логів Node.js `pino-loki` і `winston-loki` (README кожної версії, реєстр npm, релізи).
+Читач `ghdocs-history-grafana` отримав поле `shared_source`: довідник конфігурації Loki вставляється шматком із
+`source="loki"`. 2320 документів, 10 756 фрагментів.
 
 - порт `8911`; запис у Claude Code — `loki-docs`, адреса `http://127.0.0.1:8911/mcp`; інструменти `search_docs` і
   `read_section`;
-- версія — мажор (`version: "3"`), мінор (`"2.9"`) чи точна (`"3.7.9"`); найновіша стабільна — 3.7.9; журнал чарту —
-  з префіксом (`"chart-6"`);
-- не входять: пререлізи, Loki Operator, чарт для OSS у grafana-community/helm-charts (туди переїхав у березні 2026),
-  Grafana, Alloy, Prometheus як окремі проєкти, код і тести;
+- версія — мажор (`version: "3"`), мінор (`"2.9"`) чи точна (`"3.7.9"`); найновіша стабільна — 3.7.9; решта — з
+  префіксом (`"chart-6"`, `"community-chart-20"`, `"operator-0.12"`, `"pino-loki-3"`, `"winston-loki-6"`);
+- не входять: пререлізи, релізи чарту для OSS і оператора, Grafana, Alloy, Prometheus, pino і winston як окремі
+  проєкти, код і тести;
 - приклад питання агентові: `./df loki ask "How do I keep logs for 30 days and delete older ones with the compactor?"`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/loki/README.md](instances/loki/README.md).
