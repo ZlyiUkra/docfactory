@@ -142,14 +142,14 @@ cd ~/Projects/docfactory
 **2. Додати сервер у Claude Code** — у тому середовищі, де відкрито вікно:
 
 ```
-claude mcp add --transport http --scope user htdp-docs http://127.0.0.1:8912/mcp
+claude mcp add --transport http --scope user htdp-book http://127.0.0.1:8912/mcp
 ```
 
 У WSL і у Windows Claude Code тримає окремі налаштування. Вікно VS Code на боці Windows читає
 `C:\Users\<ім'я>\.claude.json`, тож команду треба виконати в PowerShell або додати сервер кнопкою «Add server» у вікні
 `/mcp` (тип HTTP, рівень User). Сам сервер з Windows доступний за тією ж адресою: WSL2 прокидає порт.
 
-**3. Перевірити.** `/mcp` має показати `htdp-docs` і два інструменти: `search_docs` і `read_section`.
+**3. Перевірити.** `/mcp` має показати `htdp-book` і два інструменти: `search_docs` і `read_section`.
 
 Зупинка — Ctrl+C у терміналі сервера. Решта (scope запису, «address already in use») — так само, як у [README
 примірника react-router](../react-router/README.md#спосіб-б--сервер-під-claude-code-http).
