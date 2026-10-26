@@ -345,7 +345,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Resend, React Email | листи; у 8 і 4 шаблонах; є примірники `resend` і `react-email` |
 | Vercel AI SDK | чат і генерація тексту; у 58 шаблонах; є примірник `vercel-ai-sdk` |
 | UploadThing або сховище S3 | завантаження файлів користувачів; для UploadThing є примірник `uploadthing` |
-| Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity`, для Payload — `payload` |
+| Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity`, для Payload — `payload`, для Contentful — `contentful` |
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій; для tRPC є примірник `trpc` |
 | Turborepo | кілька застосунків в одному репозиторії |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут |
@@ -476,10 +476,14 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - tRPC (роутери й процедури, контекст, middleware, валідатори, помилки, трансформери даних, виклики на сервері,
   адаптери, підписки через SSE і WebSocket, клієнт і посилання links, TanStack React Query, Next.js: тека www/docs з
   тегу кожної мінорної 3.3–11.21, README пакетів, навички агентів, релізи, реєстр npm, приклади) — `trpc`.
+- Contentful (модель вмісту: простори, середовища й псевдоніми, типи вмісту, записи, ресурси, локалі, посилання, rich
+  text; Content Delivery, Preview, Management, GraphQL та Images API, вебхуки, App Framework; SDK contentful.js і
+  contentful-management.js, CLI, міграції, імпорт і експорт, live preview: сайт developers/docs, README з тегу кожної
+  мінорної, релізи, реєстр npm) — `contentful`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Contentful, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Loki.
+- з «знати, що існує»: next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Loki.
 
 ---
 
