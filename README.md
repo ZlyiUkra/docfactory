@@ -3305,6 +3305,28 @@ React Query, Next.js з App Router і Pages Router, переходи v9→v10 і
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/trpc/README.md](instances/trpc/README.md).
 
+### contentful
+
+Документація Contentful — headless-платформи вмісту з API: сайт contentful.com/developers/docs у теперішньому вигляді
+(поняття й модель даних, довідник Content Delivery, Content Preview, Content Management, GraphQL, Images, User
+Management і SCIM API, App Framework, App SDK, вебхуки, сторінки SDK, посібники, Compose, Experiences, Personalization),
+README й файли документації 12 репозиторіїв contentful/* (contentful.js, contentful-management.js, contentful-cli,
+contentful-migration, contentful-import, contentful-export, rich-text, App SDK, live-preview, Experiences SDK,
+create-contentful-app, сервер MCP) з останнього тегу кожної мінорної, їхні стабільні релізи GitHub і реєстр npm двадцяти
+пакетів. 5088 документів, 15 194 фрагменти. Сайт стоїть за перевіркою Vercel і віддає лише markdown-двійники сторінок,
+тож перелік сторінок збирає новий читач `mdcrawl` обходом посилань між ними.
+
+- порт `8904`; запис у Claude Code — `contentful-docs`, адреса `http://127.0.0.1:8904/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "11"`), мінор (`"10.6"`) чи точна (`"11.5.25"`); у кожного пакета своя нумерація, тож
+  разом із версією запит називає пакет; сторінки сайту версії не мають;
+- не входять: Help Center для редакторів (закритий перевіркою Vercel повністю), Forma 36, сторінки developers/docs, на
+  які не посилається жодна інша, пререлізи, код і тести пакетів, Next.js, React, Gatsby і GraphQL як окремі проєкти;
+- приклад питання агентові: `./df contentful ask "How do I fetch entries with their linked entries resolved using
+  the include parameter of the Content Delivery API?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/contentful/README.md](instances/contentful/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

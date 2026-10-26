@@ -673,6 +673,13 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   listing (passages of the README with `section` empty) or with `grep -c '<h[2-6]' README.md`. `html_headings: true` in
   `npm-tarball-files` and `ghdocs-history` turns a one-line `<hN …>Title</hN>` into a markdown heading of the same
   level; a multi-line header (`<h1>` with a logo) stays as it is. Without the field the readers behave as before.
+- **A site behind a bot check that still serves markdown twins** (contentful.com: llms.txt, sitemap.xml and HTML answer
+  429 "This request requires a challenge", `/developers/docs/<page>.md` passes): there is no page list anywhere but
+  the links inside the twins. The `mdcrawl` reader walks them within `within`, starting from `pages` — seed it with a
+  trial crawl and the Wayback CDX listing (`web.archive.org/cdx/search/cdx?url=<prefix>&matchType=prefix`), the
+  archive only gives addresses, the text still comes from the live site. Watch for two traps: a `200` stub "Page Not
+  Found" (field `not_found`) and the same text under several addresses (the site resolves a subsection address as
+  the parent page) — the reader keeps one document under the address that matches the page title.
 
 ## Anatomy of an instance
 
@@ -1640,6 +1647,14 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `section`) або з `grep -c '<h[2-6]' README.md`. Поле `html_headings: true` у `npm-tarball-files` і `ghdocs-history`
   робить з однорядкового `<hN …>Назва</hN>` заголовок markdown того самого рівня; заголовок на кількох рядках (`<h1>` з
   логотипом) лишається як є. Без поля читачі поводяться як раніше.
+- **Сайт за перевіркою на ботів, що все ж віддає markdown-двійники** (contentful.com: llms.txt, sitemap.xml і HTML
+  відповідають 429 «This request requires a challenge», а `/developers/docs/<сторінка>.md` проходить): переліку
+  сторінок немає ніде, крім посилань у самих двійниках. Читач `mdcrawl` обходить їх у межах `within`, починаючи з
+  `pages`; стартовий перелік дають пробний обхід і перелік Wayback CDX
+  (`web.archive.org/cdx/search/cdx?url=<префікс>&matchType=prefix`) — архів дає лише адреси, текст однаково йде з
+  живого сайту. Дві пастки: заглушка «Page Not Found» з кодом `200` (поле `not_found`) і той самий текст за кількома
+  адресами (сайт віддає сторінку-батька за адресою підрозділу) — читач лишає один документ під адресою, що збігається
+  з назвою сторінки.
 
 ## З чого складається примірник
 
@@ -2647,6 +2662,14 @@ errada.
   em `npm-tarball-files` e `ghdocs-history` transforma um `<hN …>Título</hN>` de uma linha em título markdown do mesmo
   nível; um cabeçalho de várias linhas (`<h1>` com logotipo) fica como está. Sem o campo os leitores se comportam como
   antes.
+- **Site atrás de uma verificação anti-bot que ainda serve gêmeos markdown** (contentful.com: llms.txt, sitemap.xml
+  e HTML respondem 429 "This request requires a challenge", `/developers/docs/<página>.md` passa): não há lista de
+  páginas em lugar nenhum além dos links dentro dos gêmeos. O leitor `mdcrawl` percorre-os dentro de `within`, a
+  partir de `pages`; a lista inicial vem de um rastreio de teste e da listagem Wayback CDX
+  (`web.archive.org/cdx/search/cdx?url=<prefixo>&matchType=prefix`) — o arquivo dá só endereços, o texto continua
+  vindo do site vivo. Duas armadilhas: a página "Page Not Found" com código `200` (campo `not_found`) e o mesmo texto
+  em vários endereços (o site resolve o endereço de uma subseção como a página-mãe) — o leitor guarda um documento
+  sob o endereço que coincide com o título da página.
 
 ## Anatomia de uma instância
 
