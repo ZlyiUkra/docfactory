@@ -349,7 +349,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій |
 | Turborepo | кілька застосунків в одному репозиторії |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут |
-| Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті |
+| Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті; для Grafana є примірник `grafana` |
 | Storybook, MSW, Testing Library | компоненти окремо, підміна мережі в тестах; у примірнику `storybook` — `Storybook for Next.js with Vite` |
 
 Про nuqs, iron-session, jose, next-safe-action і UploadThing: у шаблонах корпусу їх майже немає, це порада з
@@ -470,11 +470,14 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Payload (колекції й поля, контроль доступу, хуки, Local API, REST і GraphQL, чернетки, локалізація, міграції,
   адмін-панель, Lexical: тека docs/ з тегу кожної мінорної 0.0–3.92, README 44 пакетів, релізи, приклади й шаблони,
   реєстр npm, блог і Community Help) — `payload`.
+- Grafana (дашборди, змінні, візуалізації, джерела даних Prometheus і Loki, Grafana Alerting, провізіонування файлами,
+  `grafana.ini` і змінні `GF_*`, автентифікація, HTTP API: тека docs/sources з тегу кожної мінорної 2.0–13.2, README
+  пакетів `@grafana/*`, релізи, реєстр npm) — `grafana`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - з «знати, що існує»: Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus,
-  Grafana, Loki.
+  Loki.
 
 ---
 

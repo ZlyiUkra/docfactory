@@ -1268,6 +1268,7 @@ Let's Encrypt і програми іспитів CNCF. Про інші бібл�
   `kubernetes`;
 - тексти стандартів (OpenID Connect для входу в кластер) — `webstandards`;
 - Docker і Compose — `docker`; Linux: man-сторінки, systemd, мережа — `linux`;
+- Grafana: дашборди, джерела даних, Grafana Alerting, провізіонування, `grafana.ini` (2.0–13.2) — `grafana`;
 - PostgreSQL — база наскрізного проєкту (`psql`, `pg_dump`, налаштування сервера) — `postgresql`;
 - NGINX Gateway Fabric, NGINX Ingress Controller, ingress-nginx 0.34–1.15 (закрито в березні 2026), сам nginx —
   `nginx`.
@@ -1276,5 +1277,5 @@ Let's Encrypt і програми іспитів CNCF. Про інші бібл�
 
 - CNI-плагіни: Calico, Cilium, Flannel;
 - MetalLB, Envoy Gateway, local-path-provisioner;
-- оператори баз; Prometheus і Grafana;
+- оператори баз; Prometheus;
 - Candidate Handbook і Important Instructions іспитів.
