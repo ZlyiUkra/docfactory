@@ -349,7 +349,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій; для tRPC є примірник `trpc`, для next-safe-action — `next-safe-action` |
 | Turborepo | кілька застосунків в одному репозиторії; є примірник `turborepo` |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут; для Argo CD є примірник `argocd`, для Flux — `flux`, для Sealed Secrets — `sealed-secrets` |
-| Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті; для Prometheus є примірник `prometheus`, для Grafana — `grafana` |
+| Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті; для Prometheus є примірник `prometheus`, для Grafana — `grafana`, для Loki — `loki` |
 | Storybook, MSW, Testing Library | компоненти окремо, підміна мережі в тестах; у примірнику `storybook` — `Storybook for Next.js with Vite` |
 
 Про nuqs, iron-session, jose, next-safe-action і UploadThing: у шаблонах корпусу їх майже немає, це порада з
@@ -500,10 +500,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   Alertmanager 0.21–0.34, сайт prometheus.io і блог, релізи; експортери `node_exporter`, `blackbox_exporter`,
   `pushgateway`; README чартів Helm `kube-prometheus-stack` і `prometheus`; клієнт для Node.js `prom-client` 1.0–15.1
   і його наступник `@prometheus-io/client`) — `prometheus`.
-
-**Примірника ще немає** — відповідь лише з практики або з чужого сайту:
-
-- з «знати, що існує»: Loki.
+- Loki (збирання логів: мітки й потоки, LogQL, надсилання логів через Alloy і Promtail, утримання, ліміти, правила
+  сповіщень, Helm: тека docs/sources з тегу кожної мінорної 1.6–3.7, docs/ 0.1–1.5, README, релізи, журнал змін
+  чарту Helm `loki`) — `loki`.
 
 ---
 
@@ -2490,8 +2489,8 @@ TLS і сертифікат, зворотний проксі, підніманн
 
 - **Решта плану React** — дні повного шляху поза шляхом мідла, якщо контрольні питання ще показують прогалини.
 - **Глибше в експлуатацію** — викот «з репозиторію» (Argo CD або Flux — примірники `argocd` і `flux`), метрики й логи
-  з історією (Prometheus, Grafana, Loki — для перших двох є примірники `prometheus` і `grafana`), керований Kubernetes
-  на кшталт Oracle OKE (примірник `oracle-cloud`), коли знадобиться більше одного вузла.
+  з історією (Prometheus, Grafana, Loki — примірники `prometheus`, `grafana` і `loki`), керований Kubernetes на кшталт
+  Oracle OKE (примірник `oracle-cloud`), коли знадобиться більше одного вузла.
 - **Глибше в бекенд** — те, що план NestJS лишив у «Знати, що існує»: брокери повідомлень, GraphQL, CQRS — коли
   проєкт до них доросте.
 - **Свіжість знань** — латки `next` щотижня, нотатки релізів і блог Next.js у корпусі; новий мажорний випуск —
