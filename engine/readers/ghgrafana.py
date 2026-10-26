@@ -6,7 +6,9 @@
                            - `{{< docs/shared lookup="x.md" source="grafana" >}}` — шматок теки
                              `docs/sources/shared` того самого тегу стає на місце вставки;
                              шматки інших продуктів (`source="alloy"`) лежать поза білим
-                             списком і випадають;
+                             списком і випадають; `shared_source` — ім'я свого продукту для
+                             репозиторію не grafana (`"loki"`: `source="loki"`), змовчання
+                             `"grafana"`;
                            - `{{< admonition type="note" >}}` стає підписом «Note:», вкладки
                              (`tab-content name`), розгортки (`collapse title`) і питання
                              (`qa question`) — підписом зі своєю назвою;
@@ -64,9 +66,10 @@ class _Grafana:
     """Обгортка контексту: сторінки `.md` віддає вже з розкритими вставками, усе інше
     (дерева тегів) — як є, лише запам'ятавши хеші шматків `shared` кожного тегу."""
 
-    def __init__(self, ctx, aliases: dict | None = None):
+    def __init__(self, ctx, aliases: dict | None = None, product: str = "grafana"):
         self._ctx = ctx
         self._aliases = aliases or {}
+        self._product = product
         self._shared: dict = {}
         self._pieces: dict = {}
 
@@ -89,7 +92,7 @@ class _Grafana:
         def shared(m):
             args = {k or "": v for k, v in _ARG.findall(m.group(1))}
             path = (args.get("lookup") or args.get("") or "").lstrip("/")
-            if not path or args.get("source", "grafana") != "grafana" or depth >= 3:
+            if not path or args.get("source", self._product) != self._product or depth >= 3:
                 return ""
             piece = self._piece(owner_repo, tag, SHARED + path)
             return "\n" + self._expand(piece, owner_repo, tag, depth + 1) + "\n" if piece else ""
@@ -154,4 +157,5 @@ class _Grafana:
 
 @register("ghdocs-history-grafana")
 def ghdocs_history_grafana(source: dict, ctx) -> list:
-    return ghdocs_history(source, _Grafana(ctx, source.get("mdx_aliases")))
+    return ghdocs_history(source, _Grafana(ctx, source.get("mdx_aliases"),
+                                           source.get("shared_source", "grafana")))

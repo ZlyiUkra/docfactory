@@ -3368,6 +3368,27 @@ turborepo.dev з останнього тегу кожної мінорної 0.8
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/turborepo/README.md](instances/turborepo/README.md).
 
+### loki
+
+Документація Grafana Loki — системи збирання логів, що індексує лише мітки потоку, а не текст (grafana/loki): тека
+`docs/sources`, з якої зібрано сайт grafana.com/docs/loki, з останнього тегу кожної мінорної 1.6–3.7 (архітектура й
+компоненти, режими розгортання, встановлення через Helm, Docker і Tanka, нотатки оновлення, повний довідник
+конфігурації, сховище й схеми, мітки й structured metadata, надсилання логів через Alloy, Promtail, Fluent Bit і
+OpenTelemetry, LogQL, правила сповіщень і запису, утримання й видалення логів, мультитенантність, ліміти, HTTP API,
+`logcli`), звичайна тека `docs/` 0.1–1.5, README з тегу кожної мінорної, стабільні релізи GitHub і журнал змін чарту
+Helm `loki` 3.0–7.5. Читач `ghdocs-history-grafana` отримав поле `shared_source`: довідник конфігурації Loki
+вставляється шматком із `source="loki"`. 2126 документів, 9832 фрагменти.
+
+- порт `8911`; запис у Claude Code — `loki-docs`, адреса `http://127.0.0.1:8911/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "3"`), мінор (`"2.9"`) чи точна (`"3.7.9"`); найновіша стабільна — 3.7.9; журнал чарту —
+  з префіксом (`"chart-6"`);
+- не входять: пререлізи, Loki Operator, чарт для OSS у grafana-community/helm-charts (туди переїхав у березні 2026),
+  Grafana, Alloy, Prometheus як окремі проєкти, код і тести;
+- приклад питання агентові: `./df loki ask "How do I keep logs for 30 days and delete older ones with the compactor?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/loki/README.md](instances/loki/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
