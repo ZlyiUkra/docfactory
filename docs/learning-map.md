@@ -4,8 +4,8 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 26.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, anthropic-api, argon2, aspnetcore, astro,
-astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot, class-transformer,
+Стан на 26.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, anthropic-api, argocd, argon2, aspnetcore,
+astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot, class-transformer,
 class-validator, clerk, confluent-kafka-javascript, contentful, csharp, csrf-csrf, doc-tools, docker, dotnet,
 dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg,
 foundry, frontend-architecture, github-actions, golevelup-nestjs-rabbitmq, grafana, gvisor, helmet, i18next, icu,
