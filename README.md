@@ -3260,6 +3260,27 @@ Discussions). 3408 документів, 16 774 фрагменти; нових �
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/payload/README.md](instances/payload/README.md).
 
+### grafana
+
+Документація Grafana — відкритої платформи дашбордів, візуалізації, сповіщень і дослідження метрик, логів і трас
+(grafana/grafana): тека `docs/sources`, з якої зібрано сайт grafana.com/docs/grafana, з останнього тегу кожної
+мінорної 2.0–13.2 (встановлення й `grafana.ini`, автентифікація, адміністрування й RBAC, провізіонування, дашборди,
+змінні, візуалізації, перетворення, усі вбудовані джерела даних, Grafana Alerting, Explore, HTTP API, розробка
+плагінів, посібники з оновлення й «What's new»), README пакетів `@grafana/*`, нотатки стабільних релізів, реєстр npm
+14 пакетів `@grafana/*`. Новий читач `ghdocs-history-grafana` (обгортка над `ghdocs-history`): спільні шматки
+`docs/shared` того самого тегу вставляються, виноски, вкладки й розгортки стають підписами, шапки TOML 2.x–6.x —
+YAML. 8697 документів, 48 573 фрагменти.
+
+- порт `8902`; запис у Claude Code — `grafana-docs`, адреса `http://127.0.0.1:8902/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "13"`), мінор (`"12.4"`) чи точна (`"11.6.16"`); найновіша стабільна — 13.2.4;
+- не входять: пререлізи, Prometheus, Loki, Tempo, Mimir, Alloy, k6, Grafana Cloud, plugin-tools і Scenes як окремі
+  проєкти, код і тести;
+- приклад питання агентові: `./df grafana ask "How do I provision a Prometheus data source and a dashboard from files
+  when Grafana starts in Docker?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/grafana/README.md](instances/grafana/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
