@@ -502,7 +502,8 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   і його наступник `@prometheus-io/client`) — `prometheus`.
 - Loki (збирання логів: мітки й потоки, LogQL, надсилання логів через Alloy і Promtail, утримання, ліміти, правила
   сповіщень, Helm: тека docs/sources з тегу кожної мінорної 1.6–3.7, docs/ 0.1–1.5, README, релізи, журнал змін
-  чарту Helm `loki`) — `loki`.
+  чарту Helm `loki`; README чарту `loki` для OSS з grafana-community/helm-charts 7.0–20.0, Loki Operator 0.4–0.12,
+  транспорти логів Node.js `pino-loki` і `winston-loki`) — `loki`.
 
 ---
 
