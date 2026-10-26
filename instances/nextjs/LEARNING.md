@@ -472,7 +472,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   реєстр npm, блог і Community Help) — `payload`.
 - Grafana (дашборди, змінні, візуалізації, джерела даних Prometheus і Loki, Grafana Alerting, провізіонування файлами,
   `grafana.ini` і змінні `GF_*`, автентифікація, HTTP API: тека docs/sources з тегу кожної мінорної 2.0–13.2, README
-  пакетів `@grafana/*`, релізи, реєстр npm) — `grafana`.
+  пакетів `@grafana/*`, релізи, реєстр npm; розробка плагінів plugin-tools, Scenes, чарт Helm `grafana`) — `grafana`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
