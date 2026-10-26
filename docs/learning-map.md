@@ -17,8 +17,8 @@ opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payl
 postgrator, postgres-image, postgresql, prisma, rabbitmq, react, react-email, react-hook-form, react-native,
 react-router, react-window, redis, redux, resend, rxjs, sanity, sentry, shadcn, socketio, sqlserver, storybook,
 stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract,
-testcontainers-dotnet, testing-library, trpc, typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk, viem,
-vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+testcontainers-dotnet, testing-library, trpc, turborepo, typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk,
+viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 

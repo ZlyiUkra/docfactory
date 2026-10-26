@@ -347,7 +347,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | UploadThing або сховище S3 | завантаження файлів користувачів; для UploadThing є примірник `uploadthing` |
 | Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity`, для Payload — `payload`, для Contentful — `contentful` |
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій; для tRPC є примірник `trpc`, для next-safe-action — `next-safe-action` |
-| Turborepo | кілька застосунків в одному репозиторії |
+| Turborepo | кілька застосунків в одному репозиторії; є примірник `turborepo` |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут |
 | Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті; для Grafana є примірник `grafana` |
 | Storybook, MSW, Testing Library | компоненти окремо, підміна мережі в тестах; у примірнику `storybook` — `Storybook for Next.js with Vite` |
@@ -483,10 +483,13 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - next-safe-action (клієнт дій, перевірка вводу через Standard Schema, результат дії й помилки, middleware, хуки
   `useAction` і `useOptimisticAction`, дії форм, bind-аргументи, метадані, React Hook Form, TanStack Query, переходи
   між версіями: сайт з тегу кожної мінорної 4.0–8.7, README, адаптери, релізи, реєстр npm) — `next-safe-action`.
+- Turborepo (монорепозиторій: внутрішні пакети, задачі й `dependsOn` у `turbo.json`, кешування й Remote Caching, змінні
+  середовища, `--filter` і `--affected`, `turbo prune` для Docker, CI: сайт з тегу кожної мінорної 0.8–2.11, блог,
+  README пакетів, релізи, приклади, реєстр npm) — `turborepo`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Loki.
+- з «знати, що існує»: Argo CD, Flux, Sealed Secrets, Prometheus, Loki.
 
 ---
 
