@@ -3368,6 +3368,89 @@ turborepo.dev з останнього тегу кожної мінорної 0.8
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/turborepo/README.md](instances/turborepo/README.md).
 
+### argocd
+
+Документація Argo CD — декларативного інструмента безперервної доставки GitOps для Kubernetes (argoproj/argo-cd):
+сайт argo-cd.readthedocs.io (тека `docs/` і README) з останнього тегу кожної мінорної 0.1–3.5 (`Application` і
+`AppProject`, автоматична синхронізація, `selfHeal` і `prune`, sync waves і hooks, `ApplicationSet` і генератори, SSO
+і RBAC, Notifications, CLI, довідник маніфестів, посібники з оновлення), журнал змін до 2.4.8, стабільні релізи
+GitHub; Helm-чарт `argo-cd` (README з таблицею values з останнього тегу кожної мінорної чарту 3.0–9.x), Argo CD Image
+Updater 0.1–1.4 і argocd-vault-plugin 0.1–1.18 (сайт, README, релізи). 4588 документів, 14 908 фрагментів; нових
+читачів не знадобилося.
+
+- порт `8907`; запис у Claude Code — `argocd-docs`, адреса `http://127.0.0.1:8907/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "3"`), мінор (`"2.14"`) чи точна (`"3.5.6"`); проєкт підтримує три найновіші мінорні
+  (на 26.10.2026 — 3.5, 3.4 і 3.3); чарт і супутні — з префіксом (`"chart-9"`, `"image-updater-1.4.0"`, `"avp-1"`);
+- не входять: пререлізи, код і тести, argocd-operator, Autopilot, Argo Rollouts, Workflows і Events, Kubernetes, Helm,
+  Kustomize і Vault як окремі проєкти;
+- приклад питання агентові: `./df argocd ask "How do I make Argo CD revert manual changes in the cluster and delete
+  resources that were removed from Git?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/argocd/README.md](instances/argocd/README.md).
+
+### flux
+
+Документація Flux — набору інструментів GitOps для Kubernetes від CNCF (fluxcd/flux2): сайт fluxcd.io і блог з гілки
+кожної мінорної v2-0…v2-10 репозиторію fluxcd/website (`flux bootstrap`, `GitRepository` і `OCIRepository`,
+`Kustomization`, `HelmRelease`, сповіщення й вебхуки, SOPS, автоматичне оновлення образів, посібники), тека `docs/` і
+README flux2 для Flux 0.x, стабільні релізи; специфікації CRD, довідники API, README і журнали змін семи контролерів
+(source, kustomize, helm, notification, image-reflector, image-automation, source-watcher); Flagger, Flux Operator з
+чартами `flux-operator` і `flux-instance` і terraform-provider-flux (документація й релізи). 3565 документів,
+14 715 фрагментів; нових читачів не знадобилося.
+
+- порт `8908`; запис у Claude Code — `flux-docs`, адреса `http://127.0.0.1:8908/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "2"`), мінор (`"2.6"`) чи точна (`"2.10.0"`); найновіша — 2.10.0; контролери й супутні — з
+  префіксом (`"helm-controller-1"`, `"flagger-1.45.0"`, `"flux-operator-0.62.0"`, `"terraform-1.10.0"`);
+- не входять: довідник команд CLI 2.x (сайт генерує його з бінарника, є довідник 0.x), пререлізи, код і тести, Flux v1,
+  tofu-controller, weave-gitops, Kubernetes, Helm, Kustomize, SOPS і Terraform як окремі проєкти;
+- приклад питання агентові: `./df flux ask "How do I send a Slack message when a Kustomization fails to reconcile?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/flux/README.md](instances/flux/README.md).
+
+### sealed-secrets
+
+Документація Sealed Secrets — контролера Kubernetes і утиліти `kubeseal` від Bitnami, що шифрують `Secret` у ресурс
+`SealedSecret`, який можна комітити в Git (bitnami/sealed-secrets): README і `docs/` з останнього тегу кожної мінорної
+0.1–0.41, сайт sealed-secrets.netlify.app 0.18–0.41, README Helm-чарта з тегу кожної мінорної чарта 1.13–2.22, журнал
+змін `RELEASE-NOTES.md` і стабільні релізи (області дії, ротація й резервні копії ключів, розшифрування офлайн,
+метрики). 314 документів, 1061 фрагмент; нових читачів не знадобилося.
+
+- порт `8909`; запис у Claude Code — `sealed-secrets-docs`, адреса `http://127.0.0.1:8909/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версія — мажор (`version: "0"`), мінор (`"0.41"`) чи точна (`"0.41.2"`); найновіша — 0.41.2; чарт — з префіксом
+  (`"chart-2"`);
+- не входять: пререлізи, теги чарта з ревізією, чарт `bitnami/charts`, sealed-secrets-web, код і тести, Kubernetes,
+  Helm і Kustomize як окремі проєкти;
+- приклад питання агентові: `./df sealed-secrets ask "How do I back up the sealing key and restore it in a new
+  cluster?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/sealed-secrets/README.md](instances/sealed-secrets/README.md).
+
+### prometheus
+
+Документація Prometheus — системи моніторингу й бази часових рядів CNCF (prometheus/prometheus) — і Alertmanager
+(prometheus/alertmanager): тека `docs/` сервера з останнього тегу кожної мінорної 1.8–3.15 (файл конфігурації,
+`scrape_config` і виявлення цілей, relabeling, `remote_write`, правила запису й сповіщень, `promtool`, PromQL, HTTP API,
+сховище, нативні гістограми, перехід на 3.0), тека `docs/` Alertmanager 0.21–0.34 (маршрути, приймачі, приглушення,
+шаблони сповіщень), сторінки сайту prometheus.io і блог (знімок 24.10.2026), стабільні релізи обох; експортери
+`node_exporter`, `blackbox_exporter` і `pushgateway` з тегу кожної мінорної; README чартів Helm `kube-prometheus-stack`
+і `prometheus` з тегу кожного мажору; клієнт для Node.js `prom-client` 1.0–15.1 і його наступник
+`@prometheus-io/client`. 1390 документів, 5410 фрагментів; нових читачів не знадобилося.
+
+- порт `8910`; запис у Claude Code — `prometheus-docs`, адреса `http://127.0.0.1:8910/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "3"`), мінор (`"3.15"`) чи точна (`"3.15.1"`); найновіша — 3.15.1, лінія довгої
+  підтримки — 3.13; решта частин — з префіксом (`"alertmanager-0.34"`, `"node-exporter-1.12"`, `"kps-92"`,
+  `"chart-29"`, `"prom-client-15"`);
+- не входять: теги Go-модуля `v0.35`–`v0.315`, пререлізи, код і тести, Prometheus Operator, Thanos, Mimir, клієнтські
+  бібліотеки інших мов, Grafana і Kubernetes як окремі проєкти;
+- приклад питання агентові: `./df prometheus ask "How do I alert when the error rate of a service stays above 5% for
+  ten minutes?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/prometheus/README.md](instances/prometheus/README.md).
+
 ### loki
 
 Документація Grafana Loki — системи збирання логів, що індексує лише мітки потоку, а не текст (grafana/loki): тека
