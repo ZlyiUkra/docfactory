@@ -3284,6 +3284,27 @@ Discussions). 3408 документів, 16 774 фрагменти; нових �
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/grafana/README.md](instances/grafana/README.md).
 
+### trpc
+
+Документація tRPC — бібліотеки типобезпечних API на TypeScript без схем і генерації коду (trpc/trpc): сайт trpc.io
+(тека `www/docs`, блог) з останнього тегу кожної мінорної 3.3–11.21 (роутери й процедури, контекст, middleware,
+валідатори, помилки, трансформери даних, виклики на сервері, адаптери standalone, Express, Fastify, Fetch, Next.js і
+AWS Lambda, підписки через SSE і WebSocket, клієнт і посилання links, TanStack React Query і класична інтеграція з
+React Query, Next.js з App Router і Pages Router, переходи v9→v10 і v10→v11, FAQ), README кореня й пакетів з тегів
+0.7–11.21, навички агентів `packages/*/skills`, стабільні релізи GitHub, реєстр npm восьми пакетів `@trpc/*` і приклади
+`examples/`. 1394 документи, 5037 фрагментів; нових читачів не знадобилося.
+
+- порт `8903`; запис у Claude Code — `trpc-docs`, адреса `http://127.0.0.1:8903/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "11"`), мінор (`"10.45"`) чи точна (`"9.27.4"`); лінія 11 тримає 90 % завантажень
+  `@trpc/server` за тиждень до 26.10.2026; теги 11.20.0 і 11.21.0 є в репозиторії, але не в npm (там 11.19.0);
+- не входять: довідник typedoc сайту, пререлізи, код і тести пакетів, Next.js, React, TanStack Query, Zod, Express і
+  Fastify як окремі проєкти;
+- приклад питання агентові: `./df trpc ask "How do I protect a tRPC procedure with a middleware that checks the user
+  from createContext and throws UNAUTHORIZED?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/trpc/README.md](instances/trpc/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
