@@ -3327,6 +3327,27 @@ create-contentful-app, сервер MCP) з останнього тегу кож
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/contentful/README.md](instances/contentful/README.md).
 
+### next-safe-action
+
+Документація next-safe-action — бібліотеки типобезпечних перевірених Server Actions для Next.js
+(next-safe-action/next-safe-action): сайт next-safe-action.dev з останнього тегу кожної мінорної 4.0–8.7 (клієнт дій
+`createSafeActionClient`, перевірка вводу через Standard Schema, результат дії й обробка помилок, middleware і контекст,
+хуки `useAction`, `useOptimisticAction` і `useStateAction`, дії форм, bind-аргументи, метадані, інтеграції з React Hook
+Form, TanStack Query і Better Auth, довідник API, переходи v3→v4 … v7→v8), README кореня й пакета з тегів 1.0–8.7, README
+й журнали пакетів-адаптерів, стабільні релізи GitHub, реєстр npm чотирьох пакетів. 522 документи, 1955 фрагментів; нових
+читачів не знадобилося.
+
+- порт `8905`; запис у Claude Code — `next-safe-action-docs`, адреса `http://127.0.0.1:8905/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версія — мажор (`version: "8"`), мінор (`"7.10"`) чи точна (`"7.10.8"`); лінія 8 тримає 80 % завантажень
+  `next-safe-action` за тиждень до 26.10.2026;
+- не входять: код і тести пакета, застосунок playground, пререлізи, Next.js, React, Zod, React Hook Form, TanStack Query
+  і Better Auth як окремі проєкти;
+- приклад питання агентові: `./df next-safe-action ask "How do I add a middleware that checks the session and passes the
+  user to the action through ctx?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/next-safe-action/README.md](instances/next-safe-action/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
