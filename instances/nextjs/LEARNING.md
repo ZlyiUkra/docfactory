@@ -346,7 +346,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Vercel AI SDK | чат і генерація тексту; у 58 шаблонах; є примірник `vercel-ai-sdk` |
 | UploadThing або сховище S3 | завантаження файлів користувачів; для UploadThing є примірник `uploadthing` |
 | Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity`, для Payload — `payload` |
-| tRPC, next-safe-action | типізовані виклики сервера поверх дій |
+| tRPC, next-safe-action | типізовані виклики сервера поверх дій; для tRPC є примірник `trpc` |
 | Turborepo | кілька застосунків в одному репозиторії |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут |
 | Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті; для Grafana є примірник `grafana` |
@@ -473,11 +473,13 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Grafana (дашборди, змінні, візуалізації, джерела даних Prometheus і Loki, Grafana Alerting, провізіонування файлами,
   `grafana.ini` і змінні `GF_*`, автентифікація, HTTP API: тека docs/sources з тегу кожної мінорної 2.0–13.2, README
   пакетів `@grafana/*`, релізи, реєстр npm; розробка плагінів plugin-tools, Scenes, чарт Helm `grafana`) — `grafana`.
+- tRPC (роутери й процедури, контекст, middleware, валідатори, помилки, трансформери даних, виклики на сервері,
+  адаптери, підписки через SSE і WebSocket, клієнт і посилання links, TanStack React Query, Next.js: тека www/docs з
+  тегу кожної мінорної 3.3–11.21, README пакетів, навички агентів, релізи, реєстр npm, приклади) — `trpc`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Contentful, tRPC, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus,
-  Loki.
+- з «знати, що існує»: Contentful, next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Loki.
 
 ---
 
