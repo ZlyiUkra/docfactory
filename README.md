@@ -3348,6 +3348,26 @@ Form, TanStack Query і Better Auth, довідник API, переходи v3�
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/next-safe-action/README.md](instances/next-safe-action/README.md).
 
+### turborepo
+
+Документація Turborepo — системи збирання монорепозиторіїв JavaScript і TypeScript від Vercel (vercel/turborepo): сайт
+turborepo.dev з останнього тегу кожної мінорної 0.8–2.11 (основні поняття, будова репозиторію, задачі й `turbo.json`,
+кешування й Remote Caching, змінні середовища, CI, посібники для фреймворків і інструментів, довідник `turbo.json` і всіх
+команд, Remote Cache API, повідомлення про помилки), блог, навичка агентів `skills/turborepo`, README кореня й пакетів,
+стабільні релізи GitHub, приклади `examples/` на 2.11.10, реєстр npm дев'яти пакетів. 1425 документів, 6471 фрагмент;
+нових читачів не знадобилося.
+
+- порт `8906`; запис у Claude Code — `turborepo-docs`, адреса `http://127.0.0.1:8906/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — мажор (`version: "2"`), мінор (`"1.13"`) чи точна (`"2.11.10"`); лінія 2 тримає 98 % завантажень `turbo` за
+  тиждень до 26.10.2026;
+- не входять: Turbopack, вихідний код `turbo` на Rust, пререлізи й canary, Next.js і менеджери пакетів як окремі
+  проєкти;
+- приклад питання агентові: `./df turborepo ask "How do I make the build task of an app wait for the build of the
+  internal packages it depends on?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/turborepo/README.md](instances/turborepo/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
