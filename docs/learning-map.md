@@ -14,11 +14,11 @@ lightweight-charts, linux, llhttp, mdn, mikro-orm, mongodb, mongoose, motion, ms
 nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres,
 node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, ollama, openapi-typescript, openssl,
 opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload, platformatic-kafka, playwright,
-postgrator, postgres-image, postgresql, prisma, rabbitmq, react, react-email, react-hook-form, react-native,
-react-router, react-window, redis, redux, resend, rxjs, sanity, sealed-secrets, sentry, shadcn, socketio, sqlserver,
-storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract,
-testcontainers-dotnet, testing-library, trpc, turborepo, typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk,
-viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq, react, react-email, react-hook-form,
+react-native, react-router, react-window, redis, redux, resend, rxjs, sanity, sealed-secrets, sentry, shadcn,
+socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router,
+tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, trpc, turborepo, typeorm, typescript,
+uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 
@@ -124,15 +124,14 @@ viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ### Next.js
 
-1. Prometheus.
-2. Факультатив: OpenZeppelin.
+1. Факультатив: OpenZeppelin.
 
 ### Лінія 2
 
 Прогалин, для яких варто збирати примірник, не лишилося.
 
 Свідомо без примірника — план їх лише згадує або ставить однією командою: CNI (Calico, Cilium, Flannel), HAProxy,
-Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy, Prometheus.
+Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy.
 
 ### Astro
 

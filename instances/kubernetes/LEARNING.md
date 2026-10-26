@@ -1270,6 +1270,8 @@ Let's Encrypt і програми іспитів CNCF. Про інші бібл�
 - Docker і Compose — `docker`; Linux: man-сторінки, systemd, мережа — `linux`;
 - Grafana: дашборди, джерела даних, Grafana Alerting, провізіонування, `grafana.ini` (2.0–13.2), values чарту Helm
   `grafana` (5.6.0–14.0.1) — `grafana`;
+- Prometheus і Alertmanager: файл конфігурації, `kubernetes_sd_config`, relabeling, PromQL, правила сповіщень,
+  маршрути й приглушення сповіщень (сервер 1.8–3.15, Alertmanager 0.21–0.34, сайт prometheus.io) — `prometheus`;
 - PostgreSQL — база наскрізного проєкту (`psql`, `pg_dump`, налаштування сервера) — `postgresql`;
 - NGINX Gateway Fabric, NGINX Ingress Controller, ingress-nginx 0.34–1.15 (закрито в березні 2026), сам nginx —
   `nginx`.
@@ -1278,5 +1280,5 @@ Let's Encrypt і програми іспитів CNCF. Про інші бібл�
 
 - CNI-плагіни: Calico, Cilium, Flannel;
 - MetalLB, Envoy Gateway, local-path-provisioner;
-- оператори баз; Prometheus;
+- оператори баз;
 - Candidate Handbook і Important Instructions іспитів.
