@@ -346,7 +346,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Vercel AI SDK | чат і генерація тексту; у 58 шаблонах; є примірник `vercel-ai-sdk` |
 | UploadThing або сховище S3 | завантаження файлів користувачів; для UploadThing є примірник `uploadthing` |
 | Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity`, для Payload — `payload`, для Contentful — `contentful` |
-| tRPC, next-safe-action | типізовані виклики сервера поверх дій; для tRPC є примірник `trpc` |
+| tRPC, next-safe-action | типізовані виклики сервера поверх дій; для tRPC є примірник `trpc`, для next-safe-action — `next-safe-action` |
 | Turborepo | кілька застосунків в одному репозиторії |
 | Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут |
 | Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті; для Grafana є примірник `grafana` |
@@ -480,10 +480,13 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   text; Content Delivery, Preview, Management, GraphQL та Images API, вебхуки, App Framework; SDK contentful.js і
   contentful-management.js, CLI, міграції, імпорт і експорт, live preview: сайт developers/docs, README з тегу кожної
   мінорної, релізи, реєстр npm) — `contentful`.
+- next-safe-action (клієнт дій, перевірка вводу через Standard Schema, результат дії й помилки, middleware, хуки
+  `useAction` і `useOptimisticAction`, дії форм, bind-аргументи, метадані, React Hook Form, TanStack Query, переходи
+  між версіями: сайт з тегу кожної мінорної 4.0–8.7, README, адаптери, релізи, реєстр npm) — `next-safe-action`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: next-safe-action, Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Loki.
+- з «знати, що існує»: Turborepo, Argo CD, Flux, Sealed Secrets, Prometheus, Loki.
 
 ---
 
