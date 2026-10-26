@@ -3475,6 +3475,26 @@ Helm `loki` 3.0–7.5; README чарту `loki` для OSS з grafana-community/
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/loki/README.md](instances/loki/README.md).
 
+### htdp
+
+Книжка «How to Design Programs, Second Edition» — Matthias Felleisen, Robert Bruce Findler, Matthew Flatt, Shriram
+Krishnamurthi; MIT Press, 2018 — за онлайн-виданням авторів на htdp.org від 28.05.2026: передмова, пролог, шість частин
+(Fixed-Size Data, Arbitrarily Large Data, Abstraction, Intertwined Data, Generative Recursion, Accumulators), п'ять
+інтермецо й епілог; кожна з 528 вправ — окремий розділ «Exercise N (exN)». Поруч — довідник docs.racket-lang.org
+(Racket 9.3) навчальних мов BSL, BSL+, ISL, ISL+, ASL і бібліотек `2htdp/image`, `2htdp/universe`, `2htdp/batch-io`,
+`2htdp/abstraction`, `2htdp/web-io`, `2htdp/itunes`, Planet Cute, `htdp/dir`. Новий читач `scribble`: код-таблиці й
+граматика Scribble стають блоками коду, рамки визначень — підзаголовками з іменем функції. 29 документів, 3196
+фрагментів.
+
+- порт `8912`; запис у Claude Code — `htdp-docs`, адреса `http://127.0.0.1:8912/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версій немає (`versions: false`); вправу N шукати запитом «Exercise N exN»;
+- корпус і індекс поза git (текст книжки захищений авторським правом), корпус — в архіві;
+- не входять: перше видання, Racket загалом, Typed Racket, посібник DrRacket, картинки й формули;
+- приклад питання агентові: `./df htdp ask "What does the design recipe say a template for a list-processing function
+  should look like?"`;
+- докладніше — у [instances/htdp/README.md](instances/htdp/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
