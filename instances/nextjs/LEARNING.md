@@ -348,7 +348,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity`, для Payload — `payload`, для Contentful — `contentful` |
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій; для tRPC є примірник `trpc`, для next-safe-action — `next-safe-action` |
 | Turborepo | кілька застосунків в одному репозиторії; є примірник `turborepo` |
-| Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут; для Argo CD є примірник `argocd` |
+| Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут; для Argo CD є примірник `argocd`, для Flux — `flux` |
 | Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті; для Grafana є примірник `grafana` |
 | Storybook, MSW, Testing Library | компоненти окремо, підміна мережі в тестах; у примірнику `storybook` — `Storybook for Next.js with Vite` |
 
@@ -489,10 +489,13 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Argo CD (викот «з репозиторію»: Application і AppProject, автоматична синхронізація, sync waves і hooks,
   ApplicationSet, SSO і RBAC, Notifications: сайт з тегу кожної мінорної 0.1–3.5, релізи, Helm-чарт `argo-cd` з
   таблицею values, Image Updater, argocd-vault-plugin) — `argocd`.
+- Flux (викот «з репозиторію»: `flux bootstrap`, GitRepository і OCIRepository, Kustomization, HelmRelease,
+  сповіщення й вебхуки, SOPS, оновлення образів: сайт fluxcd.io з гілки кожної мінорної 2.0–2.10, специфікації CRD
+  контролерів, релізи, Flagger, Flux Operator, terraform-provider-flux) — `flux`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Flux, Sealed Secrets, Prometheus, Loki.
+- з «знати, що існує»: Sealed Secrets, Prometheus, Loki.
 
 ---
 
@@ -2477,8 +2480,8 @@ TLS і сертифікат, зворотний проксі, підніманн
 даними й демо на публічній адресі. Далі — не новий план, а напрям, який обирає робота.
 
 - **Решта плану React** — дні повного шляху поза шляхом мідла, якщо контрольні питання ще показують прогалини.
-- **Глибше в експлуатацію** — викот «з репозиторію» (Argo CD — примірник `argocd` — або Flux), метрики й логи з
-  історією (Prometheus, Grafana, Loki), керований Kubernetes на кшталт Oracle OKE (примірник `oracle-cloud`), коли
+- **Глибше в експлуатацію** — викот «з репозиторію» (Argo CD або Flux — примірники `argocd` і `flux`), метрики й логи
+  з історією (Prometheus, Grafana, Loki), керований Kubernetes на кшталт Oracle OKE (примірник `oracle-cloud`), коли
   знадобиться більше одного вузла.
 - **Глибше в бекенд** — те, що план NestJS лишив у «Знати, що існує»: брокери повідомлень, GraphQL, CQRS — коли
   проєкт до них доросте.
