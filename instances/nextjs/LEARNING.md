@@ -348,7 +348,7 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 | Sanity, Payload, Contentful | вміст редагують не розробники; для Sanity є примірник `sanity`, для Payload — `payload`, для Contentful — `contentful` |
 | tRPC, next-safe-action | типізовані виклики сервера поверх дій; для tRPC є примірник `trpc`, для next-safe-action — `next-safe-action` |
 | Turborepo | кілька застосунків в одному репозиторії; є примірник `turborepo` |
-| Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут; для Argo CD є примірник `argocd`, для Flux — `flux` |
+| Helm, Argo CD, Flux, Sealed Secrets | чужі чарти в кластері, викот «з репозиторію», секрети контролером; фаза 9 пояснює, чому не тут; для Argo CD є примірник `argocd`, для Flux — `flux`, для Sealed Secrets — `sealed-secrets` |
 | Prometheus, Grafana, Loki | метрики й логи з історією, коли кластеру вистачає пам'яті; для Grafana є примірник `grafana` |
 | Storybook, MSW, Testing Library | компоненти окремо, підміна мережі в тестах; у примірнику `storybook` — `Storybook for Next.js with Vite` |
 
@@ -492,10 +492,13 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
 - Flux (викот «з репозиторію»: `flux bootstrap`, GitRepository і OCIRepository, Kustomization, HelmRelease,
   сповіщення й вебхуки, SOPS, оновлення образів: сайт fluxcd.io з гілки кожної мінорної 2.0–2.10, специфікації CRD
   контролерів, релізи, Flagger, Flux Operator, terraform-provider-flux) — `flux`.
+- Sealed Secrets (секрети, які розшифровує контролер у кластері: `kubeseal`, SealedSecret, області дії, ротація й
+  резервні копії ключів: README і `docs/` з тегу кожної мінорної 0.1–0.41, сайт sealed-secrets.netlify.app,
+  Helm-чарт, журнал змін, релізи) — `sealed-secrets`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- з «знати, що існує»: Sealed Secrets, Prometheus, Loki.
+- з «знати, що існує»: Prometheus, Loki.
 
 ---
 
@@ -2073,7 +2076,7 @@ Cloud з'явився в плані React (фаза 5, дні 7–9), бекен
 # Фаза 9. Kubernetes глибше і демо для клієнта — 8 днів
 
 **Сервери MCP фази:** `nextjs-docs`, `kubernetes-docs`, `oracle-cloud-docs`, `linux-docs`, `mdn-docs`,
-`webstandards-docs`, `github-actions-docs`.
+`webstandards-docs`, `github-actions-docs`, `sealed-secrets-docs`.
 
 Кластер уже працює: SPA з'явилася в ньому в плані React, бекенд — у плані NestJS, Next.js — у фазі 7 цього плану.
 Але викочує його досі людина з терміналом, ресурси взято навмання, секрети живуть у файлах на диску, а демо для
@@ -2277,8 +2280,9 @@ TLS і сертифікат, зворотний проксі, підніманн
   `kubectl top`. Повний стек Prometheus і Grafana на 12 ГБ поруч із застосунком — розкіш; його знають, але тут
   не ставлять.
 - **Читати:** у примірнику `kubernetes` — `Secrets` (розділ про ризики), `Good practices for Kubernetes Secrets`,
-  `SOPS: Age`, `age: README`.
-- **Сервери MCP:** `kubernetes-docs`.
+  `SOPS: Age`, `age: README`; для порівняння з SOPS — у примірнику `sealed-secrets` — `"Sealed Secrets" for
+  Kubernetes` (розділ `Overview`).
+- **Сервери MCP:** `kubernetes-docs`, `sealed-secrets-docs`.
 - **Зробити:** 1) `age-keygen`, публічний ключ — у `.sops.yaml`, приватний — у менеджер паролів і в секрет
   GitHub; 2) `sops -e` для секретів `web-next-env` і NestJS, `.env.production` прибрати з диска лише після того, як
   розшифрування в CI спрацювало; 3) крок CI розшифровує й застосовує; 4) README «що робити, якщо впало»: п'ять

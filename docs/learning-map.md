@@ -15,8 +15,8 @@ nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, n
 node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, ollama, openapi-typescript, openssl,
 opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload, platformatic-kafka, playwright,
 postgrator, postgres-image, postgresql, prisma, rabbitmq, react, react-email, react-hook-form, react-native,
-react-router, react-window, redis, redux, resend, rxjs, sanity, sentry, shadcn, socketio, sqlserver, storybook,
-stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract,
+react-router, react-window, redis, redux, resend, rxjs, sanity, sealed-secrets, sentry, shadcn, socketio, sqlserver,
+storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract,
 testcontainers-dotnet, testing-library, trpc, turborepo, typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk,
 viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
@@ -69,7 +69,7 @@ viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 | 6. Чужий код | — |
 | 7. DevOps: від збірки до продакшну | `docker` (вступ, 2, 4), `upstash` (6), `drizzle` (4), `prisma` (4), `webstandards` (6), `kubernetes` (вступ, 12), `playwright` (7), `github-actions` (вступ, 7), `nginx` (вступ, 6), `webdev` (9–10), `sentry` (9), `opentelemetry` (9) |
 | 8. Next.js поруч з окремим бекендом | `upstash` (1), `webstandards` (2, 6–7), `mdn` (7), `socketio` (6), `nginx` (6), `iron-session` і `jose` (3), `orval` і `openapi-typescript` (2); за змістом — `nestjs` |
-| 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5) |
+| 9. Kubernetes глибше і демо | `kubernetes` (вступ, 1–8), `oracle-cloud` (вступ, 2, 7), `linux` (5), `mdn` (8), `webstandards` (8), `github-actions` (вступ, 5), `sealed-secrets` (6) |
 | Факультатив «крипта» | `webstandards` (К1–К3), `wagmi` (К3), `viem` (К1, К3), `foundry` (К2) |
 
 ## Лінія 2. Linux → Docker → Kubernetes
