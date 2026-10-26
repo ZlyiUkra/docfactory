@@ -28,22 +28,36 @@ Tempo, бази SQL, хмарні моніторинги), перетворен�
 | Документація 2.0–5.4 | 820 | 759 | 18 | те саме, теги `v2.*`–`v5.*` |
 | README пакетів | 16 | 16 | 13.2.4 | `packages/*/README.md` на тезі v13.2.4 |
 | Релізи | 535 | 535 | 535 | GitHub Releases, лише стабільні |
-| Реєстр npm | 80 | 80 | — | registry.npmjs.org, 14 пакетів `@grafana/*` |
+| Реєстр npm | 118 | 118 | — | registry.npmjs.org, 19 пакетів `@grafana/*` |
+| Сайт розробки плагінів | 638 | 466 | 27 | grafana/plugin-tools, тека `docusaurus/docs` з тегів `website@*` 0.0–5.6 |
+| Пакети plugin-tools | 22 | 22 | 1 | README і CHANGELOG `packages/*` на тезі create-plugin 7.16.0 |
+| Документація Scenes | 273 | 94 | 240 | grafana/scenes, тека `docusaurus/docs` з тегів `v*` 0.0–9.0 |
+| Пакети Scenes | 8 | 8 | 1 | README, CHANGELOG на тезі v9.0.0 |
+| Чарт Helm `grafana` | 151 | 149 | 607 | `charts/grafana/README.md` кожного тегу grafana-community/helm-charts |
 
-Разом 14 311 записів паспорта, з них неповторних 8801; в індексі 8697 документів і 48 573 фрагменти
-(`expected_passages` у `checks.json`): однаковий текст різних версій — один уривок із переліком версій. Замір
-`quality`: по словах 4 із 10, за змістом 1, разом 4, «як модель» 10 із 10. Одну ціль доповнено справжньою відповіддю:
+Разом 15 441 запис паспорта, з них неповторних 9573; в індексі 9467 документів і 60 435 фрагментів
+(`expected_passages` у `checks.json`): однаковий текст різних версій — один уривок із переліком версій. Довгі таблиці
+(values чарту Helm на сотні рядків, опції налаштувань) розрізано на уривки цілими рядками полем `split_long_tables`:
+інакше таблиця values була б одним уривком, і запит про `persistence.enabled` діставав би сусідні розділи. Замір
+`quality`: по словах 5 із 10, за змістом 1, разом 4, «як модель» 10 із 10. Одну ціль доповнено справжньою відповіддю:
 на запит «anonymous authentication auth.anonymous» відповідає й розділ `[auth.anonymous]` довідника налаштувань, і
 розділ «Anonymous authentication» сторінки автентифікації 9.x–10.x, а не лише окрема сторінка анонімного доступу.
 
 Чому документація береться з репозиторію. Сайт grafana.com/docs/grafana зібрано Hugo з теки `docs/sources`, і кожен
 тег `vX.Y.Z` тримає документацію тієї версії; береться останній тег кожної мінорної, 2.0–13.2 (64 теги; у 1.x теки
 документації в репозиторії ще не було). Знімок один на мажор, з тегами всіх його мінорних у полі `tags`: файл,
-однаковий у кількох тегах, читач тягне один раз, — близько 14 300 завантажень, дві з половиною години. Сторінки 13.x
+однаковий у кількох тегах, читач тягне один раз, — близько 14 300 завантажень, дві з половиною години (plugin-tools,
+Scenes і чарт Helm — ще близько 2000 запитів, 25 хвилин). Сторінки 13.x
 цитуються адресами grafana.com/docs/grafana/latest, старші — файлами на GitHub.
 
+Сайт розробки плагінів (grafana.com/developers/plugin-tools) і документація Scenes (grafana.com/developers/scenes) —
+Docusaurus у своїх репозиторіях; береться тека `docusaurus/docs` з останнього тегу кожної мінорної: у plugin-tools —
+теги самого сайту `website@X.Y.Z`, у Scenes — теги бібліотеки `vX.Y.Z` (244 мінорні, знімок на мажор). README чарту
+Helm — кожен із 607 тегів `grafana-X.Y.Z`: чарт переїхав з grafana/helm-charts до grafana-community/helm-charts разом
+з усією історією тегів, тож береться новий репозиторій.
+
 Чого немає. Пререлізи (beta, rc) і нічні збірки. Документація Prometheus, Loki, Tempo, Mimir, Pyroscope, Alloy, k6,
-Grafana Cloud, plugin-tools (create-plugin) і бібліотеки Scenes — окремі проєкти з власними сайтами; спільні шматки
+Grafana Cloud — окремі проєкти з власними сайтами; спільні шматки
 інших продуктів, які сторінки Grafana вставляють (`source="alloy"`), лежать поза білим списком і випадають. Код і
 тести, журнал `CHANGELOG.md` (ті самі пункти, що й у релізах).
 
@@ -69,22 +83,34 @@ Grafana Cloud, plugin-tools (create-plugin) і бібліотеки Scenes — �
 | документація кожної мінорної | дерево тегу `vX.Y.Z`, тека `docs/sources`; знімок на мажор | `ghdocs-history-grafana` |
 | README пакетів | `packages/*/README.md` на тезі v13.2.4 | `ghdocs-history` |
 | релізи | GitHub Releases grafana/grafana, лише стабільні | `ghreleases-stable` |
-| реєстр npm | 14 пакетів `@grafana/*`, що виходять із репозиторію (з ними й застарілі `toolkit`, `e2e`) | `npm-versions` |
+| реєстр npm | 14 пакетів `@grafana/*` репозиторію grafana (з ними й застарілі `toolkit`, `e2e`), `create-plugin`, `plugin-e2e`, `sign-plugin`, `scenes`, `scenes-react` | `npm-versions` |
+| сайт розробки плагінів | дерево тегу `website@X.Y.Z` grafana/plugin-tools, тека `docusaurus/docs` | `ghdocs-history-grafana` |
+| пакети plugin-tools | `packages/*/README.md` і `CHANGELOG.md` на тезі `@grafana/create-plugin@7.16.0` | `ghdocs-history` |
+| документація Scenes | дерево тегу `vX.Y.Z` grafana/scenes, тека `docusaurus/docs`; знімок на мажор | `ghdocs-history-grafana` |
+| пакети Scenes | `README.md`, `CHANGELOG.md`, `packages/*/README.md` на тезі v9.0.0 | `ghdocs-history` |
+| чарт Helm | `charts/grafana/README.md` кожного тегу `grafana-X.Y.Z` grafana-community/helm-charts | `ghdocs-history` |
 
-Новий читач `ghdocs-history-grafana` — обгортка над `ghdocs-history`, як `ghdocs-history-toml`: сторінка в
-репозиторії — не те, що бачить людина на сайті. Вставка `{{< docs/shared lookup="…" source="grafana" >}}` стає
-шматком теки `docs/sources/shared` того самого тегу (без неї від сторінки лишався б заголовок без жодного рядка),
-виноска `{{< admonition type="note" >}}` — підписом «Note:», вкладки, розгортки й питання — підписами зі своєю
-назвою, блоки визначень посилань `docs/reference` знімаються цілком, решта вставок — лише самі дужки. Шапку TOML
-документації 2.x–6.x обгортка перекладає в YAML, інакше назвою ставало б ім'я файла. Шматок тягнеться один раз на
-хеш blob: хеші теки `shared` обгортка бере з дерева тегу, яке читач однаково завантажує. Опис реєстру п'яти пакетів
-(`@grafana/data`, `ui`, `runtime`, `schema`, `e2e-selectors`) з тисячами канарних збірок важить понад 50 МБ, тож їх
-тягнуть стиснутими (`gzip: true`).
+Новий читач `ghdocs-history-grafana` — обгортка над `ghdocs-history`, як `ghdocs-history-toml`: сторінка в репозиторії
+— не те, що бачить людина на сайті. Вставка `{{< docs/shared lookup="…" source="grafana" >}}` стає шматком теки
+`docs/sources/shared` того самого тегу (без неї від сторінки лишався б заголовок без жодного рядка), виноска `{{<
+admonition type="note" >}}` — підписом «Note:», вкладки, розгортки й питання — підписами зі своєю назвою, блоки
+визначень посилань `docs/reference` знімаються цілком, решта вставок — лише самі дужки. Шапку TOML документації
+2.x–6.x обгортка перекладає в YAML, інакше назвою ставало б ім'я файла. Для сайтів Docusaurus (plugin-tools, Scenes)
+поле `mdx_aliases` каже, куди ведуть псевдоніми імпортів (`@shared/` → `docusaurus/docs/shared/`): шматок `import
+ScaffoldNPM from '@shared/createplugin-scaffold.md'` стає на місце `<ScaffoldNPM />` — без цього зі сторінки «Get
+started» зникала б сама команда `npx @grafana/create-plugin@latest`. Шматок тягнеться один раз на хеш blob: хеші теки
+`shared` обгортка бере з дерева тегу, яке читач однаково завантажує. Опис реєстру п'яти пакетів (`@grafana/data`,
+`ui`, `runtime`, `schema`, `e2e-selectors`) з тисячами канарних збірок важить понад 50 МБ, тож їх тягнуть стиснутими
+(`gzip: true`).
 
 ## Версії
 
 Сторінки несуть версії тегів, з яких узяті (`13.2.4, 13.1.8, 13.0.11`), релізи — версію релізу, README — 13.2.4;
-фільтр `version` бере мажор (`"13"`), мінор (`"12.4"`) або точну версію (`"11.6.16"`). Найновіша стабільна — 13.2.4.
+фільтр `version` бере мажор (`"13"`), мінор (`"12.4"`) або точну версію (`"11.6.16"`). Решта частин пишеться з
+префіксом, бо інакше їхні номери збігалися б із версіями Grafana: сайт plugin-tools — `plugin-tools-0.0.4` …
+`plugin-tools-5.6.1`, пакети — `create-plugin-`, `plugin-e2e-`, `sign-plugin-`; Scenes — `scenes-0.0.32` …
+`scenes-9.0.0` і `scenes-react-`; чарт Helm — `chart-5.6.0` … `chart-14.0.1` (`"chart-10"` — усі 10.x). Голе `"6"`
+бере лише Grafana 6.x. Найновіша стабільна — 13.2.4.
 Та сама сторінка живе в десятках редакцій, тож промпт велить шукати спершу з `version` "13", а для старшої Grafana
 користувача — ще й її лінію й казати, що змінилося відтоді. Завантажень, за якими можна було б зважити лінії, немає:
 сам сервер у npm не виходить.
@@ -95,7 +121,7 @@ Grafana Cloud, plugin-tools (create-plugin) і бібліотеки Scenes — �
 кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/grafana-corpus-2026-10-26.tar.gz` (14 311 текстів, паспорт і сховище
+**Де тексти.** В архіві `~/archives/docfactory/grafana-corpus-2026-10-26.tar.gz` (15 441 текст, паспорт і сховище
 сирого `raw/`; перед видаленням текстів розпакований окремо й звірений із диском) і в копії на Windows-диску
 `C:\Distr\grafana-corpus-2026-10-26.tar.gz` (звірено за SHA-256). В історії git текстів немає ніде.
 
@@ -138,7 +164,7 @@ tar -xzf ~/archives/docfactory/grafana-corpus-2026-10-26.tar.gz -C instances/gra
 
 ```
 ./df grafana sources --why   # перелік джерел і білий список
-./df grafana refresh         # завантажити все задеклароване (близько двох з половиною годин)
+./df grafana refresh         # завантажити все задеклароване (близько трьох годин)
 ./df grafana manifest        # оновити паспорт
 ./df grafana setup           # Qdrant чи пошук лише по словах
 ./df grafana vectors         # залити корпус у docs-grafana

@@ -11,7 +11,12 @@
                              (`tab-content name`), розгортки (`collapse title`) і питання
                              (`qa question`) — підписом зі своєю назвою;
                            - блоки `{{% docs/reference %}}` (визначення посилань для сайту)
-                             знімаються цілком, решта вставок — лише самі дужки.
+                             знімаються цілком, решта вставок — лише самі дужки;
+                           - `mdx_aliases` — об'єкт «псевдонім → тека» сайту Docusaurus
+                             (`{"@shared/": "docusaurus/docs/shared/"}`): шматок, імпортований
+                             рядком `import CreatePlugin from '@shared/create-plugin-frontend.md'`,
+                             стає на місце `<CreatePlugin />`, а файл коду (`!!raw-loader!`) —
+                             блоком коду; так само відносний імпорт (`./shared/x.md`).
 
 Навіщо. Сторінка в репозиторії — не те, що бачить людина на grafana.com: спільні шматки
 (кроки налаштування джерел даних, застарілі API, вимоги до SSO) записані вставкою, і без неї
@@ -19,13 +24,20 @@
 вмикайте це в продукції» зливалося б із сусіднім абзацом. Документація до 7.0 писала шапку в
 TOML, і назвою ставало ім'я файла, а рядки `title = …` лягали першим абзацом.
 
+Сайти розробки плагінів (grafana/plugin-tools) і Scenes — Docusaurus, і там те саме: кроки
+створення плагіна записані одним шматком `@shared/…`, який сторінки вставляють компонентом, а
+без вставки від сторінки лишався б заголовок і порожнеча.
+
 Шматки беруться з того самого тегу, що й сторінка, а вміст тягнеться один раз на хеш blob:
 дерево тегу читач однаково завантажує, обгортка лише запам'ятовує з нього хеші теки
 `shared`. Чому окремий модуль, а не поле в `ghdocs-history`, — див. `ghtoml`.
 """
 
 import json
+import posixpath
 import re
+
+from urllib.parse import unquote
 
 from engine.readers import _markup, register
 from engine.readers.ghhistory import ghdocs_history
@@ -44,14 +56,17 @@ _SC_REFERENCE = re.compile(r"\{\{[<%]\s*docs/reference\s*[>%]\}\}.*?"
 _SC_IN_LINK = re.compile(r"\]\(\s*\{\{[<%].*?[>%]\}\}\s*\)")
 _SC_ANY = re.compile(r"\{\{[<%].*?[>%]\}\}", re.S)
 _ARG = re.compile(r'(?:(\w+)=)?"([^"]*)"')
+_MDX_IMPORT = re.compile(r"""^import\s+(\w+)\s+from\s+['"](?:!!raw-loader!)?([^'"]+)['"];?[ \t]*$""", re.M)
+_MDX_TEXT = (".md", ".mdx")
 
 
 class _Grafana:
     """Обгортка контексту: сторінки `.md` віддає вже з розкритими вставками, усе інше
     (дерева тегів) — як є, лише запам'ятавши хеші шматків `shared` кожного тегу."""
 
-    def __init__(self, ctx):
+    def __init__(self, ctx, aliases: dict | None = None):
         self._ctx = ctx
+        self._aliases = aliases or {}
         self._shared: dict = {}
         self._pieces: dict = {}
 
@@ -90,6 +105,32 @@ class _Grafana:
         text = _SC_IN_LINK.sub("](#)", text)
         return _SC_ANY.sub("", text)
 
+    def _mdx(self, text: str, owner_repo: str, tag: str, page: str, depth: int = 0) -> str:
+        """Імпортовані шматки сторінки Docusaurus → текст на місці компонента."""
+        found = {}
+        for m in _MDX_IMPORT.finditer(text):
+            spec = m.group(2)
+            path = next((root + spec[len(alias):] for alias, root in self._aliases.items()
+                         if spec.startswith(alias)), None)
+            if path is None and spec.startswith("."):
+                path = posixpath.normpath(posixpath.join(posixpath.dirname(page), spec))
+            if path and "." in path.rsplit("/", 1)[-1]:
+                found[m.group(1)] = path
+        if not found:
+            return text
+
+        def put(m):
+            path = found[m.group(1)]
+            piece = self._piece(owner_repo, tag, path)
+            if not piece or depth >= 3:
+                return ""
+            if path.endswith(_MDX_TEXT):
+                return "\n" + self._mdx(piece, owner_repo, tag, path, depth + 1) + "\n"
+            return f"\n```{path.rsplit('.', 1)[-1]}\n{piece.strip()}\n```\n"
+
+        names = "|".join(re.escape(n) for n in found)
+        return re.sub(rf"<({names})\b[^<>]*?/>", put, text)
+
     def text(self, url: str, gzip: bool = False, accept: str = "") -> str:
         text = self._ctx.text(url, gzip, accept)
         tree = _TREE.search(url)
@@ -102,13 +143,15 @@ class _Grafana:
                                            if e.get("path", "").startswith(SHARED)}
             return text
         page = _RAW_PAGE.match(url)
-        if not page or not page.group(2).endswith(".md"):
+        if not page or not page.group(2).endswith(_MDX_TEXT):
             return text
         owner_repo = "/".join(url.split("/")[3:5])
         meta_text = _yaml_front(text.replace("\r\n", "\n"))
+        if self._aliases:
+            meta_text = self._mdx(meta_text, owner_repo, page.group(1), unquote(page.group(2)))
         return self._expand(meta_text, owner_repo, page.group(1))
 
 
 @register("ghdocs-history-grafana")
 def ghdocs_history_grafana(source: dict, ctx) -> list:
-    return ghdocs_history(source, _Grafana(ctx))
+    return ghdocs_history(source, _Grafana(ctx, source.get("mdx_aliases")))

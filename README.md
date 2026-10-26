@@ -3267,15 +3267,18 @@ Discussions). 3408 документів, 16 774 фрагменти; нових �
 мінорної 2.0–13.2 (встановлення й `grafana.ini`, автентифікація, адміністрування й RBAC, провізіонування, дашборди,
 змінні, візуалізації, перетворення, усі вбудовані джерела даних, Grafana Alerting, Explore, HTTP API, розробка
 плагінів, посібники з оновлення й «What's new»), README пакетів `@grafana/*`, нотатки стабільних релізів, реєстр npm
-14 пакетів `@grafana/*`. Новий читач `ghdocs-history-grafana` (обгортка над `ghdocs-history`): спільні шматки
-`docs/shared` того самого тегу вставляються, виноски, вкладки й розгортки стають підписами, шапки TOML 2.x–6.x —
-YAML. 8697 документів, 48 573 фрагменти.
+19 пакетів `@grafana/*`; сайт розробки плагінів plugin-tools (create-plugin, plugin-e2e, підпис і публікація) з тегу
+кожної мінорної сайту 0.0–5.6, документація бібліотеки Scenes 0.0–9.0, README чарту Helm `grafana` кожної з 607
+версій 5.6.0–14.0.1 (grafana-community/helm-charts). Новий читач `ghdocs-history-grafana` (обгортка над
+`ghdocs-history`): спільні шматки `docs/shared` того самого тегу вставляються, виноски, вкладки й розгортки стають
+підписами, шапки TOML 2.x–6.x — YAML, імпортовані шматки MDX сайтів Docusaurus (`@shared/…`) стають на місце
+компонента. 9467 документів, 60 435 фрагментів.
 
 - порт `8902`; запис у Claude Code — `grafana-docs`, адреса `http://127.0.0.1:8902/mcp`; інструменти `search_docs` і
   `read_section`;
 - версія — мажор (`version: "13"`), мінор (`"12.4"`) чи точна (`"11.6.16"`); найновіша стабільна — 13.2.4;
-- не входять: пререлізи, Prometheus, Loki, Tempo, Mimir, Alloy, k6, Grafana Cloud, plugin-tools і Scenes як окремі
-  проєкти, код і тести;
+  plugin-tools, Scenes і чарт — з префіксом (`"plugin-tools-5.6.1"`, `"scenes-9"`, `"chart-10"`);
+- не входять: пререлізи, Prometheus, Loki, Tempo, Mimir, Alloy, k6, Grafana Cloud як окремі проєкти, код і тести;
 - приклад питання агентові: `./df grafana ask "How do I provision a Prometheus data source and a dashboard from files
   when Grafana starts in Docker?"`;
 - корпус — в архіві від самого початку;
