@@ -16,9 +16,12 @@ Prometheus стоїть поруч із Grafana і Loki: метрики з іс�
 сервера — з `docs/` prometheus/prometheus, документація Alertmanager — з `docs/` prometheus/alertmanager (так каже
 `docs-config.ts` сайту). Усі три тут є.
 
-Супутніх проєктів не взято: клієнтських бібліотек (Go, Java, Python, `prom-client` для Node.js), експортерів
-(`node_exporter`, `blackbox_exporter`, `pushgateway`), Prometheus Operator і Helm-чартів prometheus-community. Їх можна
-додати окремими джерелами, якщо знадобляться.
+Поруч узято те, без чого Prometheus у проєкті не обходиться. Експортери `node_exporter` (метрики машини),
+`blackbox_exporter` (перевірки HTTP, TCP, DNS, ICMP ззовні) і `pushgateway` (метрики коротких задач). Helm-чарти
+prometheus-community: `kube-prometheus-stack` (Prometheus Operator, Prometheus, Alertmanager, Grafana,
+`node_exporter` і kube-state-metrics одним чартом) і `prometheus`. Клієнт для Node.js `prom-client`: у серпні 2026
+він став підпроєктом Prometheus, переїхав у prometheus/client_js і з версії 0.16.0 зветься `@prometheus-io/client`.
+Клієнтських бібліотек інших мов (Go, Java, Python) і документації самого Prometheus Operator не взято.
 
 ## Скільки цього
 
@@ -30,13 +33,23 @@ Prometheus стоїть поруч із Grafana і Loki: метрики з іс�
 | Блог prometheus.io | 60 | 1 | `blog/posts` prometheus/docs, той самий знімок |
 | Релізи Prometheus | 234 | 234 | стабільні релізи GitHub, 0.11–3.15 |
 | Релізи Alertmanager | 58 | 58 | стабільні релізи GitHub, 0.1–0.34 |
+| `node_exporter` | 40 + 43 | 19 | README, `docs/`, приклади з тегу кожної мінорної 0.13–1.12; релізи |
+| `blackbox_exporter` | 37 + 34 | 28 | README і CONFIGURATION.md з тегу кожної мінорної 0.2–0.29; релізи |
+| `pushgateway` | 17 + 38 | 20 | README з тегу кожної мінорної 0.3–1.11; релізи |
+| Чарт `kube-prometheus-stack` | 67 | 84 | README з останнього тегу кожного мажору 9–92 |
+| Чарт `prometheus` | 19 | 19 | README з останнього тегу кожного мажору 11–29 |
+| `prom-client` | 41 + 16 + 39 | 82 | README кожної стабільної версії 1.0–15.1, реєстр npm, журнал змін 9.0–15.1 |
+| `@prometheus-io/client` | 1 + 2 + 1 | 2 | README 0.16.0–0.16.1, реєстр npm, запис журналу 0.16.0 |
 
 Документів менше, ніж версій, бо файл, що не мінявся між мінорними, — один документ із переліком версій.
 
-Разом 995 записів паспорта. В індексі 920 документів і 4346 фрагментів (`expected_passages` у `checks.json`):
+Разом 1390 записів паспорта. В індексі 1247 документів і 5410 фрагментів (`expected_passages` у `checks.json`):
 однаковий текст різних версій дає один уривок із переліком версій. Замір `quality`: по словах 8 із 10, за змістом 5,
-разом 8, «як модель» 10 із 10. Перемикачі не потрібні. Ціль запиту «counter gauge metric types» доповнено справжньою
-відповіддю — розділом «Counter vs. gauge, summary vs. histogram» сторінки найкращих практик інструментування.
+разом 7, «як модель» 10 із 10. Перемикачі не потрібні. Ціль запиту «counter gauge metric types» доповнено справжньою
+відповіддю — розділом «Counter vs. gauge, summary vs. histogram» сторінки найкращих практик інструментування. Три
+запити з десяти перевіряють супутні джерела: метрики процесу з `prom-client`, перехід чарта `kube-prometheus-stack`
+на новий мажор і textfile collector `node_exporter`. Промахи першої десятки — ті самі метрики процесу своїми словами,
+cron-скрипт, що публікує метрики (textfile collector), і «значення, що лише росте» (counter).
 
 Чого немає:
 
@@ -44,7 +57,9 @@ Prometheus стоїть поруч із Grafana і Loki: метрики з іс�
 - Документації сервера до 1.8: до неї `docs/` у репозиторії не було, сторінки жили на сайті.
 - Релізів зі збірками на кшталт `v2.43.0+stringlabels` і пререлізів (`-rc`).
 - Вихідного коду (Go) і тестів.
-- Grafana, Kubernetes, Thanos, Mimir, OpenTelemetry як окремих проєктів.
+- `values.yaml` чартів: README чарта `kube-prometheus-stack` лише відсилає до нього, а сам файл — YAML із коментарями,
+  не markdown.
+- Grafana, Kubernetes, Prometheus Operator, Thanos, Mimir, OpenTelemetry як окремих проєктів.
 
 ## Що в цій теці
 
@@ -70,19 +85,29 @@ Prometheus стоїть поруч із Grafana і Loki: метрики з іс�
 | сайт | дерево коміту 3576591 prometheus/docs (24.10.2026): `docs/` | `ghdocs-history` |
 | блог | той самий коміт: `blog/posts` | `ghdocs-history` |
 | релізи | api.github.com, `/repos/prometheus/{prometheus,alertmanager}/releases`, без передрелізів і збірок з `+` | `ghreleases` |
+| експортери | дерева тегів `vX.Y.Z` prometheus/{node_exporter,blackbox_exporter,pushgateway}, останній тег кожної мінорної; їхні релізи | `ghdocs-history`, `ghreleases` |
+| чарти Helm | дерева тегів `kube-prometheus-stack-X.Y.Z` і `prometheus-X.Y.Z` prometheus-community/helm-charts: `charts/<чарт>/README.md` | `ghdocs-history` |
+| `prom-client` | registry.npmjs.org: README з архіву кожної версії і реєстр; CHANGELOG.md гілки main prometheus/client_js | `npm-tarball-files`, `npm-versions`, `changelog-regex` |
+| `@prometheus-io/client` | те саме для нового імені пакета; журнал — той самий файл, записи 0.x | `npm-tarball-files`, `npm-versions`, `changelog-regex` |
 
 Нових читачів не знадобилося: сторінки — звичайний markdown із шапкою YAML. Цитуються вони адресами prometheus.io
 (поле `site`): сервер — `/docs/prometheus/latest/…`, Alertmanager — `/docs/alerting/latest/…`, сайт — `/docs/…`,
-блог — `/blog/РРРР/ММ/ДД/…`; релізи — сторінками GitHub.
+блог — `/blog/РРРР/ММ/ДД/…`; README чартів — сторінками Artifact Hub; решта — файлами й релізами на GitHub.
+
+Журнал змін `prom-client` і `@prometheus-io/client` — один файл: перший запис (0.16.0) уже під новим ім'ям, решта
+(9.0–15.1) — під старим. Тому його читають два джерела з полем `skip`, і кожне ставить свій префікс версії.
 
 ## Версії
 
 Сторінки сервера несуть версію Prometheus (`3.15.1`), релізи — версію запису. Сайт і блог версій не мають, тож несуть
 чинну версію Prometheus на день знімка (`3.15.1`). Номери Alertmanager (0.x) — окрема нумерація, тож вони записані з
-префіксом: `alertmanager-0.34.1`. Фільтр `version` приймає мажор (`"3"`), мінор (`"3.15"`) або точну версію
-(`"3.15.1"`); старі релізи Prometheus 0.x мають лінії з двох чисел (`"0.20"`). Голе число лишає лише Prometheus, сайт
-і блог; `"alertmanager-0"` лишає Alertmanager. Промпт відповідає для найновіших версій (Prometheus 3.15.1, лінія
-довгої підтримки 3.13, Alertmanager 0.34.1), якщо користувач не назвав старішу.
+префіксом: `alertmanager-0.34.1`. Так само решта: `node-exporter-1.12.1`, `blackbox-exporter-0.29.1`,
+`pushgateway-1.11.5`, `kps-92.14.0` (чарт `kube-prometheus-stack`), `chart-29.38.2` (чарт `prometheus`),
+`prom-client-15.1.3`, `prometheus-io-client-0.16.1`. Фільтр `version` приймає мажор (`"3"`), мінор (`"3.15"`) або
+точну версію (`"3.15.1"`); старі релізи Prometheus 0.x мають лінії з двох чисел (`"0.20"`). Голе число лишає лише
+Prometheus, сайт і блог; `"alertmanager-0"` лишає Alertmanager. Промпт відповідає для найновіших версій (Prometheus
+3.15.1, лінія довгої підтримки 3.13, Alertmanager 0.34.1 і найновіші версії решти частин), якщо користувач не назвав
+старішу.
 
 ## Архівний режим: сервер без корпусу
 
@@ -90,7 +115,7 @@ Prometheus стоїть поруч із Grafana і Loki: метрики з іс�
 кешу фрагментів (`index/passages.json`) і колекції Qdrant. Відповіді ті самі до символа, бо кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/prometheus-corpus-2026-10-26.tar.gz` (995 текстів, паспорт і сховище
+**Де тексти.** В архіві `~/archives/docfactory/prometheus-corpus-2026-10-26.tar.gz` (1390 текстів, паспорт і сховище
 сирого `raw/`; перед видаленням текстів архів розпаковано окремо й звірено з диском) і в копії на Windows
 `C:\Distr\prometheus-corpus-2026-10-26.tar.gz` (звірено за SHA-256). В історії git текстів немає ніде.
 
@@ -133,7 +158,7 @@ tar -xzf ~/archives/docfactory/prometheus-corpus-2026-10-26.tar.gz -C instances/
 
 ```
 ./df prometheus sources --why   # перелік джерел і білий список
-./df prometheus refresh         # завантажити все задеклароване (близько 8 хвилин)
+./df prometheus refresh         # завантажити все задеклароване (близько 15 хвилин)
 ./df prometheus manifest        # оновити паспорт
 ./df prometheus setup           # Qdrant чи пошук лише по словах
 ./df prometheus vectors         # залити корпус у docs-prometheus

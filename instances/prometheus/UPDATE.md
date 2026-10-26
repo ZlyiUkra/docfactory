@@ -2,8 +2,10 @@
 
 Документація сервера й Alertmanager береться із закріплених тегів: поле `tags` джерела `prometheus-docs` тримає
 останній тег `vX.Y.Z` кожної мінорної Prometheus, поле `tags` джерела `alertmanager-docs` — кожної мінорної
-Alertmanager (версія з префіксом `alertmanager-`). Сайт і блог беруться з закріпленого коміту prometheus/docs. Релізи
-GitHub беруться щоразу заново.
+Alertmanager (версія з префіксом `alertmanager-`). Сайт і блог беруться з закріпленого коміту prometheus/docs. Так
+само закріплено теги експортерів (кожна мінорна) і чартів Helm (кожен мажор, версії з префіксами `kps-` і `chart-`).
+Релізи GitHub, README і реєстр npm (`prom-client`, `@prometheus-io/client`) та журнал змін prometheus/client_js
+беруться щоразу заново.
 
 Правило: **нічого не видаляється.** Ані `refresh`, ані `vectors`, ані `manifest` нічого не стирають самі.
 
@@ -25,8 +27,9 @@ GitHub беруться щоразу заново.
 # Ctrl+C у терміналі з serve, і знову: ./df prometheus serve
 ```
 
-Якщо вийшла нова версія (на 26.10.2026 найновіші — Prometheus 3.15.1 з лінією довгої підтримки 3.13 і Alertmanager
-0.34.1), її треба замінити в `prompts/search.txt` (абзац «Which version to search first») і в `prompts/agent.txt`.
+Якщо вийшла нова версія (на 26.10.2026 найновіші — Prometheus 3.15.1 з лінією довгої підтримки 3.13, Alertmanager
+0.34.1 і решта частин, перелічених у README, розділ «Версії»), її треба замінити в `prompts/search.txt` (абзац «Which
+version to search first») і в `prompts/agent.txt`.
 
 Якщо `smoke` скаржиться на число фрагментів, корпус підріс. Нове число записують у `checks.json` полем
 `expected_passages`, а в `expected_note` — коли й чому його знято.
