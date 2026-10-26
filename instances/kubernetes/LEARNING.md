@@ -1271,7 +1271,8 @@ Let's Encrypt і програми іспитів CNCF. Про інші бібл�
 - Grafana: дашборди, джерела даних, Grafana Alerting, провізіонування, `grafana.ini` (2.0–13.2), values чарту Helm
   `grafana` (5.6.0–14.0.1) — `grafana`;
 - Prometheus і Alertmanager: файл конфігурації, `kubernetes_sd_config`, relabeling, PromQL, правила сповіщень,
-  маршрути й приглушення сповіщень (сервер 1.8–3.15, Alertmanager 0.21–0.34, сайт prometheus.io) — `prometheus`;
+  маршрути й приглушення сповіщень (сервер 1.8–3.15, Alertmanager 0.21–0.34, сайт prometheus.io); `node_exporter`,
+  `blackbox_exporter`, `pushgateway`; README чартів Helm `kube-prometheus-stack` і `prometheus` — `prometheus`;
 - PostgreSQL — база наскрізного проєкту (`psql`, `pg_dump`, налаштування сервера) — `postgresql`;
 - NGINX Gateway Fabric, NGINX Ingress Controller, ingress-nginx 0.34–1.15 (закрито в березні 2026), сам nginx —
   `nginx`.

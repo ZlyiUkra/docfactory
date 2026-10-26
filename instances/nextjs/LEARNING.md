@@ -497,7 +497,9 @@ Next.js дає маршрути, рендер, кеш і сервер. Бази,
   Helm-чарт, журнал змін, релізи) — `sealed-secrets`.
 - Prometheus і Alertmanager (збирання метрик, `scrape_config` і виявлення цілей, PromQL, правила запису й сповіщень,
   маршрути, групування й приглушення сповіщень: тека docs/ сервера з тегу кожної мінорної 1.8–3.15, docs/
-  Alertmanager 0.21–0.34, сайт prometheus.io і блог, релізи) — `prometheus`.
+  Alertmanager 0.21–0.34, сайт prometheus.io і блог, релізи; експортери `node_exporter`, `blackbox_exporter`,
+  `pushgateway`; README чартів Helm `kube-prometheus-stack` і `prometheus`; клієнт для Node.js `prom-client` 1.0–15.1
+  і його наступник `@prometheus-io/client`) — `prometheus`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
