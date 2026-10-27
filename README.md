@@ -3625,6 +3625,20 @@ kin-openapi — README з тегу кожної мінорної 0.1–0.152 і 
 - приклад питання агентові: `./df golang-x ask "How do I limit an errgroup to five goroutines?"`;
 - докладніше — у [instances/golang-x/README.md](instances/golang-x/README.md).
 
+### golang-jwt
+
+Документація golang-jwt (github.com/golang-jwt/jwt) — реалізації JSON Web Token для Go: сайт golang-jwt.github.io/jwt
+(репозиторій jwt-docs), README, MIGRATION_GUIDE, VERSION_HISTORY і SECURITY з тегу кожної мінорної 3.0–5.3, нотатки
+релізів, довідник pkg.go.dev v5 (5.0–5.3) і v4 (4.0–4.5) разом із підпакетом `request`. 63 документи, 510 фрагментів.
+
+- порт `8921`; запис у Claude Code — `golang-jwt-docs`, адреса `http://127.0.0.1:8921/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версії (`versions: true`): фільтр `"5"`, `"4"`, мінор чи точна версія; сайт — без версії;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: специфікації JWT і JOSE (примірник `webstandards`), інші бібліотеки JWT і JWE;
+- приклад питання агентові: `./df golang-jwt ask "How do I restrict the accepted signing algorithm when parsing?"`;
+- докладніше — у [instances/golang-jwt/README.md](instances/golang-jwt/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

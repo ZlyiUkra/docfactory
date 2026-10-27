@@ -135,7 +135,7 @@ Structs`».
 **Назви документів у рядку «Читати».** Назви в `такому вигляді` — назви документів корпусу, їх можна питати
 дослівно. Стандартна бібліотека — документ на пакет: `package net/http`, `package context`. Матеріал Ardan Labs у
 примірнику `go` має назви з початком «Ardan Labs Ultimate Go (certification prep):» — план пише коротко: `Ultimate
-Go: Slices`. Для бібліотек, у яких ще немає власного примірника (golang-jwt, river та інші), рядок «Читати» називає
+Go: Slices`. Для бібліотек, у яких ще немає власного примірника (testcontainers-go, river та інші), рядок «Читати» називає
 розділи їхніх README і сайтів поза фабрикою; що саме бракує — у підрозділі «Документація у фабриці».
 
 **Один наскрізний проєкт.** Не шість навчальних застосунків, а один, який росте через усі фази: бекенд для SPA, яке
@@ -316,7 +316,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | goose | міграції SQL і Go | Ф3 Д2, Ф6 Д2, Д8; є примірник `goose` |
 | oapi-codegen і kin-openapi | сервер і типи з документа OpenAPI; перевірка запиту документом | Ф2 Д2–3, Д7; Ф4 Д4; є примірник `oapi-codegen` |
 | `golang.org/x/crypto` (`argon2`, `bcrypt`) | хешування паролів | Ф4 Д1; є примірник `golang-x` |
-| golang-jwt (`github.com/golang-jwt/jwt/v5`) | підпис і перевірка access-токена | Ф4 Д2–3 |
+| golang-jwt (`github.com/golang-jwt/jwt/v5`) | підпис і перевірка access-токена | Ф4 Д2–3; є примірник `golang-jwt` |
 | testcontainers-go | справжній PostgreSQL у тестах | Ф5 Д3–4 |
 | coder/websocket (`github.com/coder/websocket`) | сервер і клієнт WebSocket з контекстом | Ф7 Д1–7 |
 | Kubernetes: `kubectl`, k3s | продакшн родини: бекенд, база й Redis подами в кластері з плану React | Ф6 Д8–9, Ф7 Д5, Д8; є примірник `kubernetes` |
@@ -357,6 +357,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- golang-jwt (сайт golang-jwt.github.io/jwt; README, MIGRATION_GUIDE, VERSION_HISTORY кожної мінорної 3.0–5.3; релізи;
+  довідник pkg.go.dev v5 і v4) — `golang-jwt`;
 - golang.org/x: `crypto/argon2`, `crypto/bcrypt`, `sync` (errgroup, semaphore, singleflight), `time/rate` — довідник
   pkg.go.dev кожної мінорної — `golang-x`;
 - oapi-codegen (README, docs і README прикладів кожної мінорної 1.0–2.8, релізи, код прикладів), runtime і
@@ -383,7 +385,6 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
-- golang-jwt;
 - testcontainers-go;
 - coder/websocket;
 - river;
@@ -1483,8 +1484,8 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
 
 # Фаза 4. Автентифікація й авторизація — 12 днів
 
-**Сервери MCP фази:** `go-docs`, `golang-x-docs`, `oapi-codegen-docs`, `webstandards-docs`, `owasp-docs`,
-`postgresql-docs`, `react-router-docs`.
+**Сервери MCP фази:** `go-docs`, `golang-x-docs`, `golang-jwt-docs`, `oapi-codegen-docs`, `webstandards-docs`,
+`owasp-docs`, `postgresql-docs`, `react-router-docs`.
 
 Модель токенів та сама, що в усій родині (її описує й план NestJS, фаза 4), — тут вона реалізується на Go:
 
@@ -1496,8 +1497,8 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
   повторне використання вже використаного refresh відкликає всю «сім'ю» токенів цього входу;
 - `localStorage` — ні: будь-який XSS на сторінці прочитає його за один рядок.
 
-Бібліотеки фази: `golang.org/x/crypto` (`argon2`, `bcrypt`) і `x/time/rate` — у примірнику `golang-x`; golang-jwt
-власного примірника у фабриці ще не має;
+Бібліотеки фази: `golang.org/x/crypto` (`argon2`, `bcrypt`) і `x/time/rate` — у примірнику `golang-x`, golang-jwt — у
+примірнику `golang-jwt`;
 стандарти JWT, Argon2 і OAuth — у `webstandards`, шпаргалки — в `owasp`.
 
 ## Блок A. Паролі й вхід — дні 1–4
@@ -1533,10 +1534,12 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
   `SignedString(secret)`; секрет — зі змінної оточення, не коротший за 32 байти. Невідомий email і хибний пароль
   дають **той самий** 401 з тим самим текстом і за **той самий** час: якщо користувача немає, пароль усе одно
   перевіряють — з фіктивним хешем.
-- **Читати:** README golang-jwt і приклади `Example (NewWithClaims)` на pkg.go.dev (поза фабрикою); у примірнику
-  `webstandards` — `RFC 7519 JSON Web Token (JWT): 4 JWT Claims`, `RFC 7519 JSON Web Token (JWT): 7 Creating and
-  Validating JWTs`, `RFC 8725 JSON Web Token Best Current Practices: 3 Best Practices`.
-- **Сервери MCP:** `webstandards-docs`.
+- **Читати:** у примірнику `golang-jwt` — сторінка сайту про створення токена (`docs/usage/create.md`: With custom
+  claims), `package github.com/golang-jwt/jwt/v5` (`func NewWithClaims`, `func (*Token) SignedString`, `type
+  RegisteredClaims`), README (розділ Choosing a signing method); у примірнику `webstandards` — `RFC 7519 JSON Web Token
+  (JWT): 4 JWT Claims`, `RFC 7519 JSON Web Token (JWT): 7 Creating and Validating JWTs`, `RFC 8725 JSON Web Token Best
+  Current Practices: 3 Best Practices`.
+- **Сервери MCP:** `golang-jwt-docs`, `webstandards-docs`.
 - **Зробити:** 1) `POST /api/auth/login` повертає `{ accessToken }` з терміном 10 хвилин; 2) перевірка з фіктивним
   хешем для невідомого email; 3) розібрати свій токен на jwt.io.
 - **Перевірити себе:** два `curl -w '%{time_total}'` — невідомий email і хибний пароль — дають однакове тіло й час у
@@ -1553,11 +1556,12 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
   під неекспортованим ключем; функція `auth.UserID(ctx)` дістає його. `WithValidMethods` обов'язковий: без нього
   токен, підписаний іншим алгоритмом, може пройти перевірку ключем не того типу. Невдала перевірка — 401 у форматі
   API з `WWW-Authenticate: Bearer`.
-- **Читати:** документація golang-jwt — `ParseWithClaims`, `ParserOption` (`WithValidMethods`, `WithLeeway`,
-  `WithExpirationRequired`) (поза фабрикою); у примірнику `webstandards` — `RFC 8725 JSON Web Token Best Current
-  Practices: 3 Best Practices` (розділ 3.1 Perform Algorithm Verification); у примірнику `go` — `package context`
-  (`WithValue`, розділ про ключі).
-- **Сервери MCP:** `webstandards-docs`, `go-docs`.
+- **Читати:** у примірнику `golang-jwt` — `package github.com/golang-jwt/jwt/v5` (`func ParseWithClaims`, `type
+  ParserOption`: `WithValidMethods`, `WithLeeway`, `WithExpirationRequired`; змінні `ErrTokenExpired`,
+  `ErrTokenSignatureInvalid`), `MIGRATION_GUIDE.md` (розділ Parsing and Validation Options); у примірнику
+  `webstandards` — `RFC 8725 JSON Web Token Best Current Practices: 3 Best Practices` (розділ 3.1 Perform Algorithm
+  Verification); у примірнику `go` — `package context` (`WithValue`, розділ про ключі).
+- **Сервери MCP:** `golang-jwt-docs`, `webstandards-docs`, `go-docs`.
 - **Зробити:** 1) middleware `Authenticate`; 2) обробники записів беруть автора з `auth.UserID(ctx)`; 3) токен із
   терміном 5 секунд і почекати; 4) токен, підписаний іншим секретом.
 - **Перевірити себе:** без токена — 401; з протухлим — 401; з підробленим — 401; з чинним — 200.
@@ -2462,10 +2466,10 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у `learning-go`,
 pgx, sqlc, goose, golang-migrate, oapi-codegen (з kin-openapi) — у примірниках з тими самими іменами, golang.org/x — у
-`golang-x`. **Решти бібліотек поза стандартною — golang-jwt, testcontainers-go, coder/websocket, river, golangci-lint
-— у фабриці ще немає**: рядок «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно
-— він поверне лише уривки, де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках
-«Сервери MCP», а розділ «Документація у фабриці» — нові рядки.
+`golang-x`. **Решти бібліотек поза стандартною — testcontainers-go, coder/websocket, river, golangci-lint — у фабриці
+ще немає**: рядок «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він
+поверне лише уривки, де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери
+MCP», а розділ «Документація у фабриці» — нові рядки.
 
 **Версії.** Сервер `go-docs` каже версію кожного уривка стандартної бібліотеки й специфікації. Функція, якої немає у
 вашій версії Go, у новішому уривку виглядає так само впевнено, — дивіться на позначку «added in go1.N» і на рядок `go`
