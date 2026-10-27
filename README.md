@@ -3639,6 +3639,21 @@ kin-openapi — README з тегу кожної мінорної 0.1–0.152 і 
 - приклад питання агентові: `./df golang-jwt ask "How do I restrict the accepted signing algorithm when parsing?"`;
 - докладніше — у [instances/golang-jwt/README.md](instances/golang-jwt/README.md).
 
+### coder-websocket
+
+Документація coder/websocket (github.com/coder/websocket, раніше nhooyr.io/websocket) — мінімальної бібліотеки
+WebSocket для Go поверх `net/http` і `context`: README й README прикладів з тегу кожної мінорної 0.1–1.8, довідник
+pkg.go.dev за новим шляхом (1.8) і старим `nhooyr.io/websocket` (1.0–1.8), код прикладів chat і echo, релізи.
+78 документів, 280 фрагментів.
+
+- порт `8922`; запис у Claude Code — `coder-websocket-docs`, адреса `http://127.0.0.1:8922/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версії (`versions: true`): фільтр `"1.8"` чи точна версія;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: RFC 6455 і браузерний API (примірники `webstandards` і `mdn`), gorilla/websocket і socket.io;
+- приклад питання агентові: `./df coder-websocket ask "How do I restrict which origins may open a WebSocket?"`;
+- докладніше — у [instances/coder-websocket/README.md](instances/coder-websocket/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

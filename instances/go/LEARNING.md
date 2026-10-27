@@ -318,7 +318,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | `golang.org/x/crypto` (`argon2`, `bcrypt`) | хешування паролів | Ф4 Д1; є примірник `golang-x` |
 | golang-jwt (`github.com/golang-jwt/jwt/v5`) | підпис і перевірка access-токена | Ф4 Д2–3; є примірник `golang-jwt` |
 | testcontainers-go | справжній PostgreSQL у тестах | Ф5 Д3–4 |
-| coder/websocket (`github.com/coder/websocket`) | сервер і клієнт WebSocket з контекстом | Ф7 Д1–7 |
+| coder/websocket (`github.com/coder/websocket`) | сервер і клієнт WebSocket з контекстом | Ф7 Д1–7; є примірник `coder-websocket` |
 | Kubernetes: `kubectl`, k3s | продакшн родини: бекенд, база й Redis подами в кластері з плану React | Ф6 Д8–9, Ф7 Д5, Д8; є примірник `kubernetes` |
 
 **Варто знати** — трапляється в більшості проєктів, вчиться за день, коли знадобилося.
@@ -357,6 +357,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- coder/websocket (README кожної мінорної 0.1–1.8, довідник pkg.go.dev за новим і старим шляхом `nhooyr.io/websocket`,
+  код прикладів chat і echo, релізи) — `coder-websocket`;
 - golang-jwt (сайт golang-jwt.github.io/jwt; README, MIGRATION_GUIDE, VERSION_HISTORY кожної мінорної 3.0–5.3; релізи;
   довідник pkg.go.dev v5 і v4) — `golang-jwt`;
 - golang.org/x: `crypto/argon2`, `crypto/bcrypt`, `sync` (errgroup, semaphore, singleflight), `time/rate` — довідник
@@ -386,7 +388,6 @@ Go дає в стандартній бібліотеці те, що в Node бе
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
 - testcontainers-go;
-- coder/websocket;
 - river;
 - golangci-lint.
 
@@ -2071,15 +2072,15 @@ refresh, перебором, — і він не віддає й не зміню�
 
 # Фаза 7. Живі дані: WebSocket — 8 днів
 
-**Сервери MCP фази:** `go-docs`, `learning-go-book`, `webstandards-docs`, `mdn-docs`, `vite-docs`, `kubernetes-docs`,
-`owasp-docs`, `nginx-docs`, `binance-spot-docs`, `kraken-spot-docs`, `redis-docs`.
+**Сервери MCP фази:** `go-docs`, `coder-websocket-docs`, `learning-go-book`, `webstandards-docs`, `mdn-docs`,
+`vite-docs`, `kubernetes-docs`, `owasp-docs`, `nginx-docs`, `binance-spot-docs`, `kraken-spot-docs`, `redis-docs`.
 
 Досі сервер лише відповідав. Живі ціни так не працюють: сервер сам штовхає дані через з'єднання, що живе годинами.
 У плані React (фаза 3, дні 6–8) SPA слухала ринковий стрім біржі напряму; тут цю роль бере ваш сервер: одне
 з'єднання з біржею на екземпляр, розсилка лише тим, хто дивиться пару, вхід у самому з'єднанні, повільні клієнти,
 кілька екземплярів у кластері. Тут конкурентність фази 0 стає роботою: горутина на читання й на запис кожного
 з'єднання, канали між ними, контекст на все. Бібліотека — coder/websocket (раніше nhooyr.io/websocket): мінімальний
-API з `context.Context` і `net/http` (власного примірника ще немає). Протокол (RFC 6455) — у примірнику
+API з `context.Context` і `net/http` (примірник `coder-websocket`). Протокол (RFC 6455) — у примірнику
 `webstandards`, браузерний API — у `mdn`, біржі — у `binance-spot` і `kraken-spot`. Джерело цін — ринкові
 ендпойнти Binance без ключа: `wss://data-stream.binance.vision` для потоку; запасне — Kraken WS v2
 (`wss://ws.kraken.com/v2`). Чи відкриваються ці адреси з вашої мережі, перевірте першого ж дня.
@@ -2097,9 +2098,11 @@ API з `context.Context` і `net/http` (власного примірника щ
 - **Читати:** у примірнику `webstandards` — `RFC 6455 The WebSocket Protocol: 1 Introduction` (розділ 1.3 Opening
   Handshake), `RFC 6455 The WebSocket Protocol: 5 Data Framing`, `RFC 6455 The WebSocket Protocol: 7 Closing the
   Connection` (розділ 7.4 Status Codes); у примірнику `mdn` — `WebSocket API (WebSockets)`, `Writing WebSocket
-  servers`; README і приклади coder/websocket (`echo`, `chat`) та документація на pkg.go.dev (поза фабрикою); Learn Go
-  with Tests — `WebSockets` (у примірнику `go`); у примірнику `binance-spot` — сторінка WebSocket Streams.
-- **Сервери MCP:** `webstandards-docs`, `mdn-docs`, `go-docs`, `binance-spot-docs`.
+  servers`; у примірнику `coder-websocket` — README (розділи Examples › Server і Client), `package
+  github.com/coder/websocket` (`func Accept`, `func Dial`, `func (*Conn) Read`, `Write`, `Ping`, `Close`,
+  `SetReadLimit`), `package github.com/coder/websocket/wsjson`; Learn Go with Tests — `WebSockets` (у примірнику
+  `go`); у примірнику `binance-spot` — сторінка WebSocket Streams.
+- **Сервери MCP:** `coder-websocket-docs`, `webstandards-docs`, `mdn-docs`, `go-docs`, `binance-spot-docs`.
 - **Зробити:** 1) маршрут `GET /api/ws`: луна з логом коду й причини закриття; 2) ping кожні 15 секунд з таймаутом 5;
   3) рукостискання очима curl:
   ```
@@ -2124,10 +2127,10 @@ API з `context.Context` і `net/http` (власного примірника щ
   сокет з таймаутом). Хаб кладе повідомлення в канал клієнта неблокувальним `select` з `default`: канал повний —
   клієнт не встигає, і його від'єднують з кодом 1008 («slow consumer»), а не чекають. Так пам'ять обмежена, а
   розсилка не залежить від найповільнішого.
-- **Читати:** приклад `chat` у репозиторії coder/websocket (поза фабрикою) — саме ця схема; у книжці — глава 12,
-  розділи `select`, `Concurrency Practices and Patterns`; у примірнику `go` — Go by Example — `Non-Blocking Channel
-  Operations`, `Stateful Goroutines`; блог `Advanced Go Concurrency Patterns`.
-- **Сервери MCP:** `learning-go-book`, `go-docs`.
+- **Читати:** у примірнику `coder-websocket` — приклад `chat` (`internal/examples/chat/chat.go` і його README) —
+  саме ця схема; у книжці — глава 12, розділи `select`, `Concurrency Practices and Patterns`; у примірнику `go` — Go
+  by Example — `Non-Blocking Channel Operations`, `Stateful Goroutines`; блог `Advanced Go Concurrency Patterns`.
+- **Сервери MCP:** `coder-websocket-docs`, `learning-go-book`, `go-docs`.
 - **Зробити:** 1) хаб із кімнатами-парами; 2) повідомлення `{"type":"subscribe","pair":"BTCUSDT"}`; 3) генератор
   фейкових цін на дві пари; 4) клієнт-скрипт, що підписується й навмисно не читає.
 - **Перевірити себе:** клієнт пари А не отримує цін пари Б; «мовчазний» клієнт від'єднується з 1008 за кілька секунд,
@@ -2148,11 +2151,11 @@ API з `context.Context` і `net/http` (власного примірника щ
   довше 5 секунд — інакше закриває з 1008. Коли термін токена минає, з'єднання закривають кодом із діапазону
   застосунку (4001 «token expired»), і клієнт перепідключається зі свіжим токеном. Права: список монет — записи з
   власником, як у фазі 4.
-- **Читати:** документація coder/websocket — `AcceptOptions` (`OriginPatterns`, `InsecureSkipVerify`) (поза фабрикою);
-  у примірнику `owasp` — `WebSocket Security Cheat Sheet`; у примірнику `webstandards` — `RFC 6455 The WebSocket
+- **Читати:** у примірнику `coder-websocket` — `package github.com/coder/websocket` (`type AcceptOptions`:
+  `OriginPatterns`, `InsecureSkipVerify`; `type StatusCode`); у примірнику `owasp` — `WebSocket Security Cheat Sheet`; у примірнику `webstandards` — `RFC 6455 The WebSocket
   Protocol: 10 Security Considerations` (розділ 10.2 Origin Considerations), `RFC 6455 The WebSocket Protocol: 7
   Closing the Connection` (розділ 7.4.2 Reserved Status Code Ranges).
-- **Сервери MCP:** `owasp-docs`, `webstandards-docs`.
+- **Сервери MCP:** `coder-websocket-docs`, `owasp-docs`, `webstandards-docs`.
 - **Зробити:** 1) `OriginPatterns` з конфігу; 2) перше повідомлення — вхід, інакше 1008 за 5 секунд; 3) таблиця
   `watchlist` (користувач, пара) і підписка лише на пари зі свого списку; 4) закриття 4001 на кінці терміну
   токена.
@@ -2173,7 +2176,7 @@ API з `context.Context` і `net/http` (власного примірника щ
 - **Читати:** у примірнику `binance-spot` — сторінки WebSocket Streams (Combined streams, ліміти з'єднань і
   повідомлень), Trade Streams; у примірнику `kraken-spot` — `Spot WebSocket Introduction`, `WebSocket v2: Trades`; у
   примірнику `go` — `package context`, Go by Example — `Tickers`, `Timers`.
-- **Сервери MCP:** `binance-spot-docs`, `kraken-spot-docs`, `go-docs`.
+- **Сервери MCP:** `binance-spot-docs`, `kraken-spot-docs`, `coder-websocket-docs`, `go-docs`.
 - **Зробити:** 1) постачальник на `websocket.Dial` з контекстом застосунку; 2) перепідключення з backoff і jitter;
   3) знімок останньої ціни; 4) вимкнути мережу на 30 секунд і ввімкнути.
 - **Перевірити себе:** при 50 клієнтах на 5 парах — одне з'єднання з біржею (`ss -tnp | grep 443`); після кроку 4
@@ -2230,8 +2233,9 @@ API з `context.Context` і `net/http` (власного примірника щ
   під'єднується, входить, підписується й міряє затримку від позначки часу в повідомленні до отримання. Після
   від'єднання всіх — кількість горутин сервера повертається до початкової (профіль `goroutine` чи `goroutineleak`).
 - **Читати:** у примірнику `go` — `package net/http/httptest`, `package testing/synctest`, `package runtime/pprof`
-  (профіль `goroutineleak`), блог `Goroutine Leak Profiles`.
-- **Сервери MCP:** `go-docs`.
+  (профіль `goroutineleak`), блог `Goroutine Leak Profiles`; у примірнику `coder-websocket` — `example_test.go` і
+  тест прикладу `chat` (`chat_test.go`).
+- **Сервери MCP:** `go-docs`, `coder-websocket-docs`.
 - **Зробити:** 1) тести: вхід, відмова без входу, підписка, від'єднання повільного; 2) програма навантаження на
   1000 клієнтів; 3) p50 і p99 затримки й пам'ять сервера в журнал; 4) горутини до й після.
 - **Перевірити себе:** тести зелені з `-race`; у журналі — числа для 1000 клієнтів на одному екземплярі; горутин після
@@ -2466,10 +2470,10 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у `learning-go`,
 pgx, sqlc, goose, golang-migrate, oapi-codegen (з kin-openapi) — у примірниках з тими самими іменами, golang.org/x — у
-`golang-x`. **Решти бібліотек поза стандартною — testcontainers-go, coder/websocket, river, golangci-lint — у фабриці
-ще немає**: рядок «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він
-поверне лише уривки, де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери
-MCP», а розділ «Документація у фабриці» — нові рядки.
+`golang-x`. **Решти бібліотек поза стандартною — testcontainers-go, river, golangci-lint — у фабриці ще немає**: рядок
+«Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки, де
+бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ
+«Документація у фабриці» — нові рядки.
 
 **Версії.** Сервер `go-docs` каже версію кожного уривка стандартної бібліотеки й специфікації. Функція, якої немає у
 вашій версії Go, у новішому уривку виглядає так само впевнено, — дивіться на позначку «added in go1.N» і на рядок `go`

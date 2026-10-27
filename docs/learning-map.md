@@ -6,9 +6,9 @@
 
 Стан на 27.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, anthropic-api, argocd, argon2, aspnetcore,
 astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot, class-transformer,
-class-validator, clerk, confluent-kafka-javascript, contentful, csharp, csrf-csrf, doc-tools, docker, dotnet,
-dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg,
-flux, foundry, frontend-architecture, github-actions, go, golang-jwt, golang-migrate, golang-x,
+class-validator, clerk, coder-websocket, confluent-kafka-javascript, contentful, csharp, csrf-csrf, doc-tools, docker,
+dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express, express-rate-limit, fastify,
+ffmpeg, flux, foundry, frontend-architecture, github-actions, go, golang-jwt, golang-migrate, golang-x,
 golevelup-nestjs-rabbitmq, goose, grafana, gvisor, helmet, htdp, i18next, icu, ioredis, iron-session, jose,
 jsonschema, kafka, kafkajs, kraken-spot, kubernetes, learning-go, libreoffice, libuv, lightweight-charts, linux,
 llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion, msw, nats, nats-js, nestjs, nestjs-cls, nestjs-pino,
@@ -74,7 +74,7 @@ vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, z
 | 4. Автентифікація й авторизація | `golang-x` (1, 11), `golang-jwt` (2–3), `oapi-codegen` (4), `webstandards` (1–7, 9, 11), `owasp` (1, 5, 7, 9–12), `postgresql` (6), `react-router` (8) |
 | 5. Якість: тести, гонитви, профілювання | `learning-go` (1–3, 5), `docker` (3) |
 | 6. Продакшн | `docker` (1–3, 7), `learning-go` (1), `nginx` (2, 5), `kubernetes` (3, 8–9), `redis` (4, 8), `postgresql` (6, 8–9), `github-actions` (7), `oracle-cloud` (8) |
-| 7. Живі дані: WebSocket | `webstandards` (1, 3), `mdn` (1, 6), `binance-spot` (1, 4), `kraken-spot` (4), `learning-go` (2), `owasp` (3, 8), `redis` (5), `kubernetes` (5, 8), `nginx` (5), `vite` (6) |
+| 7. Живі дані: WebSocket | `coder-websocket` (1–4, 7), `webstandards` (1, 3), `mdn` (1, 6), `binance-spot` (1, 4), `kraken-spot` (4), `learning-go` (2), `owasp` (3, 8), `redis` (5), `kubernetes` (5, 8), `nginx` (5), `vite` (6) |
 | С. Лінія сертифікації Ardan Labs | `learning-go` (С4) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
@@ -145,9 +145,8 @@ vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, z
 
 ### Go
 
-1. coder/websocket (3).
-2. golangci-lint (2).
-3. testcontainers-go (1), river (1).
+1. golangci-lint (2).
+2. testcontainers-go (1), river (1).
 
 ### Next.js
 
