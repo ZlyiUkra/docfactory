@@ -3503,8 +3503,9 @@ Krishnamurthi; MIT Press, 2018 — за онлайн-виданням автор
 тегах; сайт go.dev з golang/website — Effective Go, FAQ, підручники, довідник модулів, нотатки випусків, блог з 2009
 року, A Tour of Go, доповіді команди Go; вікі, проєктні документи пропозицій, gopls; поруч — Go by Example, Learn Go
 with Tests, настанови зі стилю Google і Uber, запитання до співбесіди rixtrayker/golang-interview. Новий читач
-`ghdocs-history-godev` розгортає шаблони go.dev і формат present, а `pkgsite` дістав поле `versions`. 3220 документів,
-35 899 фрагментів.
+`ghdocs-history-godev` розгортає шаблони go.dev і формат present, а `pkgsite` дістав поле `versions`. Окремо виділена
+підготовка до сертифікації Ardan Labs: матеріал класу Ultimate Go (ardanlabs/gotraining) і сервіс-зразок
+ardanlabs/service — id `cert-…`, назви «Ardan Labs … (certification prep)». 3901 документ, 37 123 фрагменти.
 
 - порт `8913`; запис у Claude Code — `go-docs`, адреса `http://127.0.0.1:8913/mcp`; інструменти `search_docs` і
   `read_section`;
