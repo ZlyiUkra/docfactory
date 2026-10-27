@@ -3512,6 +3512,8 @@ ardanlabs/service — id `cert-…`, назви «Ardan Labs … (certification 
 - версії Go (`versions: true`): фільтр `"1.22"` чи `"1.22.12"` лишає бібліотеку, команди, `doc/` і нотатки випусків;
 - корпус — в архіві, у git паспорт і кеш фрагментів;
 - не входять: пакети `golang.org/x/…`, сторонні бібліотеки, вихідний код Go, книжки (вони в `learning-go`);
+- план вивчення бекенду на Go — альтернатива плану NestJS у фулстек-родині, з лінією сертифікації Ardan Labs, —
+  [instances/go/LEARNING.md](instances/go/LEARNING.md);
 - приклад питання агентові: `./df go ask "Since which Go release is a loop variable created per iteration?"`;
 - докладніше — у [instances/go/README.md](instances/go/README.md).
 

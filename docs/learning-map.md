@@ -31,6 +31,8 @@ ws, zod, zustand.
 
 ## Лінія 1. React → NestJS → Next.js
 
+Бекенд родини можна вчити на Go замість NestJS — план Go стоїть нижче, поруч із планом NestJS.
+
 ### План React — [instances/react/LEARNING.md](../instances/react/LEARNING.md)
 
 | Фаза | Примірники (дні) |
@@ -56,6 +58,24 @@ ws, zod, zustand.
 | 6. Продакшн | `docker` (вступ, 2, 7), `upstash` (6), `kubernetes` (вступ, 8–9), `oracle-cloud` (вступ, 8), `express` (9), `postgresql` (9), `github-actions` (вступ, 7), `nginx` (вступ, 2, 5), `node-postgres` (5), `argon2` (8), `bcrypt` (8), `prisma` (2, 8), `redis` (8), `nestjs-pino` (3) |
 | 7. Живі дані: WebSockets | `socketio` (вступ, 2–4, 6–7), `mdn` (вступ, 1), `webstandards` (вступ, 1, 3, 6), `ws` (1–2, 5), `vite` (2), `kubernetes` (3, 6, 8), `owasp` (3), `nginx` (6), `binance-spot` (вступ, 5), `redis` (5), `kraken-spot` (вступ, 1, 5), `rxjs` (6) |
 | Факультатив «крипта» | `binance-spot` (К1), `webstandards` (К3), `node-postgres` (К1), `viem` (К3–К4), `foundry` (К4) |
+
+### План Go — [instances/go/LEARNING.md](../instances/go/LEARNING.md)
+
+Альтернатива плану NestJS: той самий наскрізний проєкт і контракт `/api`, бекенд на Go. Мову фаза 0 вчить за
+книжкою «Learning Go» (примірник `learning-go`); лінія сертифікації Ardan Labs спирається на документи `cert-…`
+власного примірника `go`.
+
+| Фаза | Примірники (дні) |
+|------|------------------|
+| 0. Мова Go за книжкою «Learning Go» | `learning-go` (1–20) |
+| 1. HTTP і SQL без фреймворку | `learning-go` (1–5, 8), `mdn` (1, 3, 6–7), `webstandards` (1, 3, 6–7), `owasp` (6), `vite` (7), `postgresql` (9–14) |
+| 2. Робочий API: контракт OpenAPI | `webstandards` (1, 3), `jsonschema` (1), `learning-go` (4), `orval` і `openapi-typescript` (5), `tanstack-query` (5), `react-hook-form` і `zod` (6) |
+| 3. Дані: pgx, sqlc, goose | `postgresql` (1–7, 9–10), `learning-go` (5), `owasp` (8) |
+| 4. Автентифікація й авторизація | `webstandards` (1–7, 9, 11), `owasp` (1, 5, 7, 9–12), `postgresql` (6), `react-router` (8) |
+| 5. Якість: тести, гонитви, профілювання | `learning-go` (1–3, 5), `docker` (3) |
+| 6. Продакшн | `docker` (1–3, 7), `learning-go` (1), `nginx` (2, 5), `kubernetes` (3, 8–9), `redis` (4, 8), `postgresql` (6, 8–9), `github-actions` (7), `oracle-cloud` (8) |
+| 7. Живі дані: WebSocket | `webstandards` (1, 3), `mdn` (1, 6), `binance-spot` (1, 4), `kraken-spot` (4), `learning-go` (2), `owasp` (3, 8), `redis` (5), `kubernetes` (5, 8), `nginx` (5), `vite` (6) |
+| С. Лінія сертифікації Ardan Labs | `learning-go` (С4) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
 
@@ -122,6 +142,13 @@ ws, zod, zustand.
 ### NestJS
 
 1. Факультатив: decimal.js.
+
+### Go
+
+1. oapi-codegen і kin-openapi (4), pgx (4), sqlc (4).
+2. coder/websocket (3), `golang.org/x` — crypto, sync, time (3).
+3. golang-jwt (2), goose (2), golangci-lint (2).
+4. golang-migrate (1), testcontainers-go (1), river (1).
 
 ### Next.js
 
