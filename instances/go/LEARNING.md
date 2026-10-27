@@ -135,7 +135,7 @@ Structs`».
 **Назви документів у рядку «Читати».** Назви в `такому вигляді` — назви документів корпусу, їх можна питати
 дослівно. Стандартна бібліотека — документ на пакет: `package net/http`, `package context`. Матеріал Ardan Labs у
 примірнику `go` має назви з початком «Ardan Labs Ultimate Go (certification prep):» — план пише коротко: `Ultimate
-Go: Slices`. Для бібліотек, у яких ще немає власного примірника (testcontainers-go, river та інші), рядок «Читати» називає
+Go: Slices`. Для бібліотек, у яких ще немає власного примірника (testcontainers-go, golangci-lint), рядок «Читати» називає
 розділи їхніх README і сайтів поза фабрикою; що саме бракує — у підрозділі «Документація у фабриці».
 
 **Один наскрізний проєкт.** Не шість навчальних застосунків, а один, який росте через усі фази: бекенд для SPA, яке
@@ -325,7 +325,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 | Бібліотека | Навіщо | Де в плані |
 |------------|--------|------------|
-| river (`github.com/riverqueue/river`) | черга задач у PostgreSQL з повторами; вставка в тій самій транзакції | Ф6 Д6 |
+| river (`github.com/riverqueue/river`) | черга задач у PostgreSQL з повторами; вставка в тій самій транзакції | Ф6 Д6; є примірник `river` |
 | go-redis (`github.com/redis/go-redis/v9`) | кеш, обмеження частоти на кількох екземплярах, pub/sub для вебсокетів | Ф6 Д4, Ф7 Д5; сторінки клієнта Go є в примірнику `redis` |
 | `golang.org/x/sync/errgroup`, `golang.org/x/time/rate` | група горутин зі спільною помилкою; обмеження частоти | Ф0 Д15, Ф4 Д11; є примірник `golang-x` |
 | golangci-lint | набір лінтерів одним бінарником, у CI | Ф0 Д13, Ф5 Д5, Ф6 Д7 |
@@ -357,6 +357,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- River (сайт riverqueue.com/docs разом із River Pro; README і docs/ кожної мінорної 0.0–0.50; журнал змін; довідник
+  pkg.go.dev river, rivermigrate, rivertest, riverlog за останні випуски) — `river`;
 - coder/websocket (README кожної мінорної 0.1–1.8, довідник pkg.go.dev за новим і старим шляхом `nhooyr.io/websocket`,
   код прикладів chat і echo, релізи) — `coder-websocket`;
 - golang-jwt (сайт golang-jwt.github.io/jwt; README, MIGRATION_GUIDE, VERSION_HISTORY кожної мінорної 3.0–5.3; релізи;
@@ -388,7 +390,6 @@ Go дає в стандартній бібліотеці те, що в Node бе
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
 - testcontainers-go;
-- river;
 - golangci-lint.
 
 ---
@@ -1889,7 +1890,7 @@ refresh, перебором, — і він не віддає й не зміню�
 # Фаза 6. Продакшн — 9 днів
 
 **Сервери MCP фази:** `go-docs`, `learning-go-book`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`,
-`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `redis-docs`.
+`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `redis-docs`, `river-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й уміти оновити. Тут Go відплачує за все: образ — один
 статичний бінарник на кілька мегабайтів, без середовища виконання й без нативних модулів, а збірка під arm64 — це
@@ -1998,10 +1999,11 @@ refresh, перебором, — і він не віддає й не зміню�
   методом `Kind()`, працівник — тип з методом `Work(ctx, job)`. Головне, чого не дає черга в Redis: `InsertTx`
   вставляє задачу **в тій самій транзакції**, що й запис, — опублікували запис і поставили вебхук разом, або ні те,
   ні інше. Вебхук: `POST` на чужу адресу з підписом HMAC-SHA256 тіла в заголовку.
-- **Читати:** документація river riverqueue.com/docs — `Getting started`, `Transactional enqueueing`, `Job retries`,
-  `Migrations` (rivermigrate) (поза фабрикою, примірника ще немає); у примірнику `go` — `package crypto/hmac`; у
-  примірнику `postgresql` — `SELECT`, розділ The Locking Clause (`SKIP LOCKED`).
-- **Сервери MCP:** `postgresql-docs`, `go-docs`.
+- **Читати:** у примірнику `river` — сторінки сайту `Getting started`, `Transactional enqueueing`, `Job retries`,
+  `Migrations` (rivermigrate), `Graceful shutdown`, `Testing`, і `package github.com/riverqueue/river` (`InsertTx`,
+  `InsertOpts`, `QueueConfig`); у примірнику `go` — `package crypto/hmac`; у примірнику `postgresql` — `SELECT`,
+  розділ The Locking Clause (`SKIP LOCKED`).
+- **Сервери MCP:** `river-docs`, `postgresql-docs`, `go-docs`.
 - **Зробити:** 1) міграції river (окремою командою, як ваші); 2) `Publish` у фазі 3, дні 7 додає `InsertTx` задачі
   «вебхук»; 3) працівник шле `POST` з підписом на тестовий приймач; 4) приймач перші два рази відповідає 500.
 - **Перевірити себе:** запис опубліковано миттєво; вебхук дійшов із третьої спроби — у лозі видно три спроби з
@@ -2470,7 +2472,7 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у `learning-go`,
 pgx, sqlc, goose, golang-migrate, oapi-codegen (з kin-openapi) — у примірниках з тими самими іменами, golang.org/x — у
-`golang-x`. **Решти бібліотек поза стандартною — testcontainers-go, river, golangci-lint — у фабриці ще немає**: рядок
+`golang-x`. **Решти бібліотек поза стандартною — testcontainers-go і golangci-lint — у фабриці ще немає**: рядок
 «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки, де
 бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ
 «Документація у фабриці» — нові рядки.

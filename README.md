@@ -3654,6 +3654,20 @@ pkg.go.dev за новим шляхом (1.8) і старим `nhooyr.io/websock
 - приклад питання агентові: `./df coder-websocket ask "How do I restrict which origins may open a WebSocket?"`;
 - докладніше — у [instances/coder-websocket/README.md](instances/coder-websocket/README.md).
 
+### river
+
+Документація River (github.com/riverqueue/river) — черги задач для Go на PostgreSQL: сайт riverqueue.com/docs (зібраний
+HTML сторінок, разом із River Pro), README і `docs/` з тегу кожної мінорної 0.0–0.50, журнал змін, довідник pkg.go.dev
+river, rivermigrate, rivertest і riverlog за останні двадцять мінорних. 201 документ, 1279 фрагментів.
+
+- порт `8924`; запис у Claude Code — `river-docs`, адреса `http://127.0.0.1:8924/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версії (`versions: true`): фільтр `"0.50"` чи точна версія; сайт — без версії;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: сирці сайту, клієнти інших мов, окремі модулі драйверів, PostgreSQL і pgx (окремі примірники);
+- приклад питання агентові: `./df river ask "How do I insert a job in the same transaction as my data?"`;
+- докладніше — у [instances/river/README.md](instances/river/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
