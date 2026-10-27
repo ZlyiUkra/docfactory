@@ -106,6 +106,18 @@ SLUG_REWRITE = [(re.compile(a), b) for a, b in instance.config().get("slug_rewri
 # ріже таку таблицю по цілих рядках. Без поля все лишається як було.
 SPLIT_LONG_TABLES = instance.config().get("split_long_tables") is True
 
+# Поле cyrillic_words: кирилиця — літери слів (common/lexical.py), а в ключі розділу вона
+# транслітерується латиницею. Ключ береться лише з [a-z0-9], і без транслітерації кожен
+# російський заголовок довідника ставав «x»: «С чего начать» і «Из чего собрана обвязка»
+# мали один ключ і займали у видачі одне місце. Без поля ключ той самий, що й до його появи.
+CYRILLIC_WORDS = instance.config().get("cyrillic_words") is True
+_TRANSLIT = str.maketrans({
+    "а": "a", "б": "b", "в": "v", "г": "g", "ґ": "g", "д": "d", "е": "e", "ё": "e",
+    "є": "ye", "ж": "zh", "з": "z", "и": "i", "і": "i", "ї": "yi", "й": "y", "к": "k",
+    "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t",
+    "у": "u", "ф": "f", "х": "kh", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "shch", "ъ": "",
+    "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya"})
+
 # Тека документів — у примірнику, з яким працює цей запуск (див. instance.py):
 # код тепер спільний на всі домени, а corpus/ у кожного домену свій.
 DOCS_DIRS = [instance.root() / "corpus"]
@@ -156,7 +168,10 @@ def version_line(version: str, depth: int = 1) -> str:
 
 
 def _slug(title: str) -> str:
-    return "-".join(re.findall(r"[a-z0-9]+", title.lower())) or "x"
+    title = title.lower()
+    if CYRILLIC_WORDS:
+        title = title.translate(_TRANSLIT)
+    return "-".join(re.findall(r"[a-z0-9]+", title)) or "x"
 
 
 class _NumberedHeadings:

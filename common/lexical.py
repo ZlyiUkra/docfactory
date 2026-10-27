@@ -37,8 +37,7 @@ import math
 import re
 from collections import Counter
 
-from . import instance
-from .corpus import PASSAGE_CONTEXT, Passage, context_text, load_passages
+from .corpus import CYRILLIC_WORDS, PASSAGE_CONTEXT, Passage, context_text, load_passages
 
 # BM25, класичні значення з літератури: k1 — наскільки швидко насичується
 # повторення слова, b — наскільки сильно карається довжина фрагмента.
@@ -48,7 +47,6 @@ B = 0.75
 _TOKEN = re.compile(r"[a-z0-9_]+")
 # а–я, ѐ–џ (ё, і, ї, є та інші) і ґ — російська й українська абетки.
 _TOKEN_CYRILLIC = re.compile(r"[a-z0-9_а-џґ]+")
-CYRILLIC_WORDS = instance.config().get("cyrillic_words") is True
 
 
 def tokenize(text: str) -> list[str]:
