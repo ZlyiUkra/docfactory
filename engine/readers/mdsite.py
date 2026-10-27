@@ -38,6 +38,10 @@ _SITEMAP = re.compile(r"\n-{3,}[ \t]*\n+## Sitemap[ \t]*\n+"
 _SITEMAP_VERSIONED = re.compile(r"\n-{3,}[ \t]*\n+(?:Documentation for [^\n]* v\d[^\n]*\n+)?"
                                 r"## Sitemap[ \t]*\n+(?:- \[[^\]\n]*\]\([^)\n]*"
                                 r"(?:llms\.txt|docs_map\.md)\)\s*)+\Z")
+# Markdown-двійник сторінки code.claude.com починається цитатою «## Documentation Index» з
+# посиланням на llms.txt, і лише під нею стоїть «# Назва»: без зрізу цитати жодна з 228
+# сторінок не мала назви й не записувалася. Сторінки з шапкою цей вираз не зачіпає.
+_DOC_INDEX = re.compile(r"\s*> ## Documentation Index[ \t]*\n(?:>[^\n]*\n)*")
 
 
 def _md_document(ctx, md_url: str, page: str, version: str, prefix: str = "",
@@ -49,6 +53,9 @@ def _md_document(ctx, md_url: str, page: str, version: str, prefix: str = "",
     title = _markup.title_of(meta, page) if meta else ""
     if not meta:
         # Без шапки (react-aria.adobe.com) назва — заголовок першого рівня на початку сторінки.
+        index = _DOC_INDEX.match(rest)
+        if index:
+            rest = rest[index.end():]
         head = _TITLE.match(rest)
         if head:
             title, rest = head.group(1).strip(), rest[head.end():]
