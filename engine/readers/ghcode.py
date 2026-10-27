@@ -3,7 +3,9 @@
 `ghcode` — усі файли дерева гілки чи тегу, крім тих, що відкидає `exclude`. `url` —
            дерево /repos/ВЛАСНИК/РЕПО/git/trees/ГІЛКА?recursive=1; `exclude` —
            вирази шляхів, що не беруться (службові файли, згенероване, markdown,
-           який уже бере інше джерело).
+           який уже бере інше джерело); `title_prefix` — рядок перед назвою кожного
+           документа («Ardan Labs Ultimate Go (certification prep) — gotraining: …»):
+           код окремого призначення в корпусі видно з назви, а не лише з id.
 
 Навіщо. `ghexamples` вміє лише приклади JavaScript із власним `package.json`, а
 навчальний репозиторій на кшталт `danbev/learning-v8` тримає код інакше: тести
@@ -31,7 +33,7 @@ _MAX_FILE = 40_000
 _LANG = {".cc": "cpp", ".h": "cpp", ".cpp": "cpp", ".c": "c", ".js": "js", ".mjs": "js",
          ".ts": "ts", ".tq": "torque", ".rs": "rust", ".py": "python", ".pyi": "python", ".toml": "toml",
          ".patch": "diff", ".sh": "sh", ".json": "json", ".md": "", ".kt": "kotlin",
-         ".swift": "swift", ".hh": "cpp"}
+         ".swift": "swift", ".hh": "cpp", ".go": "go"}
 _NAMED = {"Makefile": "make", "BUILD.gn": "gn"}
 
 
@@ -80,6 +82,8 @@ def ghcode(source: dict, ctx) -> list[Item]:
             else:
                 body = f"```{lang}\n{text.rstrip()}\n```"
             title = f"{repo}: {path}"
+            if source.get("title_prefix"):
+                title = f"{source['title_prefix']} — {title}"
             _markup.require(title, body, raw, min_chars=1)
             return _markup.document(title, blob, ctx.stamp, body, source.get("version", ""))
 
