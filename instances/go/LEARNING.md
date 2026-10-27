@@ -329,7 +329,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | go-redis (`github.com/redis/go-redis/v9`) | кеш, обмеження частоти на кількох екземплярах, pub/sub для вебсокетів | Ф6 Д4, Ф7 Д5; сторінки клієнта Go є в примірнику `redis` |
 | `golang.org/x/sync/errgroup`, `golang.org/x/time/rate` | група горутин зі спільною помилкою; обмеження частоти | Ф0 Д15, Ф4 Д11 |
 | golangci-lint | набір лінтерів одним бінарником, у CI | Ф0 Д13, Ф5 Д5, Ф6 Д7 |
-| golang-migrate | друга поширена бібліотека міграцій — у чужих проєктах | Ф3 Д2, згадкою |
+| golang-migrate | друга поширена бібліотека міграцій — у чужих проєктах | Ф3 Д2, згадкою; є примірник `golang-migrate` |
 | OpenTelemetry для Go | траси й метрики | не вчиться; сторінки Go є в примірнику `opentelemetry` |
 
 **Знати, що існує** — беруть під конкретну задачу; план їх не вчить.
@@ -357,6 +357,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- golang-migrate (README, GETTING_STARTED, MIGRATIONS, FAQ, CLI і README кожного драйвера бази й джерела міграцій
+  кожної мінорної 1.2–4.20; нотатки релізів; довідник pkg.go.dev 4.0–4.20) — `golang-migrate`;
 - goose (сайт pressly.github.io/goose з блогом; README й приклади кожної мінорної 2.0–3.29; довідник pkg.go.dev
   3.0–3.29; журнал змін) — `goose`;
 - pgx (довідник pkg.go.dev кожної мінорної v5 5.0–5.11 і v4 4.0–4.18: pgx, pgxpool, pgconn, pgtype, pgproto3, stdlib,
@@ -376,7 +378,6 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
-- golang-migrate;
 - oapi-codegen і kin-openapi;
 - `golang.org/x/crypto`, `golang.org/x/sync`, `golang.org/x/time` (пакети поза стандартною бібліотекою);
 - golang-jwt;
@@ -1265,7 +1266,8 @@ database` (примірник `go`) програма на `database/sql` з др
 
 # Фаза 3. Дані: pgx, sqlc, goose — 10 днів
 
-**Сервери MCP фази:** `go-docs`, `postgresql-docs`, `pgx-docs`, `sqlc-docs`, `goose-docs`, `owasp-docs`, `learning-go-book`.
+**Сервери MCP фази:** `go-docs`, `postgresql-docs`, `pgx-docs`, `sqlc-docs`, `goose-docs`, `golang-migrate-docs`,
+`owasp-docs`, `learning-go-book`.
 
 ORM у Go є (GORM, ent), але робочий стандарт останніх років інший: SQL пишуть руками, а типізований код Go до нього
 генерує sqlc. Драйвер — pgx (власний інтерфейс швидший і багатший за `database/sql`), міграції — goose: файли SQL,
@@ -1304,9 +1306,10 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
   два екземпляри почали б накочувати одночасно. golang-migrate — друга поширена бібліотека: пара файлів
   `N_name.up.sql`/`N_name.down.sql` і позначка `dirty` після невдалої міграції; її ви зустрінете в чужих проєктах.
 - **Читати:** у примірнику `goose` — README (розділи Usage, Migrations: SQL Migrations, Embedded sql migrations),
-  `SQL file annotations`, `CLI commands`, `Provider`; README golang-migrate і `MIGRATIONS.md` — для порівняння (поза
-  фабрикою); у примірнику `postgresql` — `Data Definition`.
-- **Сервери MCP:** `goose-docs`, `postgresql-docs`.
+  `SQL file annotations`, `CLI commands`, `Provider`; для порівняння — у примірнику `golang-migrate` README,
+  `MIGRATIONS.md` і `GETTING_STARTED.md` (розділ Forcing your database version); у примірнику `postgresql` — `Data
+  Definition`.
+- **Сервери MCP:** `goose-docs`, `golang-migrate-docs`, `postgresql-docs`.
 - **Зробити:** 1) міграції `users` і `posts` зі схеми фази 1, блок B; 2) підкоманда `api migrate up|down|status` на
   вбудованих файлах; 3) друга міграція — колонка `published_at`; 4) `goose down` і `goose up` знову.
 - **Перевірити себе:** `api migrate status` показує обидві міграції застосованими; `down` прибирає колонку, `up`
@@ -2445,8 +2448,9 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у
-`learning-go`, pgx, sqlc і goose — у `pgx`, `sqlc` і `goose`. **Бібліотек поза стандартною — golang-migrate, oapi-codegen і kin-openapi,
-`golang.org/x/…`, golang-jwt, testcontainers-go, coder/websocket, river, golangci-lint — у фабриці ще немає**: рядок
+`learning-go`, pgx, sqlc, goose і golang-migrate — у примірниках з тими самими іменами. **Решти бібліотек поза
+стандартною — oapi-codegen і kin-openapi, `golang.org/x/…`, golang-jwt, testcontainers-go, coder/websocket, river,
+golangci-lint — у фабриці ще немає**: рядок
 «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки,
 де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ
 «Документація у фабриці» — нові рядки.

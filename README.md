@@ -3578,6 +3578,21 @@ tracelog; README pgx, pgconn і pgproto3 з тегу кожної мінорно
 - приклад питання агентові: `./df goose ask "How do I embed SQL migrations in the binary with goose?"`;
 - докладніше — у [instances/goose/README.md](instances/goose/README.md).
 
+### golang-migrate
+
+Документація golang-migrate (github.com/golang-migrate/migrate) — інструмента й бібліотеки міграцій бази для Go:
+README, GETTING_STARTED, MIGRATIONS, FAQ, CLI і README кожного драйвера бази й джерела міграцій з тегу кожної
+мінорної 1.2–4.20, нотатки релізів, довідник pkg.go.dev 4.0–4.20 (migrate, database, source, драйвери postgres, pgx,
+pgx/v5, джерела file і iofs). 232 документи, 604 фрагменти.
+
+- порт `8918`; запис у Claude Code — `golang-migrate-docs`, адреса `http://127.0.0.1:8918/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версії (`versions: true`): фільтр `"4"`, `"4.18"` чи `"4.18.3"`;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: довідник pkg.go.dev інших драйверів і джерел (лише їхні README), SQL, goose, sqlc, pgx;
+- приклад питання агентові: `./df golang-migrate ask "How do I fix a dirty database version?"`;
+- докладніше — у [instances/golang-migrate/README.md](instances/golang-migrate/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
