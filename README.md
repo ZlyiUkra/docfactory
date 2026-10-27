@@ -3548,6 +3548,21 @@ to idiomatic and testable code» (Inanc Gumus; Manning, 2025) з PDF корис�
 - приклад питання агентові: `./df sqlc ask "How do I make a WHERE filter optional with sqlc.narg?"`;
 - докладніше — у [instances/sqlc/README.md](instances/sqlc/README.md).
 
+### pgx
+
+Документація pgx (github.com/jackc/pgx) — драйвера й набору інструментів PostgreSQL для Go: довідник пакетів з
+pkg.go.dev на кожну мінорну версію v5 (5.0–5.11) і v4 (4.0–4.18) — pgx, pgxpool, pgconn, pgtype, pgproto3, stdlib,
+tracelog; README pgx, pgconn і pgproto3 з тегу кожної мінорної 2.0–5.11; журнали змін 4.x і 5.x; код прикладів.
+229 документів, 2658 фрагментів.
+
+- порт `8915`; запис у Claude Code — `pgx-docs`, адреса `http://127.0.0.1:8915/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версії pgx (`versions: true`): фільтр `"5"`, `"4"`, `"5.7"` чи `"5.7.6"`;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: вікі репозиторію, окремі модулі епохи v4 (pgconn, pgtype, pgproto3, puddle), PostgreSQL і sqlc;
+- приклад питання агентові: `./df pgx ask "How do I scan rows into a slice of structs with pgx v5?"`;
+- докладніше — у [instances/pgx/README.md](instances/pgx/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

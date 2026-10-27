@@ -135,7 +135,7 @@ Structs`».
 **Назви документів у рядку «Читати».** Назви в `такому вигляді` — назви документів корпусу, їх можна питати
 дослівно. Стандартна бібліотека — документ на пакет: `package net/http`, `package context`. Матеріал Ardan Labs у
 примірнику `go` має назви з початком «Ardan Labs Ultimate Go (certification prep):» — план пише коротко: `Ultimate
-Go: Slices`. Для бібліотек, у яких ще немає власного примірника (pgx, goose та інші), рядок «Читати» називає
+Go: Slices`. Для бібліотек, у яких ще немає власного примірника (goose, oapi-codegen та інші), рядок «Читати» називає
 розділи їхніх README і сайтів поза фабрикою; що саме бракує — у підрозділі «Документація у фабриці».
 
 **Один наскрізний проєкт.** Не шість навчальних застосунків, а один, який росте через усі фази: бекенд для SPA, яке
@@ -311,7 +311,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 |------------|--------|------------|
 | мова й стандартна бібліотека: `net/http`, `encoding/json`, `context`, `log/slog`, `database/sql`, `testing` | усе, від маршрутів до тестів | усі фази; є примірник `go` |
 | PostgreSQL | база даних | Ф1 Д9–14, Ф3; є примірник `postgresql` |
-| pgx (`github.com/jackc/pgx/v5`) | драйвер PostgreSQL і пул з'єднань `pgxpool` | Ф3 Д1, Д3, Д7, Д10 |
+| pgx (`github.com/jackc/pgx/v5`) | драйвер PostgreSQL і пул з'єднань `pgxpool` | Ф3 Д1, Д3, Д5, Д7, Д10; є примірник `pgx` |
 | sqlc | типізований код Go із запитів SQL | Ф3 Д4, Д6–8; є примірник `sqlc` |
 | goose | міграції SQL і Go | Ф3 Д2, Ф6 Д2, Д8 |
 | oapi-codegen і kin-openapi | сервер і типи з документа OpenAPI; перевірка запиту документом | Ф2 Д2–3, Д7; Ф4 Д4 |
@@ -357,6 +357,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- pgx (довідник pkg.go.dev кожної мінорної v5 5.0–5.11 і v4 4.0–4.18: pgx, pgxpool, pgconn, pgtype, pgproto3, stdlib,
+  tracelog; README кожної мінорної 2.0–5.11; журнали змін 4.x і 5.x; код прикладів) — `pgx`;
 - sqlc (сайт docs.sqlc.dev з тегу кожної мінорної версії 0.1–1.31: підручники, how-to, конфігурація `sqlc.yaml`, анотації
   запитів, макроси, типи даних, посібник «Using Go and pgx»; журнал змін; схеми, запити й конфігурація прикладів) —
   `sqlc`;
@@ -372,7 +374,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
-- pgx і pgxpool; goose; golang-migrate;
+- goose; golang-migrate;
 - oapi-codegen і kin-openapi;
 - `golang.org/x/crypto`, `golang.org/x/sync`, `golang.org/x/time` (пакети поза стандартною бібліотекою);
 - golang-jwt;
@@ -1261,13 +1263,13 @@ database` (примірник `go`) програма на `database/sql` з др
 
 # Фаза 3. Дані: pgx, sqlc, goose — 10 днів
 
-**Сервери MCP фази:** `go-docs`, `postgresql-docs`, `sqlc-docs`, `owasp-docs`, `learning-go-book`.
+**Сервери MCP фази:** `go-docs`, `postgresql-docs`, `pgx-docs`, `sqlc-docs`, `owasp-docs`, `learning-go-book`.
 
 ORM у Go є (GORM, ent), але робочий стандарт останніх років інший: SQL пишуть руками, а типізований код Go до нього
 генерує sqlc. Драйвер — pgx (власний інтерфейс швидший і багатший за `database/sql`), міграції — goose: файли SQL,
 вбудовані в бінарник. Сховище з фази 0 отримує другу реалізацію — PostgreSQL, — а сервіс і тести HTTP не
-змінюються. Документація sqlc — у примірнику `sqlc`; pgx і goose живуть у README, на pkg.go.dev і на сайтах самих
-бібліотек, власних примірників у фабриці в них ще немає (розділ «Документація у фабриці»). Посібники go.dev про бази (`Accessing
+змінюються. Документація pgx і sqlc — у примірниках `pgx` і `sqlc`; goose живе в README, на pkg.go.dev і на своєму
+сайті, власного примірника у фабриці в нього ще немає (розділ «Документація у фабриці»). Посібники go.dev про бази (`Accessing
 relational databases` і розділи поруч) — у примірнику `go`.
 
 ### День 1. Пул з'єднань pgx
@@ -1279,9 +1281,9 @@ relational databases` і розділи поруч) — у примірнику 
   на першому запиті. Кожен запит отримує `ctx` запиту HTTP: клієнт пішов — запит до бази скасовано. `database/sql` з
   драйвером `pgx/stdlib` — сумісний шлях, коли бібліотека вимагає `*sql.DB` (goose у дні 2).
 - **Читати:** у примірнику `go` — `Accessing relational databases`, `Opening a database handle`, `Managing connections`,
-  `Canceling in-progress operations`; README pgx — розділи Getting started, Choosing between the pgx and database/sql
-  interfaces, і документація `pgxpool` на pkg.go.dev (поза фабрикою).
-- **Сервери MCP:** `go-docs`, `postgresql-docs`.
+  `Canceling in-progress operations`; у примірнику `pgx` — README (розділи Getting started, Choosing between the pgx
+  and database/sql interfaces), `package github.com/jackc/pgx/v5/pgxpool` (розділи Overview, `type Config`, `func New`).
+- **Сервери MCP:** `go-docs`, `pgx-docs`, `postgresql-docs`.
 - **Зробити:** 1) PostgreSQL у Docker з фази 1; 2) пул у `main`, `Ping` на старті з таймаутом 5 секунд; 3)
   `DATABASE_URL` у конфігу з перевіркою; 4) `pool.Close()` після `srv.Shutdown`.
 - **Перевірити себе:** запуск із зупиненою базою падає за 5 секунд із зрозумілою помилкою; `SELECT count(*) FROM
@@ -1320,10 +1322,10 @@ relational databases` і розділи поруч) — у примірнику 
   у зріз структур за іменами колонок. `pool.Exec` — без рядків, `CommandTag.RowsAffected()` — скільки змінено.
   Параметри — лише `$1`, `$2`; значення ніколи не вклеюються в текст запиту. `NULL` — у вказівник (`*string`) або
   тип `pgtype.Text`.
-- **Читати:** у примірнику `go` — `Querying for data`, `Executing SQL statements that don't return data`; документація
-  pgx на pkg.go.dev — `CollectRows`, `RowToStructByName`, `ErrNoRows` (поза фабрикою); у примірнику `postgresql` —
-  `Queries`, `Data Manipulation`.
-- **Сервери MCP:** `go-docs`, `postgresql-docs`.
+- **Читати:** у примірнику `go` — `Querying for data`, `Executing SQL statements that don't return data`; у примірнику
+  `pgx` — `package github.com/jackc/pgx/v5` (`func CollectRows`, `func RowToStructByName`, змінна `ErrNoRows`,
+  `func (*Conn) QueryRow`); у примірнику `postgresql` — `Queries`, `Data Manipulation`.
+- **Сервери MCP:** `go-docs`, `pgx-docs`, `postgresql-docs`.
 - **Зробити:** 1) `PGStore` з методами `Get`, `List`, `Create` руками на pgx; 2) `Create` з `RETURNING id,
   created_at`; 3) `Get` неіснуючого `id` — `ErrNotFound`.
 - **Перевірити себе:** маршрути з фази 2 працюють поверх `PGStore`; записи переживають перезапуск сервера; запис без
@@ -1360,9 +1362,10 @@ relational databases` і розділи поруч) — у примірнику 
   `UNIQUE` (код помилки PostgreSQL `23505`, через `errors.As` у `*pgconn.PgError`) — `posts.ErrConflict`, і вимога
   дня 4 фази 2 тепер гарантована базою.
 - **Читати:** у книжці — глава 7, розділи `Accept Interfaces, Return Structs`, `Implicit Interfaces Make Dependency
-  Injection Easier`; у примірнику `postgresql` — `PostgreSQL Error Codes`; Ardan — `cert-service`, розділ про
+  Injection Easier`; у примірнику `postgresql` — `PostgreSQL Error Codes`; у примірнику `pgx` — `package
+  github.com/jackc/pgx/v5/pgconn` (`type PgError`); Ardan — `cert-service`, розділ про
   `business` і `stores` (`business/domain/productbus/stores`).
-- **Сервери MCP:** `learning-go-book`, `postgresql-docs`, `go-docs`.
+- **Сервери MCP:** `learning-go-book`, `postgresql-docs`, `pgx-docs`, `go-docs`.
 - **Зробити:** 1) `internal/postgres` з реалізацією `Store`; 2) переклад `23505` у `ErrConflict`; 3) ті самі тести
   сервісу — на пам'яті; `main` — на PostgreSQL.
 - **Перевірити себе:** дві однакові назви підряд — 409 з `errorCode`, а не 500; пакет `posts` не імпортує ні pgx, ні
@@ -1395,10 +1398,11 @@ relational databases` і розділи поруч) — у примірнику 
   повернула `nil`, і відкочується інакше. Згенеровані `Queries` працюють усередині через `queries.WithTx(tx)`. Межу
   шарів перетинають так: сховище дає метод `InTx(ctx, func(Store) error)` — сервіс отримує транзакційну версію того
   самого інтерфейсу й не знає про pgx. `SELECT … FOR UPDATE` блокує рядок до кінця транзакції.
-- **Читати:** у примірнику `go` — `Executing transactions`; документація pgx — `BeginFunc`, `Tx` (поза фабрикою);
+- **Читати:** у примірнику `go` — `Executing transactions`; у примірнику `pgx` — `package github.com/jackc/pgx/v5`
+  (розділ Overview › Transactions, `func BeginFunc`, `type Tx`);
   у примірнику `sqlc` — `Using transactions`; у примірнику `postgresql` — `Advanced Features`, розділ Transactions;
   `Concurrency Control`, розділ Explicit Locking.
-- **Сервери MCP:** `go-docs`, `sqlc-docs`, `postgresql-docs`.
+- **Сервери MCP:** `go-docs`, `pgx-docs`, `sqlc-docs`, `postgresql-docs`.
 - **Зробити:** 1) таблиця `post_events`; 2) `Publish` у сервісі через `InTx`: змінити статус і записати подію;
   3) свідомо повернути помилку після першої зміни; 4) два одночасні `Publish` того самого запису з `FOR UPDATE`.
 - **Перевірити себе:** після кроку 3 ні статус, ні подія не змінилися; у кроці 4 рівно одна подія `published`, другий
@@ -1447,10 +1451,10 @@ relational databases` і розділи поруч) — у примірнику 
   показує зайняті, вільні й скільки разів чекали (`EmptyAcquireCount`). Більше з'єднань — не завжди швидше: база має
   власну межу паралельності. Таймаут на запит до бази — з контексту (`context.WithTimeout` у сервісі або загальний
   `WriteTimeout` сервера).
-- **Читати:** документація `pgxpool` — `Config` (`MaxConns`, `MinConns`, `MaxConnIdleTime`), `Stat` (поза фабрикою);
-  у примірнику `go` — `Managing connections`; у примірнику `postgresql` — `Server Configuration`, розділ Connection
-  Settings (`max_connections`).
-- **Сервери MCP:** `go-docs`, `postgresql-docs`.
+- **Читати:** у примірнику `pgx` — `package github.com/jackc/pgx/v5/pgxpool` (`type Config`: `MaxConns`, `MinConns`,
+  `MaxConnIdleTime`; `type Stat`); у примірнику `go` — `Managing connections`; у примірнику `postgresql` — `Server
+  Configuration`, розділ Connection Settings (`max_connections`).
+- **Сервери MCP:** `pgx-docs`, `go-docs`, `postgresql-docs`.
 - **Зробити:** 1) маршрут списку під навантаженням `hey -c 100 -z 20s` (поза корпусом) з пулом 4, 10 і 30; 2)
   `pool.Stat()` раз на секунду в лог під час заміру; 3) клієнт, що обриває запит, — переконатися, що запит у базі
   скасовано (`pg_stat_activity`).
@@ -2440,7 +2444,7 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у
-`learning-go`, sqlc — у `sqlc`. **Бібліотек поза стандартною — pgx, goose, golang-migrate, oapi-codegen і kin-openapi,
+`learning-go`, pgx і sqlc — у `pgx` і `sqlc`. **Бібліотек поза стандартною — goose, golang-migrate, oapi-codegen і kin-openapi,
 `golang.org/x/…`, golang-jwt, testcontainers-go, coder/websocket, river, golangci-lint — у фабриці ще немає**: рядок
 «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки,
 де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ
