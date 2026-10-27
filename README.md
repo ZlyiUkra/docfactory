@@ -3533,6 +3533,21 @@ to idiomatic and testable code» (Inanc Gumus; Manning, 2025) з PDF корис�
 - приклад питання агентові: `./df learning-go ask "Why does the book say accept interfaces, return structs?"`;
 - докладніше — у [instances/learning-go/README.md](instances/learning-go/README.md).
 
+### sqlc
+
+Документація sqlc (sqlc-dev/sqlc) — генератора типізованого коду Go із запитів SQL: сайт docs.sqlc.dev з тегу кожної
+мінорної версії 0.1–1.31 (підручники для PostgreSQL, MySQL і SQLite, how-to, довідник конфігурації `sqlc.yaml`,
+анотацій запитів, макросів і типів даних, посібник «Using Go and pgx»), журнал змін і схеми, запити й конфігурація
+прикладів. Сторінки reStructuredText Sphinx читає `ghdocs-history` з полем `sphinx`. 367 документів, 1064 фрагменти.
+
+- порт `8916`; запис у Claude Code — `sqlc-docs`, адреса `http://127.0.0.1:8916/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версії sqlc (`versions: true`): фільтр `"1"`, `"1.27"` чи `"1.27.0"`;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: згенерований код прикладів, плагіни інших мов як проєкти, PostgreSQL, pgx і goose (окремі примірники);
+- приклад питання агентові: `./df sqlc ask "How do I make a WHERE filter optional with sqlc.narg?"`;
+- докладніше — у [instances/sqlc/README.md](instances/sqlc/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

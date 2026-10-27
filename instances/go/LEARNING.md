@@ -135,7 +135,7 @@ Structs`».
 **Назви документів у рядку «Читати».** Назви в `такому вигляді` — назви документів корпусу, їх можна питати
 дослівно. Стандартна бібліотека — документ на пакет: `package net/http`, `package context`. Матеріал Ardan Labs у
 примірнику `go` має назви з початком «Ardan Labs Ultimate Go (certification prep):» — план пише коротко: `Ultimate
-Go: Slices`. Для бібліотек, у яких ще немає власного примірника (pgx, sqlc, goose та інші), рядок «Читати» називає
+Go: Slices`. Для бібліотек, у яких ще немає власного примірника (pgx, goose та інші), рядок «Читати» називає
 розділи їхніх README і сайтів поза фабрикою; що саме бракує — у підрозділі «Документація у фабриці».
 
 **Один наскрізний проєкт.** Не шість навчальних застосунків, а один, який росте через усі фази: бекенд для SPA, яке
@@ -312,7 +312,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | мова й стандартна бібліотека: `net/http`, `encoding/json`, `context`, `log/slog`, `database/sql`, `testing` | усе, від маршрутів до тестів | усі фази; є примірник `go` |
 | PostgreSQL | база даних | Ф1 Д9–14, Ф3; є примірник `postgresql` |
 | pgx (`github.com/jackc/pgx/v5`) | драйвер PostgreSQL і пул з'єднань `pgxpool` | Ф3 Д1, Д3, Д7, Д10 |
-| sqlc | типізований код Go із запитів SQL | Ф3 Д4–6, Д8 |
+| sqlc | типізований код Go із запитів SQL | Ф3 Д4, Д6–8; є примірник `sqlc` |
 | goose | міграції SQL і Go | Ф3 Д2, Ф6 Д2, Д8 |
 | oapi-codegen і kin-openapi | сервер і типи з документа OpenAPI; перевірка запиту документом | Ф2 Д2–3, Д7; Ф4 Д4 |
 | `golang.org/x/crypto` (`argon2`, `bcrypt`) | хешування паролів | Ф4 Д1 |
@@ -357,6 +357,9 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- sqlc (сайт docs.sqlc.dev з тегу кожної мінорної версії 0.1–1.31: підручники, how-to, конфігурація `sqlc.yaml`, анотації
+  запитів, макроси, типи даних, посібник «Using Go and pgx»; журнал змін; схеми, запити й конфігурація прикладів) —
+  `sqlc`;
 - HTTP, куки, CORS, WebSocket API — `mdn`; тексти RFC (HTTP, куки, WebSocket, Problem Details, JWT, OAuth 2.0,
   Argon2, OpenAPI, JSON Schema) — `webstandards`; безпека (шпаргалки OWASP, Top 10, API Security) — `owasp`;
 - Docker і Compose — `docker`; Kubernetes, k3s, Traefik, `kubectl` — `kubernetes`; машина Oracle Cloud —
@@ -369,7 +372,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
-- pgx і pgxpool; sqlc; goose; golang-migrate;
+- pgx і pgxpool; goose; golang-migrate;
 - oapi-codegen і kin-openapi;
 - `golang.org/x/crypto`, `golang.org/x/sync`, `golang.org/x/time` (пакети поза стандартною бібліотекою);
 - golang-jwt;
@@ -1258,13 +1261,13 @@ database` (примірник `go`) програма на `database/sql` з др
 
 # Фаза 3. Дані: pgx, sqlc, goose — 10 днів
 
-**Сервери MCP фази:** `go-docs`, `postgresql-docs`, `owasp-docs`, `learning-go-book`.
+**Сервери MCP фази:** `go-docs`, `postgresql-docs`, `sqlc-docs`, `owasp-docs`, `learning-go-book`.
 
 ORM у Go є (GORM, ent), але робочий стандарт останніх років інший: SQL пишуть руками, а типізований код Go до нього
 генерує sqlc. Драйвер — pgx (власний інтерфейс швидший і багатший за `database/sql`), міграції — goose: файли SQL,
 вбудовані в бінарник. Сховище з фази 0 отримує другу реалізацію — PostgreSQL, — а сервіс і тести HTTP не
-змінюються. Документація pgx, sqlc і goose живе в README, на pkg.go.dev і на сайтах самих бібліотек; власних
-примірників у фабриці в них ще немає (розділ «Документація у фабриці»). Посібники go.dev про бази (`Accessing
+змінюються. Документація sqlc — у примірнику `sqlc`; pgx і goose живуть у README, на pkg.go.dev і на сайтах самих
+бібліотек, власних примірників у фабриці в них ще немає (розділ «Документація у фабриці»). Посібники go.dev про бази (`Accessing
 relational databases` і розділи поруч) — у примірнику `go`.
 
 ### День 1. Пул з'єднань pgx
@@ -1337,9 +1340,10 @@ relational databases` і розділи поруч) — у примірнику 
   GetPost :one` (або `:many`, `:exec`, `:execrows`); `sqlc generate` пише тип `Queries` з методом на кожен запит і
   структури рядків. Іменовані параметри — `sqlc.arg(title)`, необов'язкові — `sqlc.narg(status)`. Помилка в SQL чи
   неіснуюча колонка — помилка генерації, а не продакшну.
-- **Читати:** документація sqlc docs.sqlc.dev — `Getting started with PostgreSQL`, `Configuration`, `Query
-  annotations`, `Using sqlc.arg / sqlc.narg`, `Using goose with sqlc` (поза фабрикою, примірника ще немає).
-- **Сервери MCP:** `postgresql-docs`.
+- **Читати:** у примірнику `sqlc` — `Getting started with PostgreSQL`, `Configuration`, `Query annotations`, `Macros`
+  (`sqlc.arg`, `sqlc.narg`), `Using Go and pgx`, `Modifying the database schema` (розділ Handling SQL migrations —
+  goose).
+- **Сервери MCP:** `sqlc-docs`, `postgresql-docs`.
 - **Зробити:** 1) `sqlc.yaml` і `queries/posts.sql` з запитами сховища; 2) `sqlc generate` у `go generate`; 3)
   `PGStore` на згенерованих `Queries` замість ручного коду дня 3; 4) запит з помилкою в імені колонки.
 - **Перевірити себе:** крок 4 — помилка `sqlc generate` з назвою колонки й рядком файла; ручного `Scan` у проєкті не
@@ -1373,9 +1377,9 @@ relational databases` і розділи поруч) — у примірнику 
   (у sqlc — `sqlc.embed(users)` вкладає структуру автора в рядок результату) або двома запитами: список і всі автори
   разом (`WHERE id = ANY($1)`). Теги до запису — багато-до-багатьох; їх можна зібрати в масив однією агрегацією
   (`array_agg`, `json_agg`).
-- **Читати:** документація sqlc — `Embedding structs` (`sqlc.embed`) (поза фабрикою); у примірнику `postgresql` —
+- **Читати:** у примірнику `sqlc` — `Embedding structs` (`sqlc.embed`), `Macros`; у примірнику `postgresql` —
   `The SQL Language`, розділ Joins Between Tables; `Aggregate Functions` (`array_agg`, `json_agg`).
-- **Сервери MCP:** `postgresql-docs`.
+- **Сервери MCP:** `sqlc-docs`, `postgresql-docs`.
 - **Зробити:** 1) список записів з автором — свідомо N+1 (запит автора в циклі); 2) лічильник SQL-запитів (обгортка
   `pgx.QueryTracer`) — у лог на кожен HTTP-запит; 3) той самий список одним `JOIN` з `sqlc.embed`; 4) теги масивом.
 - **Перевірити себе:** у лозі кроку 1 — 51 запит на сторінку з 50 записів, кроку 3 — один; обидва числа в журналі
@@ -1392,9 +1396,9 @@ relational databases` і розділи поруч) — у примірнику 
   шарів перетинають так: сховище дає метод `InTx(ctx, func(Store) error)` — сервіс отримує транзакційну версію того
   самого інтерфейсу й не знає про pgx. `SELECT … FOR UPDATE` блокує рядок до кінця транзакції.
 - **Читати:** у примірнику `go` — `Executing transactions`; документація pgx — `BeginFunc`, `Tx` (поза фабрикою);
-  документація sqlc — `Using transactions` (поза фабрикою); у примірнику `postgresql` — `Advanced Features`, розділ
-  Transactions; `Concurrency Control`, розділ Explicit Locking.
-- **Сервери MCP:** `go-docs`, `postgresql-docs`.
+  у примірнику `sqlc` — `Using transactions`; у примірнику `postgresql` — `Advanced Features`, розділ Transactions;
+  `Concurrency Control`, розділ Explicit Locking.
+- **Сервери MCP:** `go-docs`, `sqlc-docs`, `postgresql-docs`.
 - **Зробити:** 1) таблиця `post_events`; 2) `Publish` у сервісі через `InTx`: змінити статус і записати подію;
   3) свідомо повернути помилку після першої зміни; 4) два одночасні `Publish` того самого запису з `FOR UPDATE`.
 - **Перевірити себе:** після кроку 3 ні статус, ні подія не змінилися; у кроці 4 рівно одна подія `published`, другий
@@ -1411,8 +1415,8 @@ relational databases` і розділи поруч) — у примірнику 
   фільтр у sqlc — `WHERE (sqlc.narg(status)::text IS NULL OR status = sqlc.narg(status))`. Розбір рядка сортування
   ви вже перевірили фазингом у фазі 0, дні 19.
 - **Читати:** у примірнику `go` — `Avoiding SQL injection risk`; у примірнику `owasp` — `SQL Injection Prevention Cheat
-  Sheet`, `Query Parameterization Cheat Sheet`; документація sqlc — `Using sqlc.arg / sqlc.narg` (поза фабрикою).
-- **Сервери MCP:** `go-docs`, `owasp-docs`.
+  Sheet`, `Query Parameterization Cheat Sheet`; у примірнику `sqlc` — `Macros` (`sqlc.narg`), `Naming parameters`.
+- **Сервери MCP:** `go-docs`, `owasp-docs`, `sqlc-docs`.
 - **Зробити:** 1) в окремій гілці — сортування через `fmt.Sprintf` і рядок `?sort=title;DROP TABLE posts--` на копії
   бази; 2) правильно: білий список полів і напрямів; 3) фільтр за статусом і автором через `sqlc.narg`.
 - **Перевірити себе:** у кроці 1 ви бачите, як текст запиту змінився; у кроці 2 той самий рядок дає 400 з
@@ -2436,7 +2440,7 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у
-`learning-go`. **Бібліотек поза стандартною — pgx, sqlc, goose, golang-migrate, oapi-codegen і kin-openapi,
+`learning-go`, sqlc — у `sqlc`. **Бібліотек поза стандартною — pgx, goose, golang-migrate, oapi-codegen і kin-openapi,
 `golang.org/x/…`, golang-jwt, testcontainers-go, coder/websocket, river, golangci-lint — у фабриці ще немає**: рядок
 «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки,
 де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ

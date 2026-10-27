@@ -16,7 +16,7 @@ node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs, nvidia
 openapi-typescript, openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload,
 platformatic-kafka, playwright, postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq, react,
 react-email, react-hook-form, react-native, react-router, react-window, redis, redux, resend, rxjs, sanity,
-sealed-secrets, sentry, shadcn, socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind,
+sealed-secrets, sentry, shadcn, socketio, sqlc, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind,
 tanstack-query, tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, trpc, turborepo,
 typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev, webstandards,
 ws, zod, zustand.
@@ -70,7 +70,7 @@ ws, zod, zustand.
 | 0. Мова Go за книжкою «Learning Go» | `learning-go` (1–20) |
 | 1. HTTP і SQL без фреймворку | `learning-go` (1–5, 8), `mdn` (1, 3, 6–7), `webstandards` (1, 3, 6–7), `owasp` (6), `vite` (7), `postgresql` (9–14) |
 | 2. Робочий API: контракт OpenAPI | `webstandards` (1, 3), `jsonschema` (1), `learning-go` (4), `orval` і `openapi-typescript` (5), `tanstack-query` (5), `react-hook-form` і `zod` (6) |
-| 3. Дані: pgx, sqlc, goose | `postgresql` (1–7, 9–10), `learning-go` (5), `owasp` (8) |
+| 3. Дані: pgx, sqlc, goose | `postgresql` (1–7, 9–10), `sqlc` (4, 6–8), `learning-go` (5), `owasp` (8) |
 | 4. Автентифікація й авторизація | `webstandards` (1–7, 9, 11), `owasp` (1, 5, 7, 9–12), `postgresql` (6), `react-router` (8) |
 | 5. Якість: тести, гонитви, профілювання | `learning-go` (1–3, 5), `docker` (3) |
 | 6. Продакшн | `docker` (1–3, 7), `learning-go` (1), `nginx` (2, 5), `kubernetes` (3, 8–9), `redis` (4, 8), `postgresql` (6, 8–9), `github-actions` (7), `oracle-cloud` (8) |
@@ -145,7 +145,7 @@ ws, zod, zustand.
 
 ### Go
 
-1. oapi-codegen і kin-openapi (4), pgx (4), sqlc (4).
+1. oapi-codegen і kin-openapi (4), pgx (4).
 2. coder/websocket (3), `golang.org/x` — crypto, sync, time (3).
 3. golang-jwt (2), goose (2), golangci-lint (2).
 4. golang-migrate (1), testcontainers-go (1), river (1).

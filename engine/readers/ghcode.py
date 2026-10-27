@@ -33,7 +33,7 @@ _MAX_FILE = 40_000
 _LANG = {".cc": "cpp", ".h": "cpp", ".cpp": "cpp", ".c": "c", ".js": "js", ".mjs": "js",
          ".ts": "ts", ".tq": "torque", ".rs": "rust", ".py": "python", ".pyi": "python", ".toml": "toml",
          ".patch": "diff", ".sh": "sh", ".json": "json", ".md": "", ".kt": "kotlin",
-         ".swift": "swift", ".hh": "cpp", ".go": "go"}
+         ".swift": "swift", ".hh": "cpp", ".go": "go", ".sql": "sql", ".yaml": "yaml", ".yml": "yaml"}
 _NAMED = {"Makefile": "make", "BUILD.gn": "gn"}
 
 
