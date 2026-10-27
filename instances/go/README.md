@@ -142,9 +142,9 @@ Go 1.27.3, якщо користувач не назвав старішу, і в
 кешу фрагментів (`index/passages.json`) і колекції Qdrant. Відповіді ті самі до символа, бо кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/go-corpus-2026-10-27-cert.tar.gz` (3901 текст, паспорт і сховище сирого
+**Де тексти.** В архіві `~/archives/docfactory/go-corpus-2026-10-27-titles.tar.gz` (3901 текст, паспорт і сховище сирого
 `raw/`; перед видаленням текстів архів розпаковано окремо й звірено з диском) і в копії на Windows
-`C:\Distr\go-corpus-2026-10-27-cert.tar.gz` (звірено за SHA-256). В історії git текстів немає ніде.
+`C:\Distr\go-corpus-2026-10-27-titles.tar.gz` (звірено за SHA-256). В історії git текстів немає ніде.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
@@ -162,7 +162,7 @@ gzip -9 -c instances/go/index/passages.json > instances/go/index/passages.json.g
 **Як повернути тексти** — перед будь-яким оновленням корпусу; разом із текстами повертається сховище сирого:
 
 ```
-tar -xzf ~/archives/docfactory/go-corpus-2026-10-27-cert.tar.gz -C instances/go
+tar -xzf ~/archives/docfactory/go-corpus-2026-10-27-titles.tar.gz -C instances/go
 ./df go smoke
 ```
 
