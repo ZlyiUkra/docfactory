@@ -83,7 +83,7 @@ from common.corpus import (DOC_SET, Passage, corpus_archived, section_map,
                            used_cache, version_key, version_line, version_within)
 from common.idmap import assign_ids
 from common import mode
-from common.lexical import LexicalIndex, tokenize
+from common.lexical import CYRILLIC_WORDS, LexicalIndex, has_latin, tokenize
 
 # Тека даних цього примірника: corpus/ уже прочитано через common, тут потрібні
 # out/ для журналу викликів і config.json для порту HTTP-сервера. Її каже
@@ -657,7 +657,9 @@ def _find_ranked(query: str, k: int, keep) -> tuple[list[Passage], str]:
     fuse = profile.FUSION_DEPTH or k
     deep = max(k * DEPTH, fuse)
     words = _ranked(_INDEX.retrieve(query, deep, keep), fuse, deep, query)
-    if not _VECTORS_READY:
+    # Кириличний запит примірника з cyrillic_words іде лише по словах: модель векторів
+    # англійська, і для такого запиту найближчі сусіди знайшлися б навмання.
+    if not _VECTORS_READY or (CYRILLIC_WORDS and not has_latin(query)):
         return words[:k], "words"
     try:
         from common import embed, vectorstore

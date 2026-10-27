@@ -26,12 +26,18 @@
 регістрі. Специфікація англійська, стемінга немає — «objects» і «object»
 лишаються різними словами. Це не недогляд: саме такий пошук стоїть за
 замовчуванням у більшості проєктів, і саме з ним порівнюють вектори.
+
+Поле `cyrillic_words: true` у config.json примірника додає до слів кирилицю. Довідник
+Claude Code російською (примірник claude-code) інакше лишався б невидимим для пошуку:
+латинський вираз відкидав кожне його слово, а англійська модель векторів кирилиці не
+розуміє. Без поля слова ті самі, що й до його появи.
 """
 
 import math
 import re
 from collections import Counter
 
+from . import instance
 from .corpus import PASSAGE_CONTEXT, Passage, context_text, load_passages
 
 # BM25, класичні значення з літератури: k1 — наскільки швидко насичується
@@ -40,10 +46,18 @@ K1 = 1.5
 B = 0.75
 
 _TOKEN = re.compile(r"[a-z0-9_]+")
+# а–я, ѐ–џ (ё, і, ї, є та інші) і ґ — російська й українська абетки.
+_TOKEN_CYRILLIC = re.compile(r"[a-z0-9_а-џґ]+")
+CYRILLIC_WORDS = instance.config().get("cyrillic_words") is True
 
 
 def tokenize(text: str) -> list[str]:
-    return _TOKEN.findall(text.lower())
+    return (_TOKEN_CYRILLIC if CYRILLIC_WORDS else _TOKEN).findall(text.lower())
+
+
+def has_latin(text: str) -> bool:
+    """Чи є в тексті хоч одне латинське слово — те, що бачить англійська модель векторів."""
+    return _TOKEN.search(text.lower()) is not None
 
 
 class LexicalIndex:

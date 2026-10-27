@@ -585,12 +585,20 @@ def main(argv: list[str]) -> int:
     # «погано шукає», це порожній вхід. Опис пошуку каже про це моделі прямо,
     # і саме тому перевіряється тут: якщо розділи колись заміняться іншими, разом
     # із перевіркою доведеться правити й опис.
-    from common.lexical import tokenize
+    from common.lexical import CYRILLIC_WORDS, tokenize
 
     search_doc = profile.text("search")
     ua = C["ua_query"]
-    check("кирилиця дає нуль токенів", tokenize(ua) == [])
-    check("суто український запит повертає found=0", search(ua).get("found") == 0)
+    if CYRILLIC_WORDS:
+        # Примірник із cyrillic_words тримає й кириличні тексти: тут кирилиця — слова,
+        # а суто кириличний запит шукається лише по словах, без векторів.
+        check("кирилиця дає токени (cyrillic_words)", tokenize(ua) != [])
+        r = search(ua)
+        check("суто кириличний запит іде лише по словах",
+              "error" not in r and r.get("search") == "words", str(r.get("search")))
+    else:
+        check("кирилиця дає нуль токенів", tokenize(ua) == [])
+        check("суто український запит повертає found=0", search(ua).get("found") == 0)
     mixed = C["mixed_query"]
     check("український запит із латинським ідентифікатором працює",
           search(mixed).get("found", 0) > 0, str(tokenize(mixed)))
