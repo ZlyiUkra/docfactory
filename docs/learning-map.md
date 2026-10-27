@@ -8,7 +8,7 @@
 astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot, class-transformer,
 class-validator, clerk, coder-websocket, confluent-kafka-javascript, contentful, csharp, csrf-csrf, doc-tools, docker,
 dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express, express-rate-limit, fastify,
-ffmpeg, flux, foundry, frontend-architecture, github-actions, go, golang-jwt, golang-migrate, golang-x,
+ffmpeg, flux, foundry, frontend-architecture, github-actions, go, golang-jwt, golang-migrate, golang-x, golangci-lint,
 golevelup-nestjs-rabbitmq, goose, grafana, gvisor, helmet, htdp, i18next, icu, ioredis, iron-session, jose,
 jsonschema, kafka, kafkajs, kraken-spot, kubernetes, learning-go, libreoffice, libuv, lightweight-charts, linux,
 llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion, msw, nats, nats-js, nestjs, nestjs-cls, nestjs-pino,
@@ -67,13 +67,13 @@ uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev
 
 | Фаза | Примірники (дні) |
 |------|------------------|
-| 0. Мова Go за книжкою «Learning Go» | `learning-go` (1–20), `golang-x` (15) |
+| 0. Мова Go за книжкою «Learning Go» | `learning-go` (1–20), `golangci-lint` (13), `golang-x` (15) |
 | 1. HTTP і SQL без фреймворку | `learning-go` (1–5, 8), `mdn` (1, 3, 6–7), `webstandards` (1, 3, 6–7), `owasp` (6), `vite` (7), `postgresql` (9–14) |
 | 2. Робочий API: контракт OpenAPI | `oapi-codegen` (2–3, 7), `webstandards` (1, 3), `jsonschema` (1), `learning-go` (4), `orval` і `openapi-typescript` (5), `tanstack-query` (5), `react-hook-form` і `zod` (6) |
 | 3. Дані: pgx, sqlc, goose | `postgresql` (1–7, 9–10), `pgx` (1, 3, 5, 7, 10), `sqlc` (4, 6–8), `goose` і `golang-migrate` (2), `learning-go` (5), `owasp` (8) |
 | 4. Автентифікація й авторизація | `golang-x` (1, 11), `golang-jwt` (2–3), `oapi-codegen` (4), `webstandards` (1–7, 9, 11), `owasp` (1, 5, 7, 9–12), `postgresql` (6), `react-router` (8) |
-| 5. Якість: тести, гонитви, профілювання | `testcontainers-go` (3–4), `learning-go` (1–3, 5), `docker` (3) |
-| 6. Продакшн | `docker` (1–3, 7), `learning-go` (1), `nginx` (2, 5), `kubernetes` (3, 8–9), `redis` (4, 8), `postgresql` (6, 8–9), `river` (6), `github-actions` (7), `oracle-cloud` (8) |
+| 5. Якість: тести, гонитви, профілювання | `testcontainers-go` (3–4), `golangci-lint` (5), `learning-go` (1–3, 5), `docker` (3) |
+| 6. Продакшн | `docker` (1–3, 7), `learning-go` (1), `nginx` (2, 5), `kubernetes` (3, 8–9), `redis` (4, 8), `postgresql` (6, 8–9), `river` (6), `github-actions` (7), `oracle-cloud` (8), `golangci-lint` (7) |
 | 7. Живі дані: WebSocket | `coder-websocket` (1–4, 7), `webstandards` (1, 3), `mdn` (1, 6), `binance-spot` (1, 4), `kraken-spot` (4), `learning-go` (2), `owasp` (3, 8), `redis` (5), `kubernetes` (5, 8), `nginx` (5), `vite` (6) |
 | С. Лінія сертифікації Ardan Labs | `learning-go` (С4) |
 
@@ -145,7 +145,7 @@ uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev
 
 ### Go
 
-1. golangci-lint (2).
+Прогалин не лишилося: кожна бібліотека, яку називає план, має свій примірник.
 
 ### Next.js
 

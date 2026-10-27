@@ -3683,6 +3683,21 @@ river, rivermigrate, rivertest і riverlog за останні двадцять 
 - приклад питання агентові: `./df testcontainers-go ask "How do I reset a Postgres container between tests?"`;
 - докладніше — у [instances/testcontainers-go/README.md](instances/testcontainers-go/README.md).
 
+### golangci-lint
+
+Документація golangci-lint (golangci/golangci-lint) — швидкого запускача лінтерів і форматерів Go: сайт
+golangci-lint.run з тегу кожної мінорної 2.0–2.15 (встановлення локально й у CI, `.golangci.yml` версії 2, CLI,
+лінтери й форматери, хибні спрацювання, плагіни, інтеграції, перехід з v1, FAQ; вставки Hugo розгорнуто), дані сайту
+(перелік лінтерів і форматерів) і журнали змін v2 і v1. 156 документів, 387 фрагментів.
+
+- порт `8925`; запис у Claude Code — `golangci-lint-docs`, адреса `http://127.0.0.1:8925/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версії (`versions: true`): фільтр `"2"`, `"1"`, `"2.15"` чи точна версія; дані сайту — без версії;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: еталонний `.golangci.reference.yml` (більший за межу читача коду), документація самих лінтерів, сайт v1;
+- приклад питання агентові: `./df golangci-lint ask "How do I exclude generated files and report only new issues?"`;
+- докладніше — у [instances/golangci-lint/README.md](instances/golangci-lint/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

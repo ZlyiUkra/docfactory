@@ -135,8 +135,9 @@ Structs`».
 **Назви документів у рядку «Читати».** Назви в `такому вигляді` — назви документів корпусу, їх можна питати
 дослівно. Стандартна бібліотека — документ на пакет: `package net/http`, `package context`. Матеріал Ardan Labs у
 примірнику `go` має назви з початком «Ardan Labs Ultimate Go (certification prep):» — план пише коротко: `Ultimate
-Go: Slices`. Для бібліотеки, у якої ще немає власного примірника (golangci-lint), рядок «Читати» називає
-розділи їхніх README і сайтів поза фабрикою; що саме бракує — у підрозділі «Документація у фабриці».
+Go: Slices`. Бібліотеки поза стандартною мають власні примірники (`pgx`, `sqlc`, `goose`, `oapi-codegen` та інші —
+підрозділ «Документація у фабриці»), і рядок «Читати» так само називає їхні документи: `package
+github.com/jackc/pgx/v5/pgxpool`, сторінка сайту, розділ README.
 
 **Один наскрізний проєкт.** Не шість навчальних застосунків, а один, який росте через усі фази: бекенд для SPA, яке
 ви зробили в плані React. Фронт уже знайомий, тож уся нова складність — бекендова й мовна. SPA лишається клієнтом
@@ -328,7 +329,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | river (`github.com/riverqueue/river`) | черга задач у PostgreSQL з повторами; вставка в тій самій транзакції | Ф6 Д6; є примірник `river` |
 | go-redis (`github.com/redis/go-redis/v9`) | кеш, обмеження частоти на кількох екземплярах, pub/sub для вебсокетів | Ф6 Д4, Ф7 Д5; сторінки клієнта Go є в примірнику `redis` |
 | `golang.org/x/sync/errgroup`, `golang.org/x/time/rate` | група горутин зі спільною помилкою; обмеження частоти | Ф0 Д15, Ф4 Д11; є примірник `golang-x` |
-| golangci-lint | набір лінтерів одним бінарником, у CI | Ф0 Д13, Ф5 Д5, Ф6 Д7 |
+| golangci-lint | набір лінтерів одним бінарником, у CI | Ф0 Д13, Ф5 Д5, Ф6 Д7; є примірник `golangci-lint` |
 | golang-migrate | друга поширена бібліотека міграцій — у чужих проєктах | Ф3 Д2, згадкою; є примірник `golang-migrate` |
 | OpenTelemetry для Go | траси й метрики | не вчиться; сторінки Go є в примірнику `opentelemetry` |
 
@@ -357,6 +358,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- golangci-lint (сайт golangci-lint.run кожної мінорної 2.0–2.15, перелік лінтерів і форматерів, журнали змін v2 і
+  v1) — `golangci-lint`;
 - testcontainers-go (сайт golang.testcontainers.org кожної мінорної 0.0–0.44 з модулями postgres, redis, compose;
   довідник pkg.go.dev ядра й модуля postgres; релізи) — `testcontainers-go`;
 - River (сайт riverqueue.com/docs разом із River Pro; README і docs/ кожної мінорної 0.0–0.50; журнал змін; довідник
@@ -389,15 +392,13 @@ Go дає в стандартній бібліотеці те, що в Node бе
   orval — `orval`, openapi-typescript — `openapi-typescript`, JSON Schema — `jsonschema`;
 - біржі: API споту Binance — `binance-spot`, запасна Kraken — `kraken-spot`.
 
-**Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
-
-- golangci-lint.
+**Примірника ще немає** — такого не лишилося: усе, що план називає, має свій примірник.
 
 ---
 
 # Фаза 0. Мова Go за книжкою «Learning Go» — 20 днів
 
-**Сервери MCP фази:** `learning-go-book`, `go-docs`, `golang-x-docs` (день 15).
+**Сервери MCP фази:** `learning-go-book`, `go-docs`, `golang-x-docs` (день 15), `golangci-lint-docs` (день 13).
 
 Книжка по главах, від першої до шістнадцятої. Кожен день: глава з кодом у редакторі, вправи її розділу `Exercises`,
 потім вправа дня. Вправи дня будують перший шматок проєкту — пакет `posts` без жодного HTTP: типи запису, правила,
@@ -691,8 +692,9 @@ Go дає в стандартній бібліотеці те, що в Node бе
   `go version -m бінарник` показує, з чого його зібрано.
 - **Читати:** у книжці — `Chapter 11. Go Tooling`; у примірнику `go` — `Go 1.24 Release Notes` (розділ Go command:
   tool dependencies), `Tutorial: Find and fix vulnerable dependencies with govulncheck`, `package embed`, `Command
-  Documentation`; сайт golangci-lint — сторінки Install і Configuration (поза фабрикою, примірника ще немає).
-- **Сервери MCP:** `learning-go-book`, `go-docs`.
+  Documentation`; у примірнику `golangci-lint` — `Quick Start`, сторінка встановлення (`Local Installation`, `CI
+  Installation`), `Configuration File`.
+- **Сервери MCP:** `learning-go-book`, `go-docs`, `golangci-lint-docs`.
 - **Зробити:** 1) вправи глави 11; 2) golangci-lint закріпленої версії (версія — змінною в `Makefile`) і
   `.golangci.yml` з лінтерами `errcheck`, `govet`, `staticcheck`, `ineffassign`; 3) `govulncheck` як `tool` у
   `go.mod` і `go tool govulncheck ./...`; 4) зібрати бінарник під `linux/arm64` з ноутбука
@@ -1745,7 +1747,7 @@ refresh, перебором, — і він не віддає й не зміню�
 
 # Фаза 5. Якість: тести, гонитви, профілювання — 7 днів
 
-**Сервери MCP фази:** `go-docs`, `learning-go-book`, `testcontainers-go-docs`, `docker-docs`.
+**Сервери MCP фази:** `go-docs`, `learning-go-book`, `testcontainers-go-docs`, `golangci-lint-docs`, `docker-docs`.
 
 Тести Go ви пишете з фази 0. Тут — те, що відрізняє тести продакшн-сервісу: справжня база в контейнері, сценарії
 безпеки як тести, детектор гонитви на всьому, час без очікування, лінтери і профілювання. testcontainers-go має
@@ -1830,9 +1832,9 @@ refresh, перебором, — і він не віддає й не зміню�
   сталися під час прогону, тож тести мають навантажувати паралельно. Фаз-тести для всього, що розбирає чужий
   рядок: курсор пагінації, сортування, заголовок `Authorization`. golangci-lint строгіше: `gosec`, `bodyclose`,
   `noctx`, `contextcheck`, `errorlint`.
-- **Читати:** у примірнику `go` — `Data Race Detector`, `Go Fuzzing`; сайт golangci-lint — список лінтерів (поза
-  фабрикою); у книжці — глава 15, розділи `Fuzzing`, `Data Race Detector`.
-- **Сервери MCP:** `go-docs`, `learning-go-book`.
+- **Читати:** у примірнику `go` — `Data Race Detector`, `Go Fuzzing`; у примірнику `golangci-lint` — дані сайту з переліком лінтерів (`linters_info.json`) і сторінка
+  `False Positives` (розділи nolint directive, Exclusions); у книжці — глава 15, розділи `Fuzzing`, `Data Race Detector`.
+- **Сервери MCP:** `go-docs`, `learning-go-book`, `golangci-lint-docs`.
 - **Зробити:** 1) тест обмежувача частоти зі ста горутинами; 2) фаз-тести курсора й заголовка; 3) нові лінтери й
   виправлення всього, що вони знайшли (або обґрунтований `//nolint` з причиною).
 - **Перевірити себе:** `-race` мовчить на всьому наборі; фазинг курсора хвилину без падінь (або падіння знайдено й
@@ -1893,7 +1895,7 @@ refresh, перебором, — і він не віддає й не зміню�
 # Фаза 6. Продакшн — 9 днів
 
 **Сервери MCP фази:** `go-docs`, `learning-go-book`, `docker-docs`, `kubernetes-docs`, `oracle-cloud-docs`,
-`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `redis-docs`, `river-docs`.
+`postgresql-docs`, `github-actions-docs`, `nginx-docs`, `redis-docs`, `river-docs`, `golangci-lint-docs`.
 
 Сервер, який треба зібрати, запустити, тримати живим, міряти й уміти оновити. Тут Go відплачує за все: образ — один
 статичний бінарник на кілька мегабайтів, без середовища виконання й без нативних модулів, а збірка під arm64 — це
@@ -2024,8 +2026,9 @@ refresh, перебором, — і він не віддає й не зміню�
   Dependabot для модулів Go і дій. Хост із фази 2 запускає образ, міграції — окремим кроком перед ним.
 - **Читати:** у примірнику `github-actions` — `Building and testing Go`, `Publishing Docker images`, `Working with the
   Container registry`, `Keeping your actions up to date with Dependabot`; у примірнику `docker` — `Multi-platform
-  image with GitHub Actions`, `Cache management with GitHub Actions`; у примірнику `go` — `Go Vulnerability Management`.
-- **Сервери MCP:** `github-actions-docs`, `docker-docs`, `go-docs`.
+  image with GitHub Actions`, `Cache management with GitHub Actions`; у примірнику `go` — `Go Vulnerability Management`; у примірнику `golangci-lint` — сторінка `CI Installation`
+  (розділ GitHub Actions).
+- **Сервери MCP:** `github-actions-docs`, `docker-docs`, `go-docs`, `golangci-lint-docs`.
 - **Зробити:** 1) робочий процес на кожен pull request; 2) свідомо зламати тест безпеки з фази 5 — процес червоний;
   3) злиття в `main` збирає образ для двох архітектур і викочує його на хост; 4) `dependabot.yml` з `gomod`.
 - **Перевірити себе:** зелений значок у README; збірка образу триває кілька хвилин разом із тестами; викочений
@@ -2473,12 +2476,12 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 # Застереження про документацію
 
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
-Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у `learning-go`,
-pgx, sqlc, goose, golang-migrate, oapi-codegen (з kin-openapi) — у примірниках з тими самими іменами, golang.org/x — у
-`golang-x`. **Лише golangci-lint власного примірника у фабриці ще не має**: рядок «Читати» називає розділи їхніх
-README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки, де бібліотеку згадано. Коли
-примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ «Документація у фабриці» — нові
-рядки.
+Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у `learning-go`.
+Бібліотеки поза стандартною мають кожна свій примірник: `pgx`, `sqlc`, `goose`, `golang-migrate`, `oapi-codegen`
+(разом із kin-openapi, runtime і nethttp-middleware), `golang-x` (x/crypto argon2 і bcrypt, x/sync, x/time/rate),
+`golang-jwt`, `testcontainers-go`, `coder-websocket`, `river`, `golangci-lint`. Сервер `go-docs` про них не знає й
+поверне лише уривки, де бібліотеку згадано, — питати треба сервер її примірника, як і зазначає рядок «Сервери MCP»
+кожного дня.
 
 **Версії.** Сервер `go-docs` каже версію кожного уривка стандартної бібліотеки й специфікації. Функція, якої немає у
 вашій версії Go, у новішому уривку виглядає так само впевнено, — дивіться на позначку «added in go1.N» і на рядок `go`
