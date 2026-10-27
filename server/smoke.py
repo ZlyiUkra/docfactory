@@ -800,7 +800,10 @@ def main(argv: list[str]) -> int:
     check("відповідь пошуку каже, яким способом знайдено",
           search(plain, 1).get("search") in {"words", "meaning+words"},
           str(search(plain, 1).get("search")))
-    empty = search(ua, 1)          # кирилиця — єдиний надійно порожній запит
+    from common.lexical import CYRILLIC_WORDS
+    # Кирилиця — єдиний надійно порожній запит; з cyrillic_words вона вже слова, і
+    # порожнім лишається запит без жодної літери.
+    empty = search("— … —" if CYRILLIC_WORDS else ua, 1)
     check("порожня відповідь теж каже спосіб",
           empty.get("found") == 0 and "search" in empty)
     check(f"опис {S_NAME} пояснює моделі поле search",
