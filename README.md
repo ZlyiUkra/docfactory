@@ -3495,6 +3495,41 @@ Krishnamurthi; MIT Press, 2018 — за онлайн-виданням автор
   should look like?"`;
 - докладніше — у [instances/htdp/README.md](instances/htdp/README.md).
 
+### go
+
+Документація мови Go: стандартна бібліотека з pkg.go.dev у кожній мінорній 1.0–1.27 (по документу на пакет, однаковий
+текст кількох версій — один документ із переліком версій) і команди інструментарію 1.4–1.27 (`go`, `gofmt`, `vet`,
+`cgo`, `pprof`…); специфікація, модель пам'яті, go1compat, посібник асемблера й GODEBUG з `doc/` golang/go на 28
+тегах; сайт go.dev з golang/website — Effective Go, FAQ, підручники, довідник модулів, нотатки випусків, блог з 2009
+року, A Tour of Go, доповіді команди Go; вікі, проєктні документи пропозицій, gopls; поруч — Go by Example, Learn Go
+with Tests, настанови зі стилю Google і Uber, запитання до співбесіди rixtrayker/golang-interview. Новий читач
+`ghdocs-history-godev` розгортає шаблони go.dev і формат present, а `pkgsite` дістав поле `versions`. 3220 документів,
+35 899 фрагментів.
+
+- порт `8913`; запис у Claude Code — `go-docs`, адреса `http://127.0.0.1:8913/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версії Go (`versions: true`): фільтр `"1.22"` чи `"1.22.12"` лишає бібліотеку, команди, `doc/` і нотатки випусків;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: пакети `golang.org/x/…`, сторонні бібліотеки, вихідний код Go, книжки (вони в `learning-go`);
+- приклад питання агентові: `./df go ask "Since which Go release is a loop variable created per iteration?"`;
+- докладніше — у [instances/go/README.md](instances/go/README.md).
+
+### learning-go
+
+Книжки для навчання Go: «Learning Go, 2nd Edition» (Jon Bodner; O'Reilly, 2024) і «Go by Example: Programmer's guide
+to idiomatic and testable code» (Inanc Gumus; Manning, 2025) з PDF користувача, кожна глава й вправа — окремий
+розділ; код першої книжки з 28 репозиторіїв learning-go-book-2e; «100 Go Mistakes and How to Avoid Them» (100go.co) і
+«Go 101» (go101.org). Новий читач `pdf-book`: заголовки за кеглем і шрифтом, код за моноширинним шрифтом із відступами,
+примітки на полях — після блоку коду. 549 документів, 3656 фрагментів.
+
+- порт `8914`; запис у Claude Code — `learning-go-book`, адреса `http://127.0.0.1:8914/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версій немає (`versions: false`);
+- корпус і індекс поза git (права на книжки не дозволяють публікувати текст), корпус — в архіві;
+- не входять: офіційна документація Go (вона в примірнику `go`), картинки книжок;
+- приклад питання агентові: `./df learning-go ask "Why does the book say accept interfaces, return structs?"`;
+- докладніше — у [instances/learning-go/README.md](instances/learning-go/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
