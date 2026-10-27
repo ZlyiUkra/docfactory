@@ -135,7 +135,7 @@ Structs`».
 **Назви документів у рядку «Читати».** Назви в `такому вигляді` — назви документів корпусу, їх можна питати
 дослівно. Стандартна бібліотека — документ на пакет: `package net/http`, `package context`. Матеріал Ardan Labs у
 примірнику `go` має назви з початком «Ardan Labs Ultimate Go (certification prep):» — план пише коротко: `Ultimate
-Go: Slices`. Для бібліотек, у яких ще немає власного примірника (goose, oapi-codegen та інші), рядок «Читати» називає
+Go: Slices`. Для бібліотек, у яких ще немає власного примірника (oapi-codegen, golang-jwt та інші), рядок «Читати» називає
 розділи їхніх README і сайтів поза фабрикою; що саме бракує — у підрозділі «Документація у фабриці».
 
 **Один наскрізний проєкт.** Не шість навчальних застосунків, а один, який росте через усі фази: бекенд для SPA, яке
@@ -313,7 +313,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | PostgreSQL | база даних | Ф1 Д9–14, Ф3; є примірник `postgresql` |
 | pgx (`github.com/jackc/pgx/v5`) | драйвер PostgreSQL і пул з'єднань `pgxpool` | Ф3 Д1, Д3, Д5, Д7, Д10; є примірник `pgx` |
 | sqlc | типізований код Go із запитів SQL | Ф3 Д4, Д6–8; є примірник `sqlc` |
-| goose | міграції SQL і Go | Ф3 Д2, Ф6 Д2, Д8 |
+| goose | міграції SQL і Go | Ф3 Д2, Ф6 Д2, Д8; є примірник `goose` |
 | oapi-codegen і kin-openapi | сервер і типи з документа OpenAPI; перевірка запиту документом | Ф2 Д2–3, Д7; Ф4 Д4 |
 | `golang.org/x/crypto` (`argon2`, `bcrypt`) | хешування паролів | Ф4 Д1 |
 | golang-jwt (`github.com/golang-jwt/jwt/v5`) | підпис і перевірка access-токена | Ф4 Д2–3 |
@@ -357,6 +357,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- goose (сайт pressly.github.io/goose з блогом; README й приклади кожної мінорної 2.0–3.29; довідник pkg.go.dev
+  3.0–3.29; журнал змін) — `goose`;
 - pgx (довідник pkg.go.dev кожної мінорної v5 5.0–5.11 і v4 4.0–4.18: pgx, pgxpool, pgconn, pgtype, pgproto3, stdlib,
   tracelog; README кожної мінорної 2.0–5.11; журнали змін 4.x і 5.x; код прикладів) — `pgx`;
 - sqlc (сайт docs.sqlc.dev з тегу кожної мінорної версії 0.1–1.31: підручники, how-to, конфігурація `sqlc.yaml`, анотації
@@ -374,7 +376,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
-- goose; golang-migrate;
+- golang-migrate;
 - oapi-codegen і kin-openapi;
 - `golang.org/x/crypto`, `golang.org/x/sync`, `golang.org/x/time` (пакети поза стандартною бібліотекою);
 - golang-jwt;
@@ -1263,14 +1265,13 @@ database` (примірник `go`) програма на `database/sql` з др
 
 # Фаза 3. Дані: pgx, sqlc, goose — 10 днів
 
-**Сервери MCP фази:** `go-docs`, `postgresql-docs`, `pgx-docs`, `sqlc-docs`, `owasp-docs`, `learning-go-book`.
+**Сервери MCP фази:** `go-docs`, `postgresql-docs`, `pgx-docs`, `sqlc-docs`, `goose-docs`, `owasp-docs`, `learning-go-book`.
 
 ORM у Go є (GORM, ent), але робочий стандарт останніх років інший: SQL пишуть руками, а типізований код Go до нього
 генерує sqlc. Драйвер — pgx (власний інтерфейс швидший і багатший за `database/sql`), міграції — goose: файли SQL,
 вбудовані в бінарник. Сховище з фази 0 отримує другу реалізацію — PostgreSQL, — а сервіс і тести HTTP не
-змінюються. Документація pgx і sqlc — у примірниках `pgx` і `sqlc`; goose живе в README, на pkg.go.dev і на своєму
-сайті, власного примірника у фабриці в нього ще немає (розділ «Документація у фабриці»). Посібники go.dev про бази (`Accessing
-relational databases` і розділи поруч) — у примірнику `go`.
+змінюються. Документація pgx, sqlc і goose — у примірниках `pgx`, `sqlc` і `goose`. Посібники go.dev про бази
+(`Accessing relational databases` і розділи поруч) — у примірнику `go`.
 
 ### День 1. Пул з'єднань pgx
 
@@ -1302,10 +1303,10 @@ relational databases` і розділи поруч) — у примірнику 
   (`//go:embed migrations/*.sql`), і той самий образ уміє `api migrate up` — окремою командою, а не на старті сервера:
   два екземпляри почали б накочувати одночасно. golang-migrate — друга поширена бібліотека: пара файлів
   `N_name.up.sql`/`N_name.down.sql` і позначка `dirty` після невдалої міграції; її ви зустрінете в чужих проєктах.
-- **Читати:** README goose — розділи Usage, Migrations (SQL Migrations, Embedded sql migrations) і сайт
-  pressly.github.io/goose (поза фабрикою); README golang-migrate і `MIGRATIONS.md` — для порівняння (поза фабрикою);
-  у примірнику `postgresql` — `Data Definition`.
-- **Сервери MCP:** `postgresql-docs`.
+- **Читати:** у примірнику `goose` — README (розділи Usage, Migrations: SQL Migrations, Embedded sql migrations),
+  `SQL file annotations`, `CLI commands`, `Provider`; README golang-migrate і `MIGRATIONS.md` — для порівняння (поза
+  фабрикою); у примірнику `postgresql` — `Data Definition`.
+- **Сервери MCP:** `goose-docs`, `postgresql-docs`.
 - **Зробити:** 1) міграції `users` і `posts` зі схеми фази 1, блок B; 2) підкоманда `api migrate up|down|status` на
   вбудованих файлах; 3) друга міграція — колонка `published_at`; 4) `goose down` і `goose up` знову.
 - **Перевірити себе:** `api migrate status` показує обидві міграції застосованими; `down` прибирає колонку, `up`
@@ -2444,7 +2445,7 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у
-`learning-go`, pgx і sqlc — у `pgx` і `sqlc`. **Бібліотек поза стандартною — goose, golang-migrate, oapi-codegen і kin-openapi,
+`learning-go`, pgx, sqlc і goose — у `pgx`, `sqlc` і `goose`. **Бібліотек поза стандартною — golang-migrate, oapi-codegen і kin-openapi,
 `golang.org/x/…`, golang-jwt, testcontainers-go, coder/websocket, river, golangci-lint — у фабриці ще немає**: рядок
 «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки,
 де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ

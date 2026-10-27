@@ -3563,6 +3563,21 @@ tracelog; README pgx, pgconn і pgproto3 з тегу кожної мінорно
 - приклад питання агентові: `./df pgx ask "How do I scan rows into a slice of structs with pgx v5?"`;
 - докладніше — у [instances/pgx/README.md](instances/pgx/README.md).
 
+### goose
+
+Документація goose (pressly/goose) — інструмента й бібліотеки міграцій бази для Go: сайт pressly.github.io/goose з
+гілки gh-pages (анотації SQL, команди CLI, `Provider`, власне сховище версій, змінні оточення) і блог авторів; README
+й приклади з тегу кожної мінорної 2.0–3.29; довідник pkg.go.dev 3.0–3.29; журнал змін; код прикладів. Сайт MkDocs
+читає `ghdocs-history-html` із полями `start` і `end`. 119 документів, 551 фрагмент.
+
+- порт `8917`; запис у Claude Code — `goose-docs`, адреса `http://127.0.0.1:8917/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версії goose (`versions: true`): фільтр `"3"`, `"3.24"` чи точна версія; сайт і блог — без версії;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: SQL і бази даних, sqlc, pgx і golang-migrate (окремі примірники);
+- приклад питання агентові: `./df goose ask "How do I embed SQL migrations in the binary with goose?"`;
+- докладніше — у [instances/goose/README.md](instances/goose/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
