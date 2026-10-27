@@ -3593,6 +3593,23 @@ pgx/v5, джерела file і iofs). 232 документи, 604 фрагмен
 - приклад питання агентові: `./df golang-migrate ask "How do I fix a dirty database version?"`;
 - докладніше — у [instances/golang-migrate/README.md](instances/golang-migrate/README.md).
 
+### oapi-codegen
+
+Документація oapi-codegen (github.com/oapi-codegen/oapi-codegen) — генератора коду Go з документів OpenAPI 3 — разом із
+бібліотеками, на яких стоїть згенерований код: README, `docs/` і README прикладів з тегу кожної мінорної 1.0–2.8,
+релізи, код прикладів без згенерованих файлів; `github.com/oapi-codegen/runtime` і `nethttp-middleware` на pkg.go.dev;
+kin-openapi — README з тегу кожної мінорної 0.1–0.152 і довідник openapi3, openapi3filter, routers за останні
+дванадцять випусків. 473 документи, 2452 фрагменти.
+
+- порт `8919`; запис у Claude Code — `oapi-codegen-docs`, адреса `http://127.0.0.1:8919/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версії (`versions: true`): кожна бібліотека має свою нумерацію (oapi-codegen 2.x, kin-openapi 0.x);
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: внутрішні пакети генератора, довідник kin-openapi раніше 0.141, специфікація OpenAPI, генератори
+  клієнтів TypeScript (окремі примірники);
+- приклад питання агентові: `./df oapi-codegen ask "How do I generate a strict net/http server and validate requests?"`;
+- докладніше — у [instances/oapi-codegen/README.md](instances/oapi-codegen/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

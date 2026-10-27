@@ -135,7 +135,7 @@ Structs`».
 **Назви документів у рядку «Читати».** Назви в `такому вигляді` — назви документів корпусу, їх можна питати
 дослівно. Стандартна бібліотека — документ на пакет: `package net/http`, `package context`. Матеріал Ardan Labs у
 примірнику `go` має назви з початком «Ardan Labs Ultimate Go (certification prep):» — план пише коротко: `Ultimate
-Go: Slices`. Для бібліотек, у яких ще немає власного примірника (oapi-codegen, golang-jwt та інші), рядок «Читати» називає
+Go: Slices`. Для бібліотек, у яких ще немає власного примірника (golang-jwt, river та інші), рядок «Читати» називає
 розділи їхніх README і сайтів поза фабрикою; що саме бракує — у підрозділі «Документація у фабриці».
 
 **Один наскрізний проєкт.** Не шість навчальних застосунків, а один, який росте через усі фази: бекенд для SPA, яке
@@ -314,7 +314,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | pgx (`github.com/jackc/pgx/v5`) | драйвер PostgreSQL і пул з'єднань `pgxpool` | Ф3 Д1, Д3, Д5, Д7, Д10; є примірник `pgx` |
 | sqlc | типізований код Go із запитів SQL | Ф3 Д4, Д6–8; є примірник `sqlc` |
 | goose | міграції SQL і Go | Ф3 Д2, Ф6 Д2, Д8; є примірник `goose` |
-| oapi-codegen і kin-openapi | сервер і типи з документа OpenAPI; перевірка запиту документом | Ф2 Д2–3, Д7; Ф4 Д4 |
+| oapi-codegen і kin-openapi | сервер і типи з документа OpenAPI; перевірка запиту документом | Ф2 Д2–3, Д7; Ф4 Д4; є примірник `oapi-codegen` |
 | `golang.org/x/crypto` (`argon2`, `bcrypt`) | хешування паролів | Ф4 Д1 |
 | golang-jwt (`github.com/golang-jwt/jwt/v5`) | підпис і перевірка access-токена | Ф4 Д2–3 |
 | testcontainers-go | справжній PostgreSQL у тестах | Ф5 Д3–4 |
@@ -357,6 +357,9 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- oapi-codegen (README, docs і README прикладів кожної мінорної 1.0–2.8, релізи, код прикладів), runtime і
+  nethttp-middleware (pkg.go.dev), kin-openapi (README кожної мінорної, pkg.go.dev openapi3, openapi3filter, routers за
+  останні випуски) — `oapi-codegen`;
 - golang-migrate (README, GETTING_STARTED, MIGRATIONS, FAQ, CLI і README кожного драйвера бази й джерела міграцій
   кожної мінорної 1.2–4.20; нотатки релізів; довідник pkg.go.dev 4.0–4.20) — `golang-migrate`;
 - goose (сайт pressly.github.io/goose з блогом; README й приклади кожної мінорної 2.0–3.29; довідник pkg.go.dev
@@ -378,7 +381,6 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
-- oapi-codegen і kin-openapi;
 - `golang.org/x/crypto`, `golang.org/x/sync`, `golang.org/x/time` (пакети поза стандартною бібліотекою);
 - golang-jwt;
 - testcontainers-go;
@@ -1096,8 +1098,8 @@ database` (примірник `go`) програма на `database/sql` з др
 
 # Фаза 2. Робочий API: контракт OpenAPI — 8 днів
 
-**Сервери MCP фази:** `go-docs`, `learning-go-book`, `webstandards-docs`, `jsonschema-docs`, `orval-docs`,
-`openapi-typescript-docs`, `tanstack-query-docs`, `react-hook-form-docs`, `zod-docs`.
+**Сервери MCP фази:** `go-docs`, `learning-go-book`, `oapi-codegen-docs`, `webstandards-docs`, `jsonschema-docs`,
+`orval-docs`, `openapi-typescript-docs`, `tanstack-query-docs`, `react-hook-form-docs`, `zod-docs`.
 
 У плані NestJS контракт народжується з коду: схема zod на маршруті, і з неї — документ OpenAPI. У Go шлях
 зворотний і простіший для пояснення: **спершу документ**. Ви пишете `openapi.yaml`, з нього oapi-codegen генерує
@@ -1137,11 +1139,11 @@ database` (примірник `go`) програма на `database/sql` з др
   `GetPost404JSONResponse`) — неописаний статус просто не скомпілюється. Генератор ставиться директивою `tool` у
   `go.mod` (`go get -tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen`) і запускається з `//go:generate
   go tool oapi-codegen -config cfg.yaml ../../api/openapi.yaml`. Згенерований файл не правлять — перегенеровують.
-- **Читати:** README oapi-codegen — розділи Usage, Generating server-side boilerplate (`std-http-server`), Strict
-  server, Configuration file (поза фабрикою, примірника ще немає); у примірнику `go` — `package net/http` (`type
-  ServeMux`), `Go 1.24 Release Notes` (розділ Go command: tool dependencies), `cmd/go` (розділ Generate Go files by
-  processing source).
-- **Сервери MCP:** `go-docs`.
+- **Читати:** у примірнику `oapi-codegen` — README (розділи Install › For Go 1.24+, Using oapi-codegen, Generating
+  server-side boilerplate › Go 1.22+ net/http і Strict server), `docs/configuration.md`, `docs/stdhttp-server.md`; у
+  примірнику `go` — `package net/http` (`type ServeMux`), `Go 1.24 Release Notes` (розділ Go command: tool
+  dependencies), `cmd/go` (розділ Generate Go files by processing source).
+- **Сервери MCP:** `oapi-codegen-docs`, `go-docs`.
 - **Зробити:** 1) `cfg.yaml` з `models`, `std-http-server`, `strict-server`, `embedded-spec`; 2) `go generate ./...`;
   3) тип `Server`, що реалізує строгий інтерфейс поверх `posts.Service`; 4) реєстрація під префіксом `/api`
   (`HandlerWithOptions` з `BaseURL: "/api"`), `/health` лишається поза ним; 5) тести фази 1 проходять без змін.
@@ -1159,9 +1161,12 @@ database` (примірник `go`) програма на `database/sql` з др
   опцією `MultiError` — усі одразу. Власний `ErrorHandler` перетворює їх на формат родини: `{ statusCode: 400,
   errorCode: "VALIDATION", fieldErrors: { "title": ["…"] } }`. Поле `servers` документа перед перевіркою обнуляють —
   інакше маршрутизатор kin-openapi шукає шлях із чужим хостом.
-- **Читати:** README `nethttp-middleware` і kin-openapi — розділ `openapi3filter` (поза фабрикою, примірника ще
-  немає); у примірнику `webstandards` — `RFC 9457 Problem Details for HTTP APIs: 3 The Problem Details JSON Object`.
-- **Сервери MCP:** `webstandards-docs`.
+- **Читати:** у примірнику `oapi-codegen` — README генератора (розділ Request/response validation middleware),
+  `package github.com/oapi-codegen/nethttp-middleware` (`OapiRequestValidatorWithOptions`, `Options`,
+  `MultiErrorHandler`), README kin-openapi (розділ Validating HTTP requests/responses) і `package
+  github.com/getkin/kin-openapi/openapi3filter`; у примірнику `webstandards` — `RFC 9457 Problem Details for HTTP APIs:
+  3 The Problem Details JSON Object`.
+- **Сервери MCP:** `oapi-codegen-docs`, `webstandards-docs`.
 - **Зробити:** 1) валідатор перед строгим сервером з `MultiError`; 2) `ErrorHandler` у форматі родини з
   `fieldErrors` за шляхом поля; 3) `curl` із порожньою назвою, з `"title": 5`, із зайвим полем `authorId` і з
   `id=abc`.
@@ -1232,9 +1237,10 @@ database` (примірник `go`) програма на `database/sql` з др
 - **Що це.** Строгий сервер уже не дає повернути неописаний статус. Форму тіла перевіряє тест: `openapi3filter.
   ValidateResponse` для кожної відповіді тестового сервера. Документ віддається клієнтам за адресою
   `/api/openapi.json` (з вбудованої специфікації), а сторінка з переглядачем документа — лише в розробці.
-- **Читати:** README kin-openapi — розділ про перевірку відповідей (`ValidateResponse`) (поза фабрикою); у примірнику
-  `go` — `package net/http/httptest`; у примірнику `go` — `package embed`.
-- **Сервери MCP:** `go-docs`.
+- **Читати:** у примірнику `oapi-codegen` — `package github.com/getkin/kin-openapi/openapi3filter` (`func
+  ValidateResponse`), README генератора (розділ Using oapi-codegen — ключ `embedded-spec`); у примірнику `go` —
+  `package net/http/httptest`, `package embed`.
+- **Сервери MCP:** `oapi-codegen-docs`, `go-docs`.
 - **Зробити:** 1) обгортка тестового клієнта, що перевіряє кожну відповідь документом; 2) прогнати всі тести
   маршрутів через неї; 3) `/api/openapi.json` у будь-якому режимі, переглядач — під змінною `ENABLE_DOCS`.
 - **Перевірити себе:** зайве поле у структурі відповіді (`Internal string`) робить тест червоним з назвою поля;
@@ -1475,7 +1481,8 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
 
 # Фаза 4. Автентифікація й авторизація — 12 днів
 
-**Сервери MCP фази:** `go-docs`, `webstandards-docs`, `owasp-docs`, `postgresql-docs`, `react-router-docs`.
+**Сервери MCP фази:** `go-docs`, `oapi-codegen-docs`, `webstandards-docs`, `owasp-docs`, `postgresql-docs`,
+`react-router-docs`.
 
 Модель токенів та сама, що в усій родині (її описує й план NestJS, фаза 4), — тут вона реалізується на Go:
 
@@ -1562,9 +1569,10 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
   операції з вимогою — і перевірку входу вирішує документ, а не пам'ять розробника. Публічних рівно чотири:
   реєстрація, вхід, оновлення токена й `/health`.
 - **Читати:** у примірнику `webstandards` — `OpenAPI Specification 3.1.1: 4 Specification` (розділи Security Scheme
-  Object і Security Requirement Object); README kin-openapi — `openapi3filter.Options.AuthenticationFunc` (поза
-  фабрикою).
-- **Сервери MCP:** `webstandards-docs`.
+  Object і Security Requirement Object); у примірнику `oapi-codegen` — `package
+  github.com/getkin/kin-openapi/openapi3filter` (`type AuthenticationFunc`, `type Options`), README генератора (розділ
+  Implementing security › On the server).
+- **Сервери MCP:** `oapi-codegen-docs`, `webstandards-docs`.
 - **Зробити:** 1) глобальна вимога в документі; 2) `AuthenticationFunc` викликає перевірку з дня 3; 3) новий маршрут
   у документі без жодної позначки.
 - **Перевірити себе:** новий маршрут без токена — 401, хоча ви нічого на нього не вішали; чотири публічні — 200;
@@ -2447,13 +2455,12 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 # Застереження про документацію
 
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
-Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у
-`learning-go`, pgx, sqlc, goose і golang-migrate — у примірниках з тими самими іменами. **Решти бібліотек поза
-стандартною — oapi-codegen і kin-openapi, `golang.org/x/…`, golang-jwt, testcontainers-go, coder/websocket, river,
-golangci-lint — у фабриці ще немає**: рядок
-«Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки,
-де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ
-«Документація у фабриці» — нові рядки.
+Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у `learning-go`,
+pgx, sqlc, goose, golang-migrate і oapi-codegen (з kin-openapi) — у примірниках з тими самими іменами. **Решти
+бібліотек поза стандартною — `golang.org/x/…`, golang-jwt, testcontainers-go, coder/websocket, river, golangci-lint —
+у фабриці ще немає**: рядок «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно —
+він поверне лише уривки, де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках
+«Сервери MCP», а розділ «Документація у фабриці» — нові рядки.
 
 **Версії.** Сервер `go-docs` каже версію кожного уривка стандартної бібліотеки й специфікації. Функція, якої немає у
 вашій версії Go, у новішому уривку виглядає так само впевнено, — дивіться на позначку «added in go1.N» і на рядок `go`
