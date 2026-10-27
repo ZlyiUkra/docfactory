@@ -1832,8 +1832,9 @@ refresh, перебором, — і він не віддає й не зміню�
   сталися під час прогону, тож тести мають навантажувати паралельно. Фаз-тести для всього, що розбирає чужий
   рядок: курсор пагінації, сортування, заголовок `Authorization`. golangci-lint строгіше: `gosec`, `bodyclose`,
   `noctx`, `contextcheck`, `errorlint`.
-- **Читати:** у примірнику `go` — `Data Race Detector`, `Go Fuzzing`; у примірнику `golangci-lint` — дані сайту з переліком лінтерів (`linters_info.json`) і сторінка
-  `False Positives` (розділи nolint directive, Exclusions); у книжці — глава 15, розділи `Fuzzing`, `Data Race Detector`.
+- **Читати:** у примірнику `go` — `Data Race Detector`, `Go Fuzzing`; у примірнику `golangci-lint` — дані сайту з
+  переліком лінтерів (`linters_info.json`) і сторінка `False Positives` (розділи nolint directive, Exclusions); у
+  книжці — глава 15, розділи `Fuzzing`, `Data Race Detector`.
 - **Сервери MCP:** `go-docs`, `learning-go-book`, `golangci-lint-docs`.
 - **Зробити:** 1) тест обмежувача частоти зі ста горутинами; 2) фаз-тести курсора й заголовка; 3) нові лінтери й
   виправлення всього, що вони знайшли (або обґрунтований `//nolint` з причиною).
@@ -2026,8 +2027,8 @@ refresh, перебором, — і він не віддає й не зміню�
   Dependabot для модулів Go і дій. Хост із фази 2 запускає образ, міграції — окремим кроком перед ним.
 - **Читати:** у примірнику `github-actions` — `Building and testing Go`, `Publishing Docker images`, `Working with the
   Container registry`, `Keeping your actions up to date with Dependabot`; у примірнику `docker` — `Multi-platform
-  image with GitHub Actions`, `Cache management with GitHub Actions`; у примірнику `go` — `Go Vulnerability Management`; у примірнику `golangci-lint` — сторінка `CI Installation`
-  (розділ GitHub Actions).
+  image with GitHub Actions`, `Cache management with GitHub Actions`; у примірнику `go` — `Go Vulnerability
+  Management`; у примірнику `golangci-lint` — сторінка `CI Installation` (розділ GitHub Actions).
 - **Сервери MCP:** `github-actions-docs`, `docker-docs`, `go-docs`, `golangci-lint-docs`.
 - **Зробити:** 1) робочий процес на кожен pull request; 2) свідомо зламати тест безпеки з фази 5 — процес червоний;
   3) злиття в `main` збирає образ для двох архітектур і викочує його на хост; 4) `dependabot.yml` з `gomod`.
@@ -2160,9 +2161,10 @@ API з `context.Context` і `net/http` (примірник `coder-websocket`). �
   застосунку (4001 «token expired»), і клієнт перепідключається зі свіжим токеном. Права: список монет — записи з
   власником, як у фазі 4.
 - **Читати:** у примірнику `coder-websocket` — `package github.com/coder/websocket` (`type AcceptOptions`:
-  `OriginPatterns`, `InsecureSkipVerify`; `type StatusCode`); у примірнику `owasp` — `WebSocket Security Cheat Sheet`; у примірнику `webstandards` — `RFC 6455 The WebSocket
-  Protocol: 10 Security Considerations` (розділ 10.2 Origin Considerations), `RFC 6455 The WebSocket Protocol: 7
-  Closing the Connection` (розділ 7.4.2 Reserved Status Code Ranges).
+  `OriginPatterns`, `InsecureSkipVerify`; `type StatusCode`); у примірнику `owasp` — `WebSocket Security Cheat Sheet`;
+  у примірнику `webstandards` — `RFC 6455 The WebSocket Protocol: 10 Security Considerations` (розділ 10.2 Origin
+  Considerations), `RFC 6455 The WebSocket Protocol: 7 Closing the Connection` (розділ 7.4.2 Reserved Status Code
+  Ranges).
 - **Сервери MCP:** `coder-websocket-docs`, `owasp-docs`, `webstandards-docs`.
 - **Зробити:** 1) `OriginPatterns` з конфігу; 2) перше повідомлення — вхід, інакше 1008 за 5 секунд; 3) таблиця
   `watchlist` (користувач, пара) і підписка лише на пари зі свого списку; 4) закриття 4001 на кінці терміну
