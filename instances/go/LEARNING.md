@@ -315,7 +315,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | sqlc | типізований код Go із запитів SQL | Ф3 Д4, Д6–8; є примірник `sqlc` |
 | goose | міграції SQL і Go | Ф3 Д2, Ф6 Д2, Д8; є примірник `goose` |
 | oapi-codegen і kin-openapi | сервер і типи з документа OpenAPI; перевірка запиту документом | Ф2 Д2–3, Д7; Ф4 Д4; є примірник `oapi-codegen` |
-| `golang.org/x/crypto` (`argon2`, `bcrypt`) | хешування паролів | Ф4 Д1 |
+| `golang.org/x/crypto` (`argon2`, `bcrypt`) | хешування паролів | Ф4 Д1; є примірник `golang-x` |
 | golang-jwt (`github.com/golang-jwt/jwt/v5`) | підпис і перевірка access-токена | Ф4 Д2–3 |
 | testcontainers-go | справжній PostgreSQL у тестах | Ф5 Д3–4 |
 | coder/websocket (`github.com/coder/websocket`) | сервер і клієнт WebSocket з контекстом | Ф7 Д1–7 |
@@ -327,7 +327,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 |------------|--------|------------|
 | river (`github.com/riverqueue/river`) | черга задач у PostgreSQL з повторами; вставка в тій самій транзакції | Ф6 Д6 |
 | go-redis (`github.com/redis/go-redis/v9`) | кеш, обмеження частоти на кількох екземплярах, pub/sub для вебсокетів | Ф6 Д4, Ф7 Д5; сторінки клієнта Go є в примірнику `redis` |
-| `golang.org/x/sync/errgroup`, `golang.org/x/time/rate` | група горутин зі спільною помилкою; обмеження частоти | Ф0 Д15, Ф4 Д11 |
+| `golang.org/x/sync/errgroup`, `golang.org/x/time/rate` | група горутин зі спільною помилкою; обмеження частоти | Ф0 Д15, Ф4 Д11; є примірник `golang-x` |
 | golangci-lint | набір лінтерів одним бінарником, у CI | Ф0 Д13, Ф5 Д5, Ф6 Д7 |
 | golang-migrate | друга поширена бібліотека міграцій — у чужих проєктах | Ф3 Д2, згадкою; є примірник `golang-migrate` |
 | OpenTelemetry для Go | траси й метрики | не вчиться; сторінки Go є в примірнику `opentelemetry` |
@@ -357,6 +357,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- golang.org/x: `crypto/argon2`, `crypto/bcrypt`, `sync` (errgroup, semaphore, singleflight), `time/rate` — довідник
+  pkg.go.dev кожної мінорної — `golang-x`;
 - oapi-codegen (README, docs і README прикладів кожної мінорної 1.0–2.8, релізи, код прикладів), runtime і
   nethttp-middleware (pkg.go.dev), kin-openapi (README кожної мінорної, pkg.go.dev openapi3, openapi3filter, routers за
   останні випуски) — `oapi-codegen`;
@@ -381,7 +383,6 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
-- `golang.org/x/crypto`, `golang.org/x/sync`, `golang.org/x/time` (пакети поза стандартною бібліотекою);
 - golang-jwt;
 - testcontainers-go;
 - coder/websocket;
@@ -392,7 +393,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 # Фаза 0. Мова Go за книжкою «Learning Go» — 20 днів
 
-**Сервери MCP фази:** `learning-go-book`, `go-docs`.
+**Сервери MCP фази:** `learning-go-book`, `go-docs`, `golang-x-docs` (день 15).
 
 Книжка по главах, від першої до шістнадцятої. Кожен день: глава з кодом у редакторі, вправи її розділу `Exercises`,
 потім вправа дня. Вправи дня будують перший шматок проєкту — пакет `posts` без жодного HTTP: типи запису, правила,
@@ -734,9 +735,10 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - **Читати:** у книжці — глава 12, розділи `Concurrency Practices and Patterns`, `When to Use Mutexes Instead of
   Channels`, `Atomics—You Probably Don’t Need These`; у примірнику `go` — `The Go Memory Model`, `Data Race Detector`,
   блог `Go Concurrency Patterns: Pipelines and cancellation`, вікі `Use a sync.Mutex or a channel?`, `package sync`,
-  `Go 1.25 Release Notes` (розділ `sync`); README `golang.org/x/sync/errgroup` на pkg.go.dev (примірника ще немає);
-  у другій книжці — `Chapter 6 Synchronous APIs`, розділ `6.6 Concurrent pipeline pattern`.
-- **Сервери MCP:** `learning-go-book`, `go-docs`.
+  `Go 1.25 Release Notes` (розділ `sync`); у примірнику `golang-x` — `package golang.org/x/sync/errgroup` (`type
+  Group`, `WithContext`, `SetLimit`); у другій книжці — `Chapter 6 Synchronous APIs`, розділ `6.6 Concurrent pipeline
+  pattern`.
+- **Сервери MCP:** `learning-go-book`, `go-docs`, `golang-x-docs`.
 - **Зробити:** 1) вправи глави 12 до кінця; 2) сховище з дня 9 під навантаженням ста горутин з `go test -race` —
   побачити гонитву; 3) полагодити `sync.RWMutex`; 4) пул із п'яти працівників, що обробляє сто задач через `errgroup` з
   `SetLimit(5)`.
@@ -1481,8 +1483,8 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
 
 # Фаза 4. Автентифікація й авторизація — 12 днів
 
-**Сервери MCP фази:** `go-docs`, `oapi-codegen-docs`, `webstandards-docs`, `owasp-docs`, `postgresql-docs`,
-`react-router-docs`.
+**Сервери MCP фази:** `go-docs`, `golang-x-docs`, `oapi-codegen-docs`, `webstandards-docs`, `owasp-docs`,
+`postgresql-docs`, `react-router-docs`.
 
 Модель токенів та сама, що в усій родині (її описує й план NestJS, фаза 4), — тут вона реалізується на Go:
 
@@ -1494,7 +1496,8 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
   повторне використання вже використаного refresh відкликає всю «сім'ю» токенів цього входу;
 - `localStorage` — ні: будь-який XSS на сторінці прочитає його за один рядок.
 
-Бібліотеки фази: `golang.org/x/crypto` (`argon2`, `bcrypt`) і golang-jwt — власних примірників у фабриці ще немає;
+Бібліотеки фази: `golang.org/x/crypto` (`argon2`, `bcrypt`) і `x/time/rate` — у примірнику `golang-x`; golang-jwt
+власного примірника у фабриці ще не має;
 стандарти JWT, Argon2 і OAuth — у `webstandards`, шпаргалки — в `owasp`.
 
 ## Блок A. Паролі й вхід — дні 1–4
@@ -1508,11 +1511,12 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
   хеш`), бо пакет дає лише функцію, а не формат. Порівняння — `subtle.ConstantTimeCompare`. bcrypt
   (`golang.org/x/crypto/bcrypt`) — простіший API (`GenerateFromPassword`, `CompareHashAndPassword`), але пароль
   довший за 72 байти він не приймає. Хеш не повинен виходити за межі сервісу: тип відповіді API без цього поля.
-- **Читати:** документація `golang.org/x/crypto/argon2` і `bcrypt` на pkg.go.dev (поза фабрикою, примірника ще немає);
-  у примірнику `webstandards` — `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work
+- **Читати:** у примірнику `golang-x` — `package golang.org/x/crypto/argon2` (розділ Argon2id, `func IDKey`) і `package
+  golang.org/x/crypto/bcrypt` (`GenerateFromPassword`, `CompareHashAndPassword`, `ErrPasswordTooLong`); у примірнику
+  `webstandards` — `RFC 9106 Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work
   Applications: 4 Parameter Choice`; у примірнику `owasp` — `Password Storage Cheat Sheet` (розділ Password Hashing
   Algorithms: параметри Argon2id і bcrypt); у примірнику `go` — `package crypto/subtle`, `package crypto/rand`.
-- **Сервери MCP:** `webstandards-docs`, `owasp-docs`, `go-docs`.
+- **Сервери MCP:** `golang-x-docs`, `webstandards-docs`, `owasp-docs`, `go-docs`.
 - **Зробити:** 1) міграція `users` з `UNIQUE` на email (у нижньому регістрі); 2) пакет `internal/auth/password` з
   `Hash` і `Verify` у форматі PHC; 3) `POST /api/auth/register` у документі OpenAPI (email, пароль від 12 символів);
   4) повторна реєстрація — 409.
@@ -1702,11 +1706,12 @@ ORM у Go є (GORM, ent), але робочий стандарт останні�
   екземпляра; з двома (фаза 6) лічильник переїжджає в Redis. Заголовки безпеки для API — middleware на кілька рядків:
   `X-Content-Type-Options: nosniff`, `Strict-Transport-Security` на продакшні, `Content-Security-Policy: default-src
   'none'`, `Referrer-Policy: no-referrer`.
-- **Читати:** документація `golang.org/x/time/rate` на pkg.go.dev (поза фабрикою); у примірнику `webstandards` — `RFC
+- **Читати:** у примірнику `golang-x` — `package golang.org/x/time/rate` (`type Limiter`, `NewLimiter`, `Allow`); у
+  примірнику `webstandards` — `RFC
   6585 Additional HTTP Status Codes: 4 429 Too Many Requests`, `RFC 6797 HTTP Strict Transport Security (HSTS): 6
   Syntax`; у примірнику `owasp` — `HTTP Security Response Headers Cheat Sheet`, `Authentication Cheat Sheet` (розділ
   про захист від перебору); вікі `Rate Limiting` і Go by Example — `Rate Limiting` у примірнику `go`.
-- **Сервери MCP:** `webstandards-docs`, `owasp-docs`, `go-docs`.
+- **Сервери MCP:** `golang-x-docs`, `webstandards-docs`, `owasp-docs`, `go-docs`.
 - **Зробити:** 1) обмежувач на вхід, реєстрацію й `/api/auth/refresh` — 10 на хвилину з IP; 2) довіра до
   `X-Forwarded-For` лише від адрес зі змінної; 3) middleware заголовків безпеки.
 - **Перевірити себе:** одинадцятий вхід за хвилину — 429 з `Retry-After`; `curl -H 'X-Forwarded-For: 1.2.3.4'`
@@ -2456,10 +2461,10 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у `learning-go`,
-pgx, sqlc, goose, golang-migrate і oapi-codegen (з kin-openapi) — у примірниках з тими самими іменами. **Решти
-бібліотек поза стандартною — `golang.org/x/…`, golang-jwt, testcontainers-go, coder/websocket, river, golangci-lint —
-у фабриці ще немає**: рядок «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно —
-він поверне лише уривки, де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках
+pgx, sqlc, goose, golang-migrate, oapi-codegen (з kin-openapi) — у примірниках з тими самими іменами, golang.org/x — у
+`golang-x`. **Решти бібліотек поза стандартною — golang-jwt, testcontainers-go, coder/websocket, river, golangci-lint
+— у фабриці ще немає**: рядок «Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно
+— він поверне лише уривки, де бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках
 «Сервери MCP», а розділ «Документація у фабриці» — нові рядки.
 
 **Версії.** Сервер `go-docs` каже версію кожного уривка стандартної бібліотеки й специфікації. Функція, якої немає у

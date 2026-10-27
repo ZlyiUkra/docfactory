@@ -3610,6 +3610,21 @@ kin-openapi — README з тегу кожної мінорної 0.1–0.152 і 
 - приклад питання агентові: `./df oapi-codegen ask "How do I generate a strict net/http server and validate requests?"`;
 - докладніше — у [instances/oapi-codegen/README.md](instances/oapi-codegen/README.md).
 
+### golang-x
+
+Документація трьох модулів golang.org/x — пакетів проєкту Go поза стандартною бібліотекою — з pkg.go.dev у кожній
+мінорній версії: `golang.org/x/crypto` (лише `argon2` і `bcrypt`, 0.1–0.58), `golang.org/x/sync` (`errgroup`,
+`semaphore`, `singleflight`, `syncmap`, 0.1–0.24), `golang.org/x/time` (`rate`, 0.1–0.16). 27 документів, 120
+фрагментів.
+
+- порт `8920`; запис у Claude Code — `golang-x-docs`, адреса `http://127.0.0.1:8920/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версії (`versions: true`): у кожного модуля своя нумерація 0.x;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: решта пакетів x/crypto і решта модулів golang.org/x, стандартна бібліотека (примірник `go`);
+- приклад питання агентові: `./df golang-x ask "How do I limit an errgroup to five goroutines?"`;
+- докладніше — у [instances/golang-x/README.md](instances/golang-x/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
