@@ -3668,6 +3668,21 @@ river, rivermigrate, rivertest і riverlog за останні двадцять 
 - приклад питання агентові: `./df river ask "How do I insert a job in the same transaction as my data?"`;
 - докладніше — у [instances/river/README.md](instances/river/README.md).
 
+### testcontainers-go
+
+Документація testcontainers-go (github.com/testcontainers/testcontainers-go) — бібліотеки Go, що запускає з тестів
+тимчасові контейнери Docker: сайт golang.testcontainers.org з тегу кожної мінорної 0.0–0.44 (швидкий старт,
+контейнери, очікування, мережі, compose, Ryuk, конфігурація, CI; модулі postgres, redis і compose), довідник pkg.go.dev
+ядра, `wait`, `network` і модуля postgres, релізи. 451 документ, 1914 фрагментів.
+
+- порт `8923`; запис у Claude Code — `testcontainers-go-docs`, адреса `http://127.0.0.1:8923/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версії (`versions: true`): фільтр `"0.44"` чи точна версія;
+- корпус — в архіві, у git паспорт і кеш фрагментів;
+- не входять: решта сімдесяти модулів, testcontainers інших мов, Docker і PostgreSQL (окремі примірники);
+- приклад питання агентові: `./df testcontainers-go ask "How do I reset a Postgres container between tests?"`;
+- докладніше — у [instances/testcontainers-go/README.md](instances/testcontainers-go/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

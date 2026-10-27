@@ -135,7 +135,7 @@ Structs`».
 **Назви документів у рядку «Читати».** Назви в `такому вигляді` — назви документів корпусу, їх можна питати
 дослівно. Стандартна бібліотека — документ на пакет: `package net/http`, `package context`. Матеріал Ardan Labs у
 примірнику `go` має назви з початком «Ardan Labs Ultimate Go (certification prep):» — план пише коротко: `Ultimate
-Go: Slices`. Для бібліотек, у яких ще немає власного примірника (testcontainers-go, golangci-lint), рядок «Читати» називає
+Go: Slices`. Для бібліотеки, у якої ще немає власного примірника (golangci-lint), рядок «Читати» називає
 розділи їхніх README і сайтів поза фабрикою; що саме бракує — у підрозділі «Документація у фабриці».
 
 **Один наскрізний проєкт.** Не шість навчальних застосунків, а один, який росте через усі фази: бекенд для SPA, яке
@@ -317,7 +317,7 @@ Go дає в стандартній бібліотеці те, що в Node бе
 | oapi-codegen і kin-openapi | сервер і типи з документа OpenAPI; перевірка запиту документом | Ф2 Д2–3, Д7; Ф4 Д4; є примірник `oapi-codegen` |
 | `golang.org/x/crypto` (`argon2`, `bcrypt`) | хешування паролів | Ф4 Д1; є примірник `golang-x` |
 | golang-jwt (`github.com/golang-jwt/jwt/v5`) | підпис і перевірка access-токена | Ф4 Д2–3; є примірник `golang-jwt` |
-| testcontainers-go | справжній PostgreSQL у тестах | Ф5 Д3–4 |
+| testcontainers-go | справжній PostgreSQL у тестах | Ф5 Д3–4; є примірник `testcontainers-go` |
 | coder/websocket (`github.com/coder/websocket`) | сервер і клієнт WebSocket з контекстом | Ф7 Д1–7; є примірник `coder-websocket` |
 | Kubernetes: `kubectl`, k3s | продакшн родини: бекенд, база й Redis подами в кластері з плану React | Ф6 Д8–9, Ф7 Д5, Д8; є примірник `kubernetes` |
 
@@ -357,6 +357,8 @@ Go дає в стандартній бібліотеці те, що в Node бе
 - книжки «Learning Go» (2-ге видання) і «Go by Example» (Manning), «100 Go Mistakes and How to Avoid Them», «Go 101» —
   `learning-go` (локально, поза git);
 - PostgreSQL 9.0–19 — `postgresql`;
+- testcontainers-go (сайт golang.testcontainers.org кожної мінорної 0.0–0.44 з модулями postgres, redis, compose;
+  довідник pkg.go.dev ядра й модуля postgres; релізи) — `testcontainers-go`;
 - River (сайт riverqueue.com/docs разом із River Pro; README і docs/ кожної мінорної 0.0–0.50; журнал змін; довідник
   pkg.go.dev river, rivermigrate, rivertest, riverlog за останні випуски) — `river`;
 - coder/websocket (README кожної мінорної 0.1–1.8, довідник pkg.go.dev за новим і старим шляхом `nhooyr.io/websocket`,
@@ -389,7 +391,6 @@ Go дає в стандартній бібліотеці те, що в Node бе
 
 **Примірника ще немає** — відповідь із README і сайту самої бібліотеки:
 
-- testcontainers-go;
 - golangci-lint.
 
 ---
@@ -1744,11 +1745,11 @@ refresh, перебором, — і він не віддає й не зміню�
 
 # Фаза 5. Якість: тести, гонитви, профілювання — 7 днів
 
-**Сервери MCP фази:** `go-docs`, `learning-go-book`, `docker-docs`.
+**Сервери MCP фази:** `go-docs`, `learning-go-book`, `testcontainers-go-docs`, `docker-docs`.
 
 Тести Go ви пишете з фази 0. Тут — те, що відрізняє тести продакшн-сервісу: справжня база в контейнері, сценарії
-безпеки як тести, детектор гонитви на всьому, час без очікування, лінтери і профілювання. testcontainers-go власного
-примірника у фабриці ще не має; Docker — є (`docker`).
+безпеки як тести, детектор гонитви на всьому, час без очікування, лінтери і профілювання. testcontainers-go має
+примірник `testcontainers-go`, Docker — `docker`.
 
 ### День 1. Тести обробників за таблицею
 
@@ -1794,10 +1795,12 @@ refresh, перебором, — і він не віддає й не зміню�
   `testcontainers.CleanupContainer(t, c)` прибирає. Контейнер — один на пакет у `TestMain`, міграції goose — одразу
   після старту; кожен тест отримує чисту базу: знімок модуля postgres (`Snapshot`/`Restore`) або власна схема чи
   транзакція, що відкочується. Тести — за тегом `integration`, щоб `go test ./...` лишався швидким.
-- **Читати:** документація golang.testcontainers.org — `Quickstart`, модуль `Postgres` (розділи Usage, Snapshot)
-  (поза фабрикою, примірника ще немає); у книжці — глава 15, розділ `Using Integration Tests and Build Tags`; у
-  примірнику `docker` — `Docker Engine` (Docker має бути запущений).
-- **Сервери MCP:** `learning-go-book`, `docker-docs`.
+- **Читати:** у примірнику `testcontainers-go` — `Quickstart`, сторінка модуля Postgres (розділи Usage example,
+  Module reference: Init scripts, Using snapshots), `Garbage Collector` (Ryuk, `CleanupContainer`), `package
+  github.com/testcontainers/testcontainers-go/modules/postgres` (`Run`, `BasicWaitStrategies`, `Snapshot`,
+  `Restore`); у книжці — глава 15, розділ `Using Integration Tests and Build Tags`; у примірнику `docker` — `Docker
+  Engine` (Docker має бути запущений).
+- **Сервери MCP:** `testcontainers-go-docs`, `learning-go-book`, `docker-docs`.
 - **Зробити:** 1) `TestMain` з контейнером і міграціями; 2) тести `postgres.Store`: створення, конфлікт `UNIQUE` →
   `ErrConflict`, транзакція `Publish` з фази 3, курсор; 3) `make test-integration` з `-tags integration`.
 - **Перевірити себе:** тести проходять двічі поспіль без ручного прибирання; другий запуск швидший (образ уже є);
@@ -1812,7 +1815,7 @@ refresh, перебором, — і він не віддає й не зміню�
   справжнім ланцюжком: валідатор, вхід, обмежувач, CSRF. Кожен рядок — статус, і для 404 — що тіло не містить чужого
   запису.
 - **Читати:** нічого нового — фаза 4 і `scripts/negative.sh`.
-- **Сервери MCP:** `go-docs`.
+- **Сервери MCP:** `go-docs`, `testcontainers-go-docs`.
 - **Зробити:** 1) `security_test.go` з тегом `integration`; 2) по рядку на сценарій; 3) свідомо прибрати
   `author_id` із запиту видалення.
 - **Перевірити себе:** крок 3 дає рівно один червоний рядок — «чужий запис, DELETE»; повернули умову — зелено.
@@ -2472,10 +2475,10 @@ sqlc код; міграції, вбудовані в бінарник; тест�
 У примірнику `go` — мова, стандартна бібліотека, команди, go.dev, блог, вікі, пропозиції, gopls, Go by Example, Learn
 Go with Tests, настанови Google і Uber, збірник питань до співбесіди й матеріал Ardan Labs. Книжки — у `learning-go`,
 pgx, sqlc, goose, golang-migrate, oapi-codegen (з kin-openapi) — у примірниках з тими самими іменами, golang.org/x — у
-`golang-x`. **Решти бібліотек поза стандартною — testcontainers-go і golangci-lint — у фабриці ще немає**: рядок
-«Читати» називає розділи їхніх README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки, де
-бібліотеку згадано. Коли примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ
-«Документація у фабриці» — нові рядки.
+`golang-x`. **Лише golangci-lint власного примірника у фабриці ще не має**: рядок «Читати» називає розділи їхніх
+README і сайтів, і питати про них сервер `go-docs` марно — він поверне лише уривки, де бібліотеку згадано. Коли
+примірники з'являться, план отримає їхні сервери в рядках «Сервери MCP», а розділ «Документація у фабриці» — нові
+рядки.
 
 **Версії.** Сервер `go-docs` каже версію кожного уривка стандартної бібліотеки й специфікації. Функція, якої немає у
 вашій версії Go, у новішому уривку виглядає так само впевнено, — дивіться на позначку «added in go1.N» і на рядок `go`
