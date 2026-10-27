@@ -542,7 +542,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
 
 # Фаза 4. Кілька архітектур, реєстри, CI, ланцюг постачання — 6 днів
 
-**Сервери MCP фази:** `docker-docs`, `github-actions-docs`.
+**Сервери MCP фази:** `docker-docs`, `github-actions-docs`, `go-docs` (день 2, якщо API на Go).
 
 ### День 1. Реєстр і теги
 
@@ -569,7 +569,7 @@ docs.docker.com, нотатки релізів Engine 27–29 і релізи mo
   кількох платформ, якщо не ввімкнено containerd image store.
 - **Читати:** `Multi-platform builds`; `Builders`; `Build drivers`; `Docker container driver`; `docker buildx
   create`.
-- **Сервери MCP:** `docker-docs`.
+- **Сервери MCP:** `docker-docs`; `go-docs` — якщо API на Go (`GOOS`, `GOARCH`, `CGO_ENABLED`).
 - **Зробити:** 1) емуляція QEMU на `ubu` і збірка API під обидві платформи; 2) порівняти час з крос-компіляцією для
   Go чи з нативною збіркою залежностей; 3) запустити arm64-образ на amd64 машині через емуляцію.
 - **Перевірити себе:** `docker buildx imagetools inspect` показує дві платформи; `docker run --platform
@@ -831,6 +831,7 @@ compose та buildx. Docker Desktop, Docker AI, Scout як продукт і і�
 - GitHub Actions, Container registry (ghcr.io), офіційні дії Docker і GitHub — `github-actions`;
 - nginx: конфіг фронту й проксі, nginx у Docker — `nginx`;
 - gVisor: пісочниця `runsc` як рантайм Docker, модель безпеки (фаза 5, день 4) — `gvisor`;
+- Go: крос-компіляція API на Go змінними `GOOS`, `GOARCH` і `CGO_ENABLED` (фаза 4, день 2) — `go`;
 - GPU NVIDIA в контейнерах: NVIDIA Container Toolkit, `nvidia-ctk`, CDI (фаза 5, день 1) — `nvidia-container-toolkit`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:

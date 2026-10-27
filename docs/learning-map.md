@@ -4,21 +4,22 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 26.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, anthropic-api, argocd, argon2, aspnetcore,
+Стан на 27.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, anthropic-api, argocd, argon2, aspnetcore,
 astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot, class-transformer,
 class-validator, clerk, confluent-kafka-javascript, contentful, csharp, csrf-csrf, doc-tools, docker, dotnet,
 dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg,
-flux, foundry, frontend-architecture, github-actions, golevelup-nestjs-rabbitmq, grafana, gvisor, helmet, htdp,
-i18next, icu, ioredis, iron-session, jose, jsonschema, kafka, kafkajs, kraken-spot, kubernetes, libreoffice, libuv,
-lightweight-charts, linux, llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion, msw, nats, nats-js, nestjs,
-nestjs-cls, nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, node-mongodb,
-node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, ollama, openapi-typescript,
-openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload, platformatic-kafka,
-playwright, postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq, react, react-email, react-hook-form,
-react-native, react-router, react-window, redis, redux, resend, rxjs, sanity, sealed-secrets, sentry, shadcn,
-socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind, tanstack-query, tanstack-router,
-tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, trpc, turborepo, typeorm, typescript,
-uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+flux, foundry, frontend-architecture, github-actions, go, golevelup-nestjs-rabbitmq, grafana, gvisor, helmet, htdp,
+i18next, icu, ioredis, iron-session, jose, jsonschema, kafka, kafkajs, kraken-spot, kubernetes, learning-go,
+libreoffice, libuv, lightweight-charts, linux, llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion, msw, nats,
+nats-js, nestjs, nestjs-cls, nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx,
+node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, ollama,
+openapi-typescript, openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload,
+platformatic-kafka, playwright, postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq, react,
+react-email, react-hook-form, react-native, react-router, react-window, redis, redux, resend, rxjs, sanity,
+sealed-secrets, sentry, shadcn, socketio, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind,
+tanstack-query, tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testing-library, trpc, turborepo,
+typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev, webstandards,
+ws, zod, zustand.
 
 ## Як читати таблиці
 
@@ -83,7 +84,7 @@ uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest, wagmi, wasm, webdev
 | Linux | 7. Міст до контейнерів | `docker` (4) |
 | [Docker](../instances/docker/LEARNING.md) | 1. Образи й Dockerfile | `nginx` (4) |
 | Docker | 2. Дані й мережа | `nginx` (2) |
-| Docker | 4. Кілька архітектур, реєстри, CI, ланцюг постачання | `github-actions` (1, 4) |
+| Docker | 4. Кілька архітектур, реєстри, CI, ланцюг постачання | `github-actions` (1, 4), `go` (2) |
 | Docker | 5. Експлуатація й безпека рушія | `nvidia-container-toolkit` (1), `gvisor` (4) |
 | Docker | 6. Міст до Kubernetes | `kubernetes` (1) |
 | [Kubernetes](../instances/kubernetes/LEARNING.md) | 2. Конфігурація, ресурси й безпека застосунку | `webstandards` (6) |
