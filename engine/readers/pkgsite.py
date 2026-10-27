@@ -28,8 +28,23 @@
 тут версія з адреси знімається, і підпакет береться з тієї самої адреси останньої версії, що
 й корінь: так `within` лишається одним префіксом, а посилання у відповіді не старіє з кожним
 днем.
+
+Поле `versions` — об'єкт «мітка версії на pkg.go.dev → версія», від найновішої
+(`{"go1.27.3": "1.27.3", …, "go1.0.3": "1.0.3"}`): дерево кореня береться на кожній мітці
+(`std@go1.27.3`), і версія в адресах підпакетів лишається — це і є знімок тієї версії. `within`
+і `exclude` перевіряють адресу без версії. Сторінка кореня без розділу документації (`std` —
+перелік пакетів, а не пакет) документом не стає. Однаковий текст пакета на кількох мітках — один
+документ з усіма їхніми версіями, а ім'я файла закінчується хешем тексту (`-<8 hex>`), як у
+`ghdocs-history`: з `revision_suffix` незмінний розділ кількох редакцій — один фрагмент. Тому
+текст читається вже під час переліку; рядка «Module version …» у ньому немає — версії стоять у
+шапці документа. Без поля — усе, як було.
+
+Навіщо. Стандартна бібліотека Go за 28 мінорних версій додавала функції й типи (`slices`,
+`maps`, `iter`, `log/slog`) і міняла описи: питання «як це було в 1.18» потребує тексту 1.18, а
+не позначки «added in go1.21» на сторінці останньої версії.
 """
 
+import hashlib
 import html as html_lib
 import re
 import time
@@ -111,8 +126,11 @@ def _body(doc: str) -> str:
     return _EMPTY.sub("", _markup.html_body(doc)).strip("\n")
 
 
-def _document(html: str, url: str, stamp: str) -> str:
-    path = urlsplit(url).path.strip("/")
+def _parts(html: str, url: str, versions: str = "") -> tuple[str, str, str]:
+    """(назва, тіло, версія) сторінки пакета. `versions` — версії документа з поля
+    `versions` джерела: тоді рядка «Module version …» у тілі немає, і тіло однакове на всіх
+    мітках, де пакет не мінявся."""
+    path = _AT_VERSION.sub("", urlsplit(url).path, count=1).strip("/")
     m = _DEPSDEV.search(html) or _SHORT_VERSION.search(html)
     version = unquote(m.group(1)).lstrip("v") if m else ""
     start = html.find(_START)
@@ -125,13 +143,63 @@ def _document(html: str, url: str, stamp: str) -> str:
     lead = [f"Import path: `{path}`."]
     if kind and kind.group(1).strip() != "package":
         lead.append(f"Kind: {kind.group(1).strip()}.")
-    if version:
+    if version and not versions:
         lead.append(f"Module version {version}"
                     + (f", published {published.group(1)}." if published else "."))
     body = "\n\n".join([" ".join(lead), _body(html[start:stop])])
-    title = f"package {path}"
+    return f"package {path}", body, versions or version
+
+
+def _document(html: str, url: str, stamp: str, versions: str = "") -> str:
+    title, body, version = _parts(html, url, versions)
     _markup.require(title, body, url)
     return _markup.document(title, url, stamp, body, version)
+
+
+def _versioned(source: dict, ctx, root: str, within: list, exclude: list, fetch) -> list[Item]:
+    """Поле `versions`: знімок дерева пакетів на кожній мітці, однакові тексти — один документ."""
+    versions = source["versions"]
+    if not isinstance(versions, dict) or not versions:
+        raise SystemExit(f"{source['id']}: поле versions — об'єкт «мітка → версія».")
+    # ім'я документа → [адреса найновішої мітки, [мітки]]; від найновішої, як оголошено
+    seen: dict = {}
+    for tag in versions:
+        top = f"{root}@{tag}"
+        if not ctx.allowed(top):
+            raise SystemExit(f"{source['id']}: адреса {top} поза білим списком.")
+        html = fetch(top)
+        pages = [top] if _START in html else []
+        table = _DIRS.search(html)
+        for href in _HREF.findall(table.group(1) if table else ""):
+            url = urljoin(top, href).rstrip("/")
+            bare = _AT_VERSION.sub("", url, count=1)
+            if (url not in pages and _inside(bare, within) and ctx.allowed(url)
+                    and not any(r.search(bare) for r in exclude)):
+                pages.append(url)
+        for url in pages:
+            # Одна сторінка без документації чи з відповіддю 404 серед тисяч не мусить зупиняти перелік
+            # усіх 28 версій: її пропущено вголос, решта береться.
+            try:
+                page = html if url == top else fetch(url)
+                _, body, _ = _parts(page, url, versions[tag])
+            except SystemExit as exc:
+                print(f"  пропущено: {exc}", flush=True)
+                continue
+            digest = hashlib.sha1(body.encode("utf-8")).hexdigest()[:8]
+            path = _AT_VERSION.sub("", urlsplit(url).path, count=1)
+            seen.setdefault(f"{_markup.slug(path)}-{digest}", [url, []])[1].append(tag)
+    items = []
+    for name, (url, tags) in seen.items():
+        version = ", ".join(dict.fromkeys(versions[t] for t in tags))
+
+        # Сторінку вже прочитано під час переліку: у тому самому прогоні ctx.text бере її зі
+        # сховища, тож пауза pkg.go.dev тут не потрібна.
+        def make(url=url, version=version):
+            return _document(ctx.text(url), url, ctx.stamp, version)
+
+        items.append(Item(id=f"{source['id']}/{name}",
+                          file=f"{source['id']}--{name}.txt", make=make))
+    return items
 
 
 @register("pkgsite")
@@ -156,6 +224,8 @@ def pkgsite(source: dict, ctx) -> list[Item]:
             last[0] = time.monotonic()
 
     root = source["url"].rstrip("/")
+    if "versions" in source:
+        return _versioned(source, ctx, root, within, exclude, fetch)
     if not ctx.allowed(root):
         raise SystemExit(f"{source['id']}: адреса {root} поза білим списком.")
     cache = {root: fetch(root)}
