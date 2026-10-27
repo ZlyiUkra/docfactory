@@ -3705,17 +3705,19 @@ golangci-lint.run з тегу кожної мінорної 2.0–2.15 (вста
 MCP, плагіни й маркетплейси, моди, адміністрування, довідник CLI, команд і змінних оточення, Agent SDK, What's New),
 журнал змін Claude Code за версіями 0.2.21–2.1.312 і таблиця версій npm; Agent SDK для TypeScript і Python (журнали,
 README, приклади, npm і PyPI); claude-code-action на тегах v1.0.264 і v0.0.63; приклади репозиторію
-anthropics/claude-code; офіційні скіли anthropics/skills і маркетплейс claude-plugins-official; довідник спільноти
-sfrangulov/claude-code-handbook-ru російською. 1716 документів, 16 757 фрагментів.
+anthropics/claude-code; Claude Tag (Claude у Slack) із claude.com/docs; офіційні скіли anthropics/skills і
+маркетплейс claude-plugins-official; довідник спільноти sfrangulov/claude-code-handbook-ru російською. 1795
+документів, 17 824 фрагменти.
 
 - порт `8926`; запис у Claude Code — `claude-code-docs`, адреса `http://127.0.0.1:8926/mcp`; інструменти
   `search_docs` і `read_section`;
 - версії (`versions: true`): Claude Code — `"2.1"` чи точна версія; Agent SDK — `"agent-sdk-ts-0.3"`,
-  `"agent-sdk-py-0.2"`; claude-code-action — `"action-1.0"`; сайт, скіли, плагіни й довідник — без версії;
+  `"agent-sdk-py-0.2"`; claude-code-action — `"action-1.0"`; сайт, Claude Tag, скіли, плагіни й довідник — без
+  версії;
 - довідник російською знаходиться російськими словами: поле `cyrillic_words` робить кирилицю словами індексу;
 - корпус — в архіві, у git паспорт і кеш фрагментів;
-- не входять: переклади сайту, документація Claude Tag (переїхала на claude.com/docs), API Anthropic (примірник
-  `anthropic-api`), сторінки, на які посилається довідник;
+- не входять: переклади сайту, решта claude.com/docs (застосунки Claude), API Anthropic (примірник `anthropic-api`),
+  сторінки, на які посилається довідник;
 - приклад питання агентові: `./df claude-code ask "Which hook event can block a tool call, and how?"`;
 - докладніше — у [instances/claude-code/README.md](instances/claude-code/README.md).
 

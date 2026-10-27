@@ -4,7 +4,8 @@
 застосунку для комп'ютера й браузері: налаштування й дозволи, `CLAUDE.md` і пам'ять, скіли, субагенти, хуки, MCP,
 плагіни й маркетплейси, моди, довідник CLI, команд і змінних оточення, Agent SDK, GitHub Actions. Документація —
 сайт code.claude.com/docs англійською цілком, журнал змін Claude Code за версіями, Agent SDK для TypeScript і Python,
-claude-code-action, офіційні скіли й плагіни Anthropic і довідник спільноти Claude Code Handbook російською. Код
+claude-code-action, Claude Tag (Claude у Slack), офіційні скіли й плагіни Anthropic і довідник спільноти Claude
+Code Handbook російською. Код
 спільний і лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний
 устрій фабрики — у [../../README.md](../../README.md).
 
@@ -25,6 +26,7 @@ MCP-сервер для всіх проєктів, які поля прийма�
 | Шар | Документів | Фрагментів | Звідки |
 |-----|-----------:|-----------:|--------|
 | Сайт code.claude.com/docs | 227 | 9 358 | llms.txt, markdown-двійники сторінок, лише `/docs/en/` |
+| Claude Tag (Claude у Slack) | 79 | 1 067 | llms.txt сайту claude.com/docs, лише розділ `/docs/claude-tag/` |
 | Журнал змін Claude Code | 432 | 432 | `CHANGELOG.md` гілки main, по запису на версію 0.2.21–2.1.312 |
 | npm `@anthropic-ai/claude-code` | 4 | 10 | реєстр npm: таблиця 552 версій із датами |
 | Agent SDK TypeScript | 373 | 505 | журнал 0.1.0–0.3.312, README, приклади сховищ сесій, таблиця npm |
@@ -35,7 +37,7 @@ MCP-сервер для всіх проєктів, які поля прийма�
 | claude-plugins-official | 239 | 2 798 | README, команди, агенти й скіли кожного плагіна маркетплейсу |
 | Довідник sfrangulov (російською) | 21 | 323 | README, `catalog/`, `docs/`, `examples/`, скрипти хуків, шпаргалка |
 
-Разом 1 716 записів паспорта, 16 757 фрагментів (`expected_passages` у `checks.json`) із 1 712 документів. Довгі
+Разом 1 795 записів паспорта, 17 824 фрагменти (`expected_passages` у `checks.json`) із 1 791 документа. Довгі
 таблиці сайту (змінні оточення — 133 КБ, команди, налаштування, прапорці CLI, помилки) поділено на фрагменти з цілих
 рядків полем `split_long_tables`. Вектори на відеокарті — пів хвилини.
 
@@ -48,9 +50,9 @@ MCP-сервер для всіх проєктів, які поля прийма�
 Чого немає:
 
 - Перекладів сайту, російського зокрема: лише англійська редакція (`within` джерела `site`).
-- Документації Claude Tag (Claude у Slack). Сайт Claude Code посилається на неї, але сторінка `claude-tag`
-  переадресовує на claude.com/docs — це вже інший сайт і окремий продукт на 79 сторінок, його немає в білому
-  списку. Через це `refresh` джерела `site` щоразу показує один збій.
+- Решти сайту claude.com/docs (застосунки Claude, конектори, Cowork, Office agents): з нього береться лише розділ
+  Claude Tag. Сторінка `claude-tag` сайту Claude Code переадресовує туди, тож `refresh` джерела `site` щоразу
+  показує на ній один збій — її зміст дає джерело `claude-tag`.
 - Файла типів модів `mods/types/claude-code.d.ts` (517 КБ) і коду вбудованих модів: читач коду лишав файл типів
   одним фрагментом. API модів описують сторінки сайту `plugins/mods/*`.
 - Релізів GitHub: вони повторюють `CHANGELOG.md`. README пакета `@anthropic-ai/claude-code` у реєстрі npm порожній.
@@ -76,7 +78,7 @@ MCP-сервер для всіх проєктів, які поля прийма�
   текстів тут немає: корпус в архіві (розділ «Архівний режим» нижче).
 - `index/` — кеш фрагментів, з якого підіймається сервер. У git лежить стиснений `passages.json.gz`; розпакований
   `passages.json` лежить поруч і в git не потрапляє.
-- `sources.json` — звідки будується корпус (20 джерел). Він же білий список для оновлювача.
+- `sources.json` — звідки будується корпус (21 джерело). Він же білий список для оновлювача.
 - `config.json` — порт, колекція Qdrant, модель векторів, пауза між зверненнями і профіль домену.
 - `prompts/` — описи інструментів для моделі, системний промпт власного агента, текст відмови.
 - `checks.json` — чим `smoke` і `quality` перевіряють саме цей корпус.
@@ -90,6 +92,7 @@ MCP-сервер для всіх проєктів, які поля прийма�
 | Що | Джерело | Читач |
 |----|---------|-------|
 | сайт | `https://code.claude.com/docs/llms.txt`, лише `/docs/en/` | `llms` |
+| Claude Tag | `https://claude.com/docs/llms.txt`, лише `/docs/claude-tag/` | `llms` |
 | журнал змін Claude Code | `CHANGELOG.md` гілки main anthropics/claude-code | `changelog` |
 | журнали Agent SDK | `CHANGELOG.md` гілок main обох репозиторіїв SDK | `changelog-regex` |
 | таблиці версій | реєстр npm (`@anthropic-ai/claude-code`, `@anthropic-ai/claude-agent-sdk`), PyPI (`claude-agent-sdk`) | `npm-versions`, `pypi-versions` |
@@ -103,10 +106,10 @@ Markdown-двійник кожної сторінки сайту починає�
 
 ## Версії
 
-Сторінки сайту, знімки репозиторіїв, скіли, плагіни й довідник версій не мають — це поточний стан. Записи журналу
-змін і рядки npm Claude Code несуть голу версію (`2.1.312`), Agent SDK — свою з префіксом (`agent-sdk-ts-0.3.312`,
-`agent-sdk-py-0.2.174`), claude-code-action — `action-1.0.264` і `action-0.0.63`. Фільтр `version` приймає лінію
-(`"2.1"`, `"agent-sdk-ts-0.3"`, `"action-1.0"`) або один випуск (`"2.1.312"`).
+Сторінки сайту, Claude Tag, знімки репозиторіїв, скіли, плагіни й довідник версій не мають — це поточний стан. Записи
+журналу змін і рядки npm Claude Code несуть голу версію (`2.1.312`), Agent SDK — свою з префіксом
+(`agent-sdk-ts-0.3.312`, `agent-sdk-py-0.2.174`), claude-code-action — `action-1.0.264` і `action-0.0.63`. Фільтр
+`version` приймає лінію (`"2.1"`, `"agent-sdk-ts-0.3"`, `"action-1.0"`) або один випуск (`"2.1.312"`).
 
 ## Архівний режим: сервер без корпусу
 
@@ -114,9 +117,10 @@ Markdown-двійник кожної сторінки сайту починає�
 кешу фрагментів (`index/passages.json`) і колекції Qdrant. Відповіді ті самі до символа, бо кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/claude-code-corpus-2026-10-27-tables.tar.gz` (1 716 текстів, паспорт і
-сховище сирого `raw/`; перед видаленням текстів архів розпаковано окремо й звірено з диском) і в копії на Windows
-`C:\Distr\claude-code-corpus-2026-10-27-tables.tar.gz` (звірено за SHA-256). В історії git текстів немає ніде.
+**Де тексти.** В архіві `~/archives/docfactory/claude-code-corpus-2026-10-27-claude-tag.tar.gz` (1 795 текстів,
+паспорт і сховище сирого `raw/`; перед видаленням текстів архів розпаковано окремо й звірено з диском) і в копії на
+Windows `C:\Distr\claude-code-corpus-2026-10-27-claude-tag.tar.gz` (звірено за SHA-256). В історії git текстів немає
+ніде.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
@@ -134,7 +138,7 @@ gzip -9 -c instances/claude-code/index/passages.json > instances/claude-code/ind
 **Як повернути тексти** — перед будь-яким оновленням корпусу; разом із текстами повертається сховище сирого:
 
 ```
-tar -xzf ~/archives/docfactory/claude-code-corpus-2026-10-27-tables.tar.gz -C instances/claude-code
+tar -xzf ~/archives/docfactory/claude-code-corpus-2026-10-27-claude-tag.tar.gz -C instances/claude-code
 ./df claude-code smoke
 ```
 

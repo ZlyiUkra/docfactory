@@ -1,10 +1,10 @@
 # Оновлення корпусу claude-code
 
-Сайт code.claude.com/docs, журнали змін Claude Code й обох Agent SDK і таблиці npm та PyPI беруться щоразу заново.
-Репозиторії без тегів закріплено комітом: поле `tags` джерел `repo-docs`, `repo-examples`, `sdk-ts-docs`,
-`sdk-ts-examples`, `sdk-py-docs`, `sdk-py-examples`, `skills`, `plugins`, `handbook`, `handbook-scripts` і
-`handbook-cheatsheet` тримає повний хеш коміту гілки main. claude-code-action закріплено тегами: останній тег кожної
-мінорної (`v1.0.264` — версія `action-1.0.264`, `v0.0.63` — `action-0.0.63`).
+Сайт code.claude.com/docs, розділ Claude Tag сайту claude.com/docs, журнали змін Claude Code й обох Agent SDK і
+таблиці npm та PyPI беруться щоразу заново. Репозиторії без тегів закріплено комітом: поле `tags` джерел `repo-docs`,
+`repo-examples`, `sdk-ts-docs`, `sdk-ts-examples`, `sdk-py-docs`, `sdk-py-examples`, `skills`, `plugins`, `handbook`,
+`handbook-scripts` і `handbook-cheatsheet` тримає повний хеш коміту гілки main. claude-code-action закріплено тегами:
+останній тег кожної мінорної (`v1.0.264` — версія `action-1.0.264`, `v0.0.63` — `action-0.0.63`).
 
 Правило: **нічого не видаляється.** Ані `refresh`, ані `vectors`, ані `manifest` нічого не стирають самі.
 
@@ -27,8 +27,8 @@ sfrangulov оновлюється майже щодня; його три дже�
 # Ctrl+C у терміналі з serve, і знову: ./df claude-code serve
 ```
 
-`refresh` джерела `site` щоразу показує один збій: сторінка `claude-tag` переадресовує на claude.com/docs, якого
-немає в білому списку (README, «Чого немає»). Інші збої — привід подивитися.
+`refresh` джерела `site` щоразу показує один збій: сторінка `claude-tag` переадресовує на claude.com/docs, а її
+зміст бере джерело `claude-tag` (README, «Чого немає»). Інші збої — привід подивитися.
 
 Найновіші версії на 27.10.2026 — Claude Code 2.1.312, Agent SDK для TypeScript 0.3.312, для Python 0.2.174,
 claude-code-action 1.0.264. Приклади версій стоять у `prompts/search.txt` (абзац «Which version to answer for»),
