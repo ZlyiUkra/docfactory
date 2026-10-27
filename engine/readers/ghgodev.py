@@ -9,6 +9,8 @@
                            `{{raw `…`}}` — своїм вмістом, `{{image …}}` випадає, `{{video "адреса"}}` стає
                            рядком «Video: адреса». Інших `{{…}}` читач не чіпає: у примітках до випусків це
                            приклади text/template. Шапка блогу (`date`, `by`) стає першим рядком тексту;
+                           сторінка без YAML-шапки, але з JSON-шапкою `<!--{ "Title": … }-->` (посібники
+                           database/sql, модулі), бере назву з неї, як `.html`;
                          - `.html` — шапка `<!--{ "Title": …, "Subtitle": … }-->` дає назву й рядок під нею,
                            ті самі дії шаблону, далі HTML → markdown;
                          - `.article`, `.slide` — формат present (Tour of Go, доповіді): назва й підзаголовок
@@ -312,9 +314,19 @@ class _Ctx:
             head = _JSON_HEAD.match(rest)
             if head and '"Redirect"' in head.group(1):
                 return ""
+            top = ""
+            if head and not meta:
+                try:
+                    info = json.loads(head.group(1))
+                except ValueError:
+                    info = {}
+                rest = rest[head.end():].lstrip("\n")
+                title, sub = str(info.get("Title") or ""), str(info.get("Subtitle") or "")
+                if title and not rest.startswith("# "):
+                    top = f"# {title}\n\n" + (f"{sub}\n\n" if sub else "")
             rest = _STYLE.sub("", self._actions(rest, url, html=False))
             if not meta:
-                return rest
+                return top + rest
             close = text.find("\n---", 3)
             lead = []
             if meta.get("date"):
