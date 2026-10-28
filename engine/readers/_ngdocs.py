@@ -34,7 +34,7 @@ from textwrap import dedent
 
 from engine.readers import _markup
 
-_CODE_EXT = r"(?:ts|js|mjs|cjs|html|css|scss|sass|less|json|jsonc|sh|txt|yaml|yml|svg|xml|toml|md)"
+_CODE_EXT = r"(?:ts|js|mjs|cjs|html|css|scss|sass|less|json|jsonc|sh|txt|yaml|yml|svg|xml|toml|md|xlf|conf)"
 
 _ATTR = re.compile(r"""([\w-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'))?""")
 # Пара тегів із кодом усередині чи самозакритий тег.
@@ -76,7 +76,7 @@ def wanted(kind: str) -> list:
     """Файли тегу, які сторінки можуть узяти прикладом."""
     if kind == "aio":
         return [re.compile(rf"^aio/content/examples/.+\.{_CODE_EXT}$")]
-    return [re.compile(rf"^adev/.+\.{_CODE_EXT}$")]
+    return [re.compile(rf"^(?:adev|packages/[\w-]+/resources)/.+\.{_CODE_EXT}$")]
 
 
 def _attrs(raw: str) -> dict:
