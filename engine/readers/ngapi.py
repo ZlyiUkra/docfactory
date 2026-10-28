@@ -2,40 +2,44 @@
 
 `ng-api-history` — `url` — префікс дерев через API (…/repos/angular/angular/git/trees/), `tags` —
                    об'єкт «тег → версія» від найновішого. `packages` — вираз імені пакета, чий API
-                   береться (`core|common|router|…`); необов'язкове `exclude` — вирази шляхів файлів
-                   коду, що не читаються (тести, схеми, приклади).
+                   береться (`core|common|router|…`); `registry` — початок адреси опису пакета в
+                   реєстрі (типово `https://registry.npmjs.org/@angular/`).
 
 Навіщо. Довідник API сайтів Angular генерується з коду, і кожен сайт тримає лише останню мінорну
 свого мажора, а v12–v17.angular.io сторінок core, common, router, forms уже не віддають зовсім
-(404). Те, з чого їх генерували, лежить у репозиторії на кожному тезі: перелік публічних символів
-кожної точки входу — «золоті» файли перевірки публічного API (`tools/public_api_guard/…` у 2.x–8.x,
-`goldens/public-api/…` з 9.0: спершу `.d.ts`, з 14 — звіт API Extractor `.md`), а опис символу —
-коментар JSDoc над його оголошенням у коді пакета. Разом це та сама сторінка довідника: назва, точка
-входу, опис, примітки до використання, оголошення з членами і опис кожного члена.
+(404). Те, з чого їх генерували, є для кожної версії: перелік публічних символів кожної точки
+входу — «золоті» файли перевірки публічного API на тегах репозиторію (`tools/public_api_guard/…`
+у 2.x–8.x, `goldens/public-api/…` з 9.0: спершу `.d.ts`, з 14 — звіт API Extractor `.md`), а опис
+символу — коментар JSDoc у файлах типів (`.d.ts`) пакета npm тієї самої версії. Разом це та сама
+сторінка довідника: назва, точка входу, опис, примітки до використання, оголошення з членами і
+опис кожного члена.
 
-Перелік символів — із золотого файла, а не з позначок у коді: `@publicApi` стоїть не на всьому
-(у 22.x його немає, наприклад, над `signal`), а в 2.x–6.x замість нього `@stable`/`@experimental`.
-Оголошення в документі — теж із золотого файла: там воно чисте, без тіла, саме таке, яке бачить
-користувач пакета. Опис — з коду того самого тегу: усі файли `.ts` пакета (без тестів) читаються,
-і коментар JSDoc шукається за ім'ям символу в межах пакета.
+Перелік символів — із золотого файла, а не з позначок: `@publicApi` стоїть не на всьому (у 22.x
+його немає, наприклад, над `signal`), а в 2.x–6.x замість нього `@stable`/`@experimental`.
+Оголошення — теж із золотого файла: там воно чисте, саме таке, яке бачить користувач пакета. Опис —
+з тарбола, а не з коду репозиторію: типи пакета мають ті самі коментарі, а тарбол на пакет і версію
+— один запит замість тисяч файлів коду. Тарбол читається по одному й одразу відпускається; маршрутизатор
+2.x має власну нумерацію (`@angular/router` 3.4 — це Angular 2.4).
 
 Документ — неповторний текст символу точки входу; у його версії лягають усі теги, де текст був
 саме таким. Ім'я — «ngapi-<точка входу>-<символ>-<хеш>»: `revision_suffix` зрізає хеш, і редакції
 одного символу зливаються. Ім'я, що починається з малої літери, дістає ще й вид оголошення
 (`input` → «…-input-const»): в одній точці входу живуть і декоратор `Input`, і функція `input`, а
-ключ розділу регістру не розрізняє.
+ключ розділу регістру не розрізняє. Адреса в шапці — сторінка довідника сайту мажора (v4–v11,
+v18+); для 2.x і 12–17, де сайт її не віддає, — золотий файл на GitHub.
 
-Тексти документів зібрані вже під час переліку (щоб звести однакові, їх треба скласти), і в пам'яті
-лежать стиснутими; файли коду читаються по одному разу на неповторний вміст (хеш blob).
+Тексти документів складено вже під час переліку (щоб звести однакові, їх треба скласти) і в пам'яті
+лежать стиснутими.
 
 Чому окремий модуль: читачі коду (`ghcode-history-ts`) дають код файлами, а не довідник символів,
 і в інших примірниках уже звірені.
 """
 
 import hashlib
+import io
 import json
-import posixpath
 import re
+import tarfile
 import zlib
 from urllib.parse import quote, urlsplit
 
@@ -43,11 +47,12 @@ from engine.readers import Item, _markup, register
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _GOLDEN = re.compile(r"^(?:goldens/public-api|tools/public_api_guard)/(.+?)\.(?:api\.md|md|d\.ts)$")
-_SRC_ROOT = re.compile(r"^(?:packages|modules/@angular)/([\w-]+)/")
 _DECL = re.compile(r"^export\s+(?:declare\s+)?(?:default\s+)?(?:abstract\s+)?(?:async\s+)?"
                    r"(class|interface|function|const|let|var|type|enum|namespace)\s+([\w$]+)")
+# Оголошення з коментарем у файлі типів пакета: `export declare class X` у 2.x–12.x, а в зведеному
+# `index.d.ts` 13+ — `declare class X` без `export` (перелік експорту стоїть наприкінці файла).
 _DOC_DECL = re.compile(r"/\*\*((?:(?!\*/).)*)\*/\s*(?:@[\w.]+(?:\((?:[^()]|\([^()]*\))*\))?\s*)*"
-                       r"export\s+(?:declare\s+)?(?:default\s+)?(?:abstract\s+)?(?:async\s+)?"
+                       r"(?:export\s+)?(?:declare\s+)?(?:default\s+)?(?:abstract\s+)?(?:async\s+)?"
                        r"(class|interface|function|const|let|var|type|enum)\s+([\w$]+)", re.S)
 _MEMBER = re.compile(r"/\*\*((?:(?!\*/).)*)\*/\s*(?:@[\w.]+(?:\((?:[^()]|\([^()]*\))*\))?\s*)*"
                      r"(?:(?:public|protected|readonly|static|abstract|override|declare|async|get|set)\s+)*"
@@ -222,6 +227,32 @@ def _member_names(code: str) -> list[str]:
     return names
 
 
+def _npm_version(versions: dict, pkg: str, version: str) -> str:
+    """Версія пакета npm, що відповідає тегу: та сама; у 2.x маршрутизатор має свою нумерацію
+    (`@angular/router` 3.4 — це Angular 2.4); інакше — найновіший патч тієї самої мінорної."""
+    if version in versions:
+        return version
+    major, minor = version.split(".")[:2]
+    lines = [f"{major}.{minor}."] + (["3." + minor + "."] if pkg == "router" and major == "2" else [])
+    for line in reversed(lines):
+        same = [v for v in versions if v.startswith(line) and re.fullmatch(r"\d+\.\d+\.\d+", v)]
+        if same:
+            return max(same, key=lambda v: int(v.split(".")[2]))
+    return ""
+
+
+def _site(entry: str, name: str, version: str, fallback: str) -> str:
+    """Сторінка довідника для людей: сайт мажора, якщо він її ще віддає, інакше — золотий файл."""
+    major = int(version.split(".")[0])
+    if 4 <= major <= 11:
+        return f"https://v{major}.angular.io/api/{entry}/{name}"
+    if 18 <= major <= 21:
+        return f"https://v{major}.angular.dev/api/{entry}/{name}"
+    if major >= 22:
+        return f"https://angular.dev/api/{entry}/{name}"
+    return fallback
+
+
 @register("ng-api-history")
 def ng_api_history(source: dict, ctx) -> list[Item]:
     m = _TREES.match(urlsplit(source["url"]).path)
@@ -232,10 +263,10 @@ def ng_api_history(source: dict, ctx) -> list[Item]:
     if not isinstance(tags, dict) or not tags:
         raise SystemExit(f"{source['id']}: читач ng-api-history потребує поля tags.")
     packages = re.compile(rf"^(?:{source.get('packages') or 'core'})$")
-    exclude = [re.compile(r) for r in source.get("exclude") or ()]
-    parsed: dict = {}   # sha файла коду → _source_docs
+    registry = str(source.get("registry") or "https://registry.npmjs.org/@angular/")
     golden_cache: dict = {}
-    # (точка входу, ім'я) → {хеш тексту: [версії]}; хеш → (стиснутий текст, адреса)
+    tarballs: dict = {}  # пакет → {версія: адреса тарбола}
+    # (точка входу, ім'я, вид) → {хеш тексту: [версії]}; хеш → (стиснутий текст, адреса)
     found: dict = {}
     texts: dict = {}
 
@@ -244,12 +275,44 @@ def ng_api_history(source: dict, ctx) -> list[Item]:
         code, data = ctx.fetch(url) if ctx.allowed(url) else ("", b"")
         return data.decode("utf-8", errors="replace") if code == "200" else ""
 
+    def package_docs(pkg: str, version: str) -> dict:
+        """{ім'я: [(вид, JSDoc, {член: JSDoc}, шлях)]} з файлів типів тарбола пакета цієї версії."""
+        if pkg not in tarballs:
+            url = registry + pkg
+            try:
+                meta = json.loads(ctx.text(url, gzip=True)) if ctx.allowed(url) else {}
+            except (SystemExit, ValueError) as exc:
+                print(f"  {source['id']}: опис пакета {url} не прочитано ({exc})", flush=True)
+                meta = {}
+            tarballs[pkg] = {v: ((d or {}).get("dist") or {}).get("tarball", "")
+                             for v, d in (meta.get("versions") or {}).items()}
+        v = _npm_version(tarballs[pkg], pkg, version)
+        url = tarballs[pkg].get(v, "")
+        if not url or not ctx.allowed(url):
+            return {}
+        try:
+            data = ctx.bytes(url)
+        except SystemExit as exc:
+            print(f"  {source['id']}: {exc}", flush=True)
+            return {}
+        out: dict = {}
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as tar:
+            for member in tar:
+                if not (member.isfile() and member.name.endswith(".d.ts")):
+                    continue
+                text = tar.extractfile(member).read().decode("utf-8", errors="replace")
+                for name, decls in _source_docs(text).items():
+                    out.setdefault(name, []).extend(
+                        (k, d, mem, member.name.split("/", 1)[-1]) for k, d, mem in decls)
+        return out
+
     for tag, version in tags.items():
+        version = str(version)
         tree = json.loads(ctx.text(f"{source['url']}{tag}?recursive=1"))
         if tree.get("truncated"):
             raise SystemExit(f"{tag}: GitHub обрізав дерево — перелік був би неповним.")
-        blobs = [e for e in tree.get("tree", []) if e.get("type") == "blob"]
-        goldens = [(e["path"], e["sha"]) for e in blobs if _GOLDEN.match(e["path"])
+        goldens = [(e["path"], e["sha"]) for e in tree.get("tree", []) if e.get("type") == "blob"
+                   and _GOLDEN.match(e["path"])
                    and not e["path"].endswith(("errors.api.md", "errors.md", "global_utils.api.md",
                                                "global_utils.md", "global_utils.d.ts"))]
         entries: dict = {}
@@ -261,36 +324,22 @@ def ng_api_history(source: dict, ctx) -> list[Item]:
             if sha not in golden_cache:
                 golden_cache[sha] = _golden_blocks(raw(tag, path))
             entries[entry] = (path, golden_cache[sha])
-        if not entries:
-            continue
-        # Описи — з коду пакетів, чиї точки входу є в золотих файлах цього тегу.
-        wanted = {e.split("/", 1)[0] for e in entries}
-        docs: dict = {}   # пакет → ім'я → [(вид, doc, members, шлях)]
-        for e in blobs:
-            path = e["path"]
-            r = _SRC_ROOT.match(path)
-            if (not r or r.group(1) not in wanted or not path.endswith(".ts")
-                    or path.endswith(".d.ts") or any(x.search(path) for x in exclude)):
-                continue
-            if e["sha"] not in parsed:
-                parsed[e["sha"]] = _source_docs(raw(tag, path))
-            for name, decls in parsed[e["sha"]].items():
-                for kind, doc, members in decls:
-                    docs.setdefault(r.group(1), {}).setdefault(name, []).append(
-                        (kind, doc, members, path))
+        # Описи — з типів тарбола кожного пакета цього тегу; тарбол читається один раз на тег.
+        docs = {pkg: package_docs(pkg, version)
+                for pkg in sorted({e.split("/", 1)[0] for e in entries})}
         for entry, (gpath, blocks) in entries.items():
             pkg = entry.split("/", 1)[0]
             by_name: dict = {}
             for kind, name, code, dep in blocks:
-                if name.startswith("ɵ"):
-                    continue
-                by_name.setdefault(name, []).append((kind, code, dep))
+                if not name.startswith("ɵ"):
+                    by_name.setdefault(name, []).append((kind, code, dep))
+            golden_url = (f"https://github.com/{owner}/{repo}/blob/{quote(tag, safe='@')}/"
+                          f"{quote(gpath)}")
             for name, decls in by_name.items():
                 kinds = list(dict.fromkeys(k for k, _, _ in decls))
-                src = docs.get(pkg, {}).get(name, [])
                 # Найперше — оголошення з позначкою публічного API, далі решта того самого імені.
-                src = sorted(src, key=lambda d: ("@publicApi" not in d[1] and "@stable" not in d[1],
-                                                 d[3]))
+                src = sorted(docs[pkg].get(name, []),
+                             key=lambda d: ("@publicApi" not in d[1] and "@stable" not in d[1], d[3]))
                 parts = [f"Entry point: `@angular/{entry}`  ", f"Kind: {', '.join(kinds)}"]
                 if any(dep for _, _, dep in decls):
                     parts.append("Status: deprecated")
@@ -312,13 +361,12 @@ def ng_api_history(source: dict, ctx) -> list[Item]:
                         if text:
                             body.append(f"## {member}\n\n{text}")
                 text = "\n\n".join(body)
-                where = src[0][3] if src else gpath
-                url = f"https://github.com/{owner}/{repo}/blob/{quote(tag, safe='@')}/{quote(where)}"
                 digest = hashlib.sha1(f"{entry}\n{name}\n{text}".encode()).hexdigest()
-                key = (entry, name, kinds[0])
-                found.setdefault(key, {}).setdefault(digest, []).append(str(version))
+                found.setdefault((entry, name, kinds[0]), {}).setdefault(digest, []).append(version)
                 if digest not in texts:
-                    texts[digest] = (zlib.compress(text.encode(), 6), url)
+                    texts[digest] = (zlib.compress(text.encode(), 6),
+                                     _site(entry, name, version, golden_url))
+        del docs
     if not found:
         raise SystemExit(f"{source['id']}: на жодному з {len(tags)} тегів не знайдено золотих файлів API.")
     items = []
