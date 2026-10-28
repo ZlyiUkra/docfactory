@@ -3721,6 +3721,31 @@ anthropics/claude-code; Claude Tag (Claude у Slack) із claude.com/docs; оф�
 - приклад питання агентові: `./df claude-code ask "Which hook event can block a tool call, and how?"`;
 - докладніше — у [instances/claude-code/README.md](instances/claude-code/README.md).
 
+### angular
+
+Документація Angular англійською, кожна стабільна мінорна лінія 2.0–22.2 (67 ліній), а також AngularJS 1.0 і 1.2–1.8,
+Angular Material і CDK 5.0–22.2 та Angular CLI. Посібники, туторіали й довідник помилок angular.dev і angular.io з тегів
+angular/angular (`adev/src/content` 17.0–22.2, `aio/content` 4.0–17.3) з підставленим кодом прикладів; довідник API з
+коду на кожному мінорному тезі (символи й оголошення — з золотих файлів публічного API, опис — JSDoc типів тарбола
+npm); довідник API і CLI сайтів angular.dev v18–v22 і v4–v17.angular.io; v2.angular.io; AngularJS з
+code.angularjs.org; Material і CDK з `material2-docs-content`; давня документація CLI 1.0–8.3; журнали змін, релізи
+CLI до 12.0, README репозиторіїв і пакетів, реєстр npm 12 пакетів. Для цього додано читачів `adev-html`, `ng2-site`,
+`angularjs-docs` (`engine/readers/ngsites.py`), `ng-api-history` (`engine/readers/ngapi.py`) і поле `ng_docs` у
+`ghdocs-history` (`engine/readers/_ngdocs.py`). 24 366 документів, 92 620 фрагментів; вектори — на відеокарті.
+
+- порт `8927`; запис у Claude Code — `angular-docs`, адреса `http://127.0.0.1:8927/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-angular`, модель векторів — `bge-small`;
+- версія — мажор (`version: "22"`, `"17"`), AngularJS — `"1"`, давня документація CLI 1.x — `"cli-1"`; без названої
+  версії — 22, а де 21 відрізняється, модель дає обидва способи (22 і 21 — 30 % і 28 % завантажень `@angular/core` за
+  тиждень до 28.10.2026);
+- не входять: посібники 2.0–2.3 (жили в репозиторії angular.io без тегів, шаблонами Jade), довідник API Material
+  6.0–6.3, передрелізи, RxJS (примірник `rxjs`), NgRx, Nx, Ionic, AngularFire;
+- приклад питання агентові: `./df angular ask "How does linkedSignal differ from computed, and since which version is
+  it stable?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/angular/README.md](instances/angular/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
