@@ -63,6 +63,7 @@ _ADEV_CATEGORY = re.compile(r'<span class="docs-reference-category">(.*?)</span>
 _ADEV_LABEL = re.compile(r'<div class="docs-api-item-label[^"]*"[^>]*>(.*?)</div>', re.S)
 _STATE = re.compile(r'<script id="ng-state" type="application/json">(.*?)</script>', re.S)
 _DATA_TAB = re.compile(r'<div data-tab="([^"]+)"[^>]*>')
+_SITE_PATH = re.compile(r"[\w\-./$@~%]*")
 _LINE_SPAN = re.compile(r'</span>(?=<span class="line")')
 
 
@@ -139,13 +140,19 @@ def adev_html(source: dict, ctx) -> list[Item]:
             continue
         try:
             html = ctx.text(page)
-        except SystemExit as exc:
+        except (SystemExit, ValueError) as exc:
             print(f"  {page}: {exc}", flush=True)
             continue
         if match.search(urlsplit(page).path):
             pages.append(page)
         for href in _HREF.findall(html):
             # Сайт стоїть на <base href="/">: відносне посилання («cli/generate») — від кореня.
+            # Посилання в тексті сторінки бувають розміткою прикладу, а не адресою сайту:
+            # `animate(&quot;5s ease-in&quot;)` з v20 — сирий ескейп і пробіл, і такої адреси
+            # urllib не відправить зовсім. Береться лише шлях із дозволених символів.
+            href = unescape(href)
+            if not _SITE_PATH.fullmatch(urlsplit(href).path or "/"):
+                continue
             link = urljoin(root, href).rstrip("/")
             if (urlsplit(link).netloc == host and link not in seen
                     and match.search(urlsplit(link).path)
