@@ -191,3 +191,142 @@ def page(source: dict, ctx) -> list[Item]:
         items.append(Item(id=f"{source['id']}/{_slug(cid)}",
                           file=_name_402(num, cid), make=make))
     return items
+
+
+# ── Редакції: одна сторінка видання → документ на кожен розділ ────────────
+#
+# Редакції ECMA-262 і ECMA-402 лежать кожна однією сторінкою: ecmarkup з 2016 року
+# (emu-clause, emu-annex, emu-intro) і старша верстка ES5.1, ES2015 і 402 1.0
+# (section). Обидві дають розділу id і заголовок h1 з номером у span.secnum.
+#
+# Документом стає кожен розділ окремо — лише власний текст, без підрозділів, — а
+# ключем документа id розділу. Номер у ключ не потрапляє навмисно: між редакціями
+# номери зсуваються (Array.prototype.includes — 22.1.3.11 у 2016, 23.1.3.16 у 2026),
+# а id лишається, і однаковий текст різних редакцій зливається в один фрагмент з
+# переліком редакцій. Номер стоїть у кінці назви документа.
+#
+# З тієї ж причини посилання на розділ, яке видання пише номером («see 7.1.4»),
+# стає назвою розділу: інакше перенумерація міняла б текст і тоді, коли сам розділ
+# не змінився ні словом.
+
+_CLAUSE_TAG = re.compile(r"<(/?)(emu-clause|emu-annex|emu-intro|section)\b([^>]*)>")
+_ID_ATTR = re.compile(r"\bid=[\"']?([^\"'\s>]+)")
+_SECNUM = re.compile(r"<span class=[\"']?secnum[\"']?[^>]*>(.*?)</span>", re.S)
+# Посилання всередині тексту: href на розділ і текст, що є номером («7.1.4», «B.3.2»,
+# «Annex B», «15.4.4.14»).
+_XREF = re.compile(r"<a\s+href=[\"']?#([^\"'\s>]+)[\"']?[^>]*>([^<]*)</a>")
+# Номер кроку, який архівні видання 2021–2026 вписують у сам пункт прихованим span («1. »,
+# «a. », «iv. »): у чернетці й старших виданнях його немає, і з ним однакові кроки двох
+# редакцій не зливалися б.
+_LIST_MARKER = re.compile(r"<span[^>]*\baria-hidden=[\"']?true[\"']?[^>]*>\s*[0-9a-zA-Z]+\.\s*</span>")
+_NUMBER_TEXT = re.compile(r"^\s*(?:Annex [A-Z]|[A-Z](?:\.\d+)+|\d+(?:\.\d+)*)\s*$")
+# Службові розділи видання: колофон і ліцензія.
+_SKIP_IDS = ("sec-colophon", "sec-copyright-and-software-license")
+
+
+def _clauses(page: str) -> list[dict]:
+    """Розділи сторінки в порядку появи: id, номер, назва і власний html — тіло без
+    вкладених розділів."""
+    names = ("emu-clause", "emu-annex", "emu-intro") if "<emu-clause" in page else ("section",)
+    stack: list[dict] = []
+    out: list[dict] = []
+    for m in _CLAUSE_TAG.finditer(page):
+        closing, name, attrs = m.group(1), m.group(2), m.group(3)
+        if name not in names:
+            continue
+        if not closing:
+            cid = _ID_ATTR.search(attrs)
+            node = {"id": cid.group(1) if cid else "", "start": m.end(), "outer": m.start(),
+                    "holes": []}
+            stack.append(node)
+            out.append(node)
+            continue
+        if not stack:
+            continue
+        node = stack.pop()
+        node["end"] = m.start()
+        if stack:
+            stack[-1]["holes"].append((node["outer"], m.end()))
+    clauses = []
+    for node in out:
+        if "end" not in node or not node["id"].startswith("sec-") or node["id"] in _SKIP_IDS:
+            continue
+        pos, parts = node["start"], []
+        for a, b in node["holes"]:
+            parts.append(page[pos:a])
+            pos = b
+        parts.append(page[pos:node["end"]])
+        own = "".join(parts)
+        h1 = _H1.search(own)
+        number, title = "", ""
+        if h1 and not own[:h1.start()].strip():
+            head = h1.group(1)
+            num = _SECNUM.search(head)
+            if num:
+                number = _strip(num.group(1)).strip()
+                head = head[:num.start()] + head[num.end():]
+            title = " ".join(_strip(head).split())
+            own = own[h1.end():]
+        clauses.append({"id": node["id"], "number": number, "title": title, "html": own})
+    if not clauses:
+        raise SystemExit("На сторінці видання не знайдено жодного розділу — розмітка "
+                         "змінилася, читача треба поправити.")
+    return clauses
+
+
+def _bare_title(title: str) -> str:
+    """Назва без переліку параметрів: «ToNumber ( argument )» → «ToNumber»."""
+    return re.sub(r"\s*\(.*\)\s*$", "", title).strip() or title
+
+
+def _named_refs(html: str, titles: dict) -> str:
+    """Посилання номером на розділ цієї ж сторінки → «§ Назва розділу»."""
+    def swap(m):
+        target, text = m.group(1), m.group(2)
+        if target in titles and _NUMBER_TEXT.match(text):
+            return f"§ {html_lib.escape(titles[target])}"
+        return m.group(0)
+    return _XREF.sub(swap, html)
+
+
+def _clause_name(cid: str) -> str:
+    """Ключ документа з id розділу: «sec-array.prototype.includes» →
+    «array-prototype-includes»."""
+    return "-".join(re.findall(r"[a-z0-9]+", _slug(cid).lower())) or "x"
+
+
+@register("clauses")
+def clauses(source: dict, ctx) -> list[Item]:
+    """Поля: `url` — сторінка видання; `version` — мітка редакції; `label` — що
+    стоїть перед номером у назві документа («ECMA-262»)."""
+    url = source["url"]
+    version = str(source.get("version") or "")
+    label = source.get("label") or ""
+    page = ctx.text(url)
+    found = _clauses(page)
+    titles = {c["id"]: _bare_title(c["title"]) for c in found if c["title"]}
+    items, taken = [], set()
+    for c in found:
+        name = _clause_name(c["id"])
+        if name in taken:
+            continue
+        taken.add(name)
+
+        def make(c=c):
+            body = _strip(_named_refs(_LIST_MARKER.sub("", c["html"]), titles))
+            if not body.strip():
+                raise SystemExit(f"Розділ {c['id']} без власного тексту — документ не записую.")
+            where = " ".join(x for x in (label, f"§{c['number']}" if c["number"] else "") if x)
+            title = f"{c['title'] or c['id']} — {where}" if where else (c["title"] or c["id"])
+            head = f"# {title}\n# джерело: {url}#{c['id']}\n# отримано: {ctx.stamp}\n"
+            if version:
+                head += f"# версія: {version}\n"
+            return f"{head}\n{body}\n"
+
+        # Розділ без власного тексту (рубрика, увесь вміст якої — підрозділи) документом
+        # не стає: фрагмента з нього однаково не вийшло б.
+        if not _strip(_LIST_MARKER.sub("", c["html"])).strip():
+            continue
+        items.append(Item(id=f"{source['id']}/{name}", file=f"{source['id']}--{name}.txt",
+                          make=make))
+    return items

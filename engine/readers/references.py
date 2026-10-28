@@ -8,7 +8,8 @@
            нумерує заголовки сам, рівень у рівень від першого після змісту.
 
 Розділи «Status», «Contents», «Parts», «Acknowledgments» і «Modifications»
-викидаються. Код перенесено з колишнього завантажувача практики без змін по суті.
+викидаються. Поле `headings: "markdown"` робить нумеровані заголовки заголовками markdown
+— для примірника з `sections: "markdown"`. Код перенесено з колишнього завантажувача практики без змін по суті.
 """
 
 import re
@@ -197,7 +198,19 @@ def _document(source: dict, kind: str, ctx) -> str:
     if not re.search(r"^\d+(?:\.\d+)* \S", body, re.M):
         raise SystemExit(f"У {source['id']} не знайдено жодного нумерованого заголовка — "
                          f"розмітка змінилася, читача треба поправити.")
+    if source.get("headings") == "markdown":
+        body = _markdown_headings(body)
     return f"# {title}\n# джерело: {url}\n# отримано: {ctx.stamp}\n\n{body}\n"
+
+
+def _markdown_headings(body: str) -> str:
+    """Поле `headings: "markdown"` — для примірника з `sections: "markdown"`: рядок-заголовок
+    «2.1 Basic Language Range» стає «### 2.1 Basic Language Range», глибина — за номером.
+    Без поля — усе, як було."""
+    def mark(m):
+        depth = m.group(1).count(".") + 1
+        return "#" * min(depth + 1, 6) + " " + m.group(0)
+    return re.sub(r"^(\d+(?:\.\d+)*) \S.*$", mark, body, flags=re.M)
 
 
 def _reader(kind: str):

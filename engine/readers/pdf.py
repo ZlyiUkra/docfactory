@@ -11,6 +11,9 @@
 глави з крапкою, як у старих виданнях ECMA-334 2002–2006 («1. Scope», «8. Language overview»),
 теж вважається заголовком. Без поля — усе, як було.
 
+Поле `version` — мітка редакції: стає рядком «версія:» у шапці документа (редакції ECMA-262
+1997–2009). Без поля — усе, як було.
+
 Поле `line_numbers: true` — PDF друкує на полі номер кожного рядка (1-ше видання ECMA-334, 2001), і
 pypdf приклеює його до кінця рядка («8.6 Statements7», «is 1 9»). Номери на сторінці йдуть підряд
 від 1, тож знімається лише число, що дорівнює наступному очікуваному; саме число в тексті
@@ -71,9 +74,18 @@ def _keep(line: str) -> bool:
     return True
 
 
+# Заголовок, набраний у PDF розрядкою: «1S c o p e», «8T y p e s» (ECMA-262 1997–1999).
+_SPACED = re.compile(r"^(\d+(?:\.\d+)*)\s*([A-Z](?: [a-z])+)((?: \d+)?)$")
+
+
+def _unspace(line: str) -> str:
+    m = _SPACED.match(line)
+    return f"{m.group(1)} {m.group(2).replace(' ', '')}{m.group(3)}" if m else line
+
+
 def _clean_pdf(lines: list[str], markdown: bool = False) -> str:
     """Вступ плюс тіло від останнього «1 Scope»; колонтитули і зміст геть."""
-    lines = [re.sub(r"[ \t]+", " ", ln).rstrip() for ln in lines]
+    lines = [_unspace(re.sub(r"[ \t]+", " ", ln).rstrip()) for ln in lines]
     heading = _HEADING_DOTTED if markdown else _HEADING
     scope = r"^1\.? Scope\s*$" if markdown else r"^1 Scope\s*$"
     starts = [i for i, ln in enumerate(lines) if re.match(scope, ln)]
@@ -110,9 +122,12 @@ def _clean_pdf(lines: list[str], markdown: bool = False) -> str:
 
 
 def _document_pdf(data: bytes, title: str, url: str, stamp: str, markdown: bool = False,
-                  line_numbers: bool = False) -> str:
+                  line_numbers: bool = False, version: str = "") -> str:
     body = _clean_pdf(_pdf_text(data, line_numbers), markdown)
-    return f"# {title}\n# джерело: {url}\n# отримано: {stamp}\n\n{body}\n"
+    head = f"# {title}\n# джерело: {url}\n# отримано: {stamp}\n"
+    if version:
+        head += f"# версія: {version}\n"
+    return f"{head}\n{body}\n"
 
 
 @register("pdf")
@@ -123,6 +138,7 @@ def pdf(source: dict, ctx) -> list[Item]:
     line_numbers = bool(source.get("line_numbers"))
 
     def make():
-        return _document_pdf(ctx.bytes(url), title, url, ctx.stamp, markdown, line_numbers)
+        return _document_pdf(ctx.bytes(url), title, url, ctx.stamp, markdown, line_numbers,
+                             str(source.get("version") or ""))
 
     return [Item(id=source["id"], file=f"{source['id']}.txt", make=make)]
