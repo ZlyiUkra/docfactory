@@ -3746,6 +3746,31 @@ CLI до 12.0, README репозиторіїв і пакетів, реєстр n
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/angular/README.md](instances/angular/README.md).
 
+### solidjs
+
+Документація SolidJS англійською на кожен стабільний реліз, а також Solid Router, SolidStart, Solid Meta і Solid
+Primitives. Сайт docs.solidjs.com (репозиторій solidjs/solid-docs, тегів немає) — знімок на мить перед кожним
+наступним релізом: ядро — на релізи solid-js 1.8–1.9, розділи Router, Start і Meta — на релізи своїх пакетів; давня
+документація solidjs.com 1.0–1.8 (`documentation/` у solidjs/solid до 22.07.2021, далі solid-docs-legacy);
+реліз-кандидат Solid 2.0 (2.0.0-rc.19, гілка `v2-rebuild`) — єдиний нестабільний шар, з позначкою в кожному
+документі; журнали змін
+без передрелізів, релізи GitHub solid і solid-start, README кожної стабільної версії й реєстр npm восьми пакетів і 85
+пакетів `@solid-primitives/*`. Для цього додано читачів `ghsite-dated-prefixed` і `changelog-named-prefixed`
+(`engine/readers/ghdatedprefix.py`): префікс пакета перед версією, щоб Router 1.0 і Start 1.x не змішувалися з
+solid-js 1.x. 4 149 документів, 13 687 фрагментів; вектори — на відеокарті.
+
+- порт `8928`; запис у Claude Code — `solidjs-docs`, адреса `http://127.0.0.1:8928/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-solidjs`, модель векторів — `bge-small`;
+- версія — лінія solid-js (`version: "1.9"`, `"1"`), реліз-кандидат — `"2.0.0-rc.19"`, інші пакети — з префіксом
+  (`"router-0.15"`, `"start-2"`, `"primitives-storage-4"`); без названої версії — 1.9 (понад 95 % завантажень solid-js
+  за тиждень до 28.10.2026);
+- не входять: передрелізи, крім реліз-кандидата 2.0, переклади давньої документації, Kobalte, Solid UI, TanStack;
+- приклад питання агентові: `./df solidjs ask "How does createResource handle errors, and what changed in Solid
+  1.8?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/solidjs/README.md](instances/solidjs/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

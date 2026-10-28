@@ -369,11 +369,13 @@ Cloudflare.
 - Upstash (Redis по HTTP для serverless, `@upstash/ratelimit`, QStash, Workflow, Vector: сайт, блог, код і README
   кожного SDK) — `upstash`;
 - Sanity (CMS: Studio і типи схеми, Content Lake, GROQ, посібник «Use Sanity with Astro»: сайт sanity.io/docs,
-  довідник API reference.sanity.io, README пакетів, реєстр npm, релізи) — `sanity`.
+  довідник API reference.sanity.io, README пакетів, реєстр npm, релізи) — `sanity`;
+- SolidJS для островів на Solid (сигнали, сховища, керування потоком, ресурси: docs.solidjs.com на кожен стабільний
+  реліз, давня solidjs.com 1.0–1.8, Router, Start, Meta, Solid Primitives) — `solidjs`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- фреймворки островів, окрім React: Vue, Svelte, Solid, Preact;
+- фреймворки островів, окрім React: Vue, Svelte, Preact;
 - платформи розгортання: Cloudflare, Vercel, Netlify;
 - спостереження: Lighthouse;
 - контент: Starlight, інші CMS, Shiki, remark і rehype поза документацією Astro.

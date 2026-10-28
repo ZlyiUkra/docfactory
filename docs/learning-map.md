@@ -4,21 +4,21 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 27.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, anthropic-api, argocd, argon2, aspnetcore,
-astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot, class-transformer,
-class-validator, claude-code, clerk, coder-websocket, confluent-kafka-javascript, contentful, csharp, csrf-csrf,
-doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo, express,
-express-rate-limit, fastify, ffmpeg, flux, foundry, frontend-architecture, github-actions, go, golang-jwt,
+Стан на 28.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, angular, anthropic-api, argocd, argon2,
+aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot,
+class-transformer, class-validator, claude-code, clerk, coder-websocket, confluent-kafka-javascript, contentful,
+csharp, csrf-csrf, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo,
+express, express-rate-limit, fastify, ffmpeg, flux, foundry, frontend-architecture, github-actions, go, golang-jwt,
 golang-migrate, golang-x, golangci-lint, golevelup-nestjs-rabbitmq, goose, grafana, gvisor, helmet, htdp, i18next,
 icu, ioredis, iron-session, jose, jsonschema, kafka, kafkajs, kraken-spot, kubernetes, learning-go, libreoffice,
-libuv, lightweight-charts, linux, llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion, msw, nats, nats-js, nestjs,
-nestjs-cls, nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, node-mongodb,
+libuv, lightweight-charts, linux, llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion, msw, nats, nats-js,
+nestjs, nestjs-cls, nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, node-mongodb,
 node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, oapi-codegen, ollama,
-openapi-typescript, openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload, pgx,
-platformatic-kafka, playwright, postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq, react,
+openapi-typescript, openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload,
+pgx, platformatic-kafka, playwright, postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq, react,
 react-email, react-hook-form, react-native, react-router, react-window, redis, redux, resend, river, rxjs, sanity,
-sealed-secrets, sentry, shadcn, socketio, sqlc, sqlserver, storybook, stripe, supabase, supertest, swr, tailwind,
-tanstack-query, tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testcontainers-go,
+sealed-secrets, sentry, shadcn, socketio, solidjs, sqlc, sqlserver, storybook, stripe, supabase, supertest, swr,
+tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testcontainers-go,
 testing-library, trpc, turborepo, typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest,
 wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
@@ -184,4 +184,4 @@ Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy.
 1. Платформи розгортання: Cloudflare (3), Vercel і Netlify (по 1) — документація Astro описує лише адаптери до них.
 2. Контент поза документацією Astro: remark і rehype (3), Shiki (1).
 3. Lighthouse (1).
-4. Лише в переліку плану, без днів: Vue, Svelte, Solid, Preact (острови не на React).
+4. Лише в переліку плану, без днів: Vue, Svelte, Preact (острови не на React).
