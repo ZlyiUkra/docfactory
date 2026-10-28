@@ -32,7 +32,8 @@ wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Лінія 1. React → NestJS → Next.js
 
-Бекенд родини можна вчити на Go замість NestJS — план Go стоїть нижче, поруч із планом NestJS.
+Після плану React можна піти не в NestJS і Next.js, а в окрему лінійку Go з власним проєктом — її план стоїть нижче,
+поруч із планом NestJS.
 
 ### План React — [instances/react/LEARNING.md](../instances/react/LEARNING.md)
 
@@ -62,20 +63,21 @@ wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ### План Go — [instances/go/LEARNING.md](../instances/go/LEARNING.md)
 
-Альтернатива плану NestJS: той самий наскрізний проєкт і контракт `/api`, бекенд на Go. Мову фаза 0 вчить за
-книжкою «Learning Go» (примірник `learning-go`); лінія сертифікації Ardan Labs спирається на документи `cert-…`
+Окрема лінійка фулстек-розробника з бекендом на Go і власним проєктом — читачем документів `reader` (прототип ради
+17.10.2026, реалізований на Go і React; код — у репозиторії навчання `goal2learn`, тека `reader/`). Мову фаза 0 вчить
+за книжкою «Learning Go» (примірник `learning-go`); лінія сертифікації Ardan Labs спирається на документи `cert-…`
 власного примірника `go`.
 
 | Фаза | Примірники (дні) |
 |------|------------------|
 | 0. Мова Go за книжкою «Learning Go» | `learning-go` (1–20), `golangci-lint` (13), `golang-x` (15) |
-| 1. HTTP і SQL без фреймворку | `learning-go` (1–5, 8), `mdn` (1, 3, 6–7), `webstandards` (1, 3, 6–7), `owasp` (6), `vite` (7), `postgresql` (9–14) |
-| 2. Робочий API: контракт OpenAPI | `oapi-codegen` (2–3, 7), `webstandards` (1, 3), `jsonschema` (1), `learning-go` (4), `orval` і `openapi-typescript` (5), `tanstack-query` (5), `react-hook-form` і `zod` (6) |
-| 3. Дані: pgx, sqlc, goose | `postgresql` (1–7, 9–10), `pgx` (1, 3, 5, 7, 10), `sqlc` (4, 6–8), `goose` і `golang-migrate` (2), `learning-go` (5), `owasp` (8) |
-| 4. Автентифікація й авторизація | `golang-x` (1, 11), `golang-jwt` (2–3), `oapi-codegen` (4), `webstandards` (1–7, 9, 11), `owasp` (1, 5, 7, 9–12), `postgresql` (6), `react-router` (8) |
-| 5. Якість: тести, гонитви, профілювання | `testcontainers-go` (3–4), `golangci-lint` (5), `learning-go` (1–3, 5), `docker` (3) |
-| 6. Продакшн | `docker` (1–3, 7), `learning-go` (1), `nginx` (2, 5), `kubernetes` (3, 8–9), `redis` (4, 8), `postgresql` (6, 8–9), `river` (6), `github-actions` (7), `oracle-cloud` (8), `golangci-lint` (7) |
-| 7. Живі дані: WebSocket | `coder-websocket` (1–4, 7), `webstandards` (1, 3), `mdn` (1, 6), `binance-spot` (1, 4), `kraken-spot` (4), `learning-go` (2), `owasp` (3, 8), `redis` (5), `kubernetes` (5, 8), `nginx` (5), `vite` (6) |
+| 1. Каркас: сервер, Docker, база | `mdn` (1, 3), `webstandards` (1, 3), `learning-go` (1–5, 9), `docker` (6–7), `owasp` (6), `postgresql` (8), `goose` (8), `pgx` (8), `golang-migrate` (8) |
+| 2. Модель і контракт, реєстр схем і причин | `ollama` (1–3), `docker` (1), `learning-go` (2, 4, 6–9), `jsonschema` (3, 5–6), `owasp` (9) |
+| 3. Документи на вході: синтетичний набір і пісочниця | `docker` (1, 4), `libreoffice` (1–2), `doc-tools` (3, 7), `owasp` (4, 9), `learning-go` (5, 8, 10), `tesseract` (7), `jsonschema` (8) |
+| 4. Черга в PostgreSQL: надходження, стани, воркери | `postgresql` (1–3, 5–6), `goose` (1), `pgx` (3, 5–6), `owasp` (3, 9), `sqlc` (4–5), `river` (6), `golang-x` (7), `learning-go` (7–8, 10), `mdn` (9), `testcontainers-go` (10) |
+| 5. Розпізнавання, перевірки й інтерфейс | `ollama` (1–3), `jsonschema` (1), `owasp` (1, 10–11), `learning-go` (4), `postgresql` (5–6), `sqlc` (5–6), `mdn` (6, 8, 10–11), `vite` (7), `tanstack-query` (8–9), `react` (8, 10) |
+| 6. Замір і якість | `learning-go` (2, 4, 7), `ollama` (3), `testcontainers-go` (4), `golangci-lint` (5), `github-actions` (5) |
+| 7. Після прототипу: людина, видача, хмара, агент, кластер | `golang-x` (1, 6), `owasp` (1–3, 5–6, 8), `golang-jwt` (2), `webstandards` (2, 5), `mdn` (2, 6), `learning-go` (3), `react-hook-form` (4), `jsonschema` (4), `postgresql` (4–5, 12), `oapi-codegen` (5), `anthropic-api` (7–9), `docker` (7), `gvisor` (10), `tesseract` (10), `doc-tools` (10), `kubernetes` (11–12), `goose` (12), `ollama` (12) |
 | С. Лінія сертифікації Ardan Labs | `learning-go` (С4) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
@@ -146,43 +148,24 @@ wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ### Go
 
-Бібліотеки нинішнього плану мають свої примірники. Бракує іншого: план збудовано на наскрізному проєкті родини (SPA
-з цінами біржі), а лінійка фулстек-розробника з бекендом на Go має вчити на власному проєкті. Проєкт вибрано
-27.10.2026: **читач документів `reader`**, локальний прототип, задуманий 17.10.2026 у трьох раундах ради (тека
-`/mnt/c/Projects/reader`: рішення в `docs/`, файл передачі `.specify/consilium/2026-10-17-local-prototype.md`,
-конституція з 12 принципів; коду ще немає). Файли будь-яких форматів із теки чи з браузера → розбір у пісочниці без
-мережі (текстовий шар або OCR) → тип документа і поля за схемою від локальної моделі в Ollama → детерміновані
-перевірки → статус із причиною з закритого переліку; результат — у PostgreSQL і в браузері (React). Рада задумувала
-бекенд на TypeScript і Fastify; у лінійці той самий бекенд пишеться на Go.
+План Go з 28.10.2026 вчить на власному проєкті — читачі документів `reader` (прототип ради 17.10.2026; рішення,
+файл передачі й конституція — у репозиторії `reader`, код лінійки — у `goal2learn`, тека `reader/`). Фази 1–6
+відповідають фазам 0–8 прототипу, фаза 7 — його таблиці відкладеного.
 
 Що треба, крім документації:
 
-1. План під проєкт: фази 1–7 переписати за фазами прототипу (каркас і мережі, модель і контракт, реєстр схем і
-   причин, синтетичні документи, пісочниця й розбір, черга в PostgreSQL, розпізнавання й перевірки, інтерфейс,
-   замір). Відкладене прототипу — форма перевірника, видача іншому продукту, хмарна модель, агент-ремонтник,
-   Kubernetes — стає пізніми фазами: саме там вхід, права й викот, яких у прототипі немає. Абзац «Бекенд на Go —
-   альтернатива етапів 2–3» у трьох планах родини і поправки до плану Next.js у «Що далі» тоді зміняться. Фаза 0
-   (мова за «Learning Go»), лінії співбесіди й сертифікації від проєкту не залежать.
-2. Де лежить код лінійки — не вирішено.
-3. Фронтенд під проєкт: вміст теки, таблиця документів, картка з полями, фрагментами й сторінками — днів React під
-   це немає (план React навчає на SPA біржі).
-4. Формат розгорнутого дня для Go: перевірки у файлах `_test.go` замість `assert`, «Неправильні варіанти» з точними
+1. Формат розгорнутого дня для Go: перевірки у файлах `_test.go` замість `assert`, «Неправильні варіанти» з точними
    повідомленнями компілятора, теорія «від загадки до розбору».
-5. Середовище: у WSL стоїть Go 1.24.1 (документація — до 1.27.3); Ollama на GPU в Docker — не перевірено.
-6. Тренажер пробного іспиту Ardan Labs: банку запитань немає (Ardan прикладів не публікує), складати з матеріалу
+2. Середовище: у WSL стоїть Go 1.24.1 (план і документація — 1.27.3); Ollama на GPU в Docker — не перевірено.
+3. Тренажер пробного іспиту Ardan Labs: банку запитань немає (Ardan прикладів не публікує), складати з матеріалу
    `cert-` примірника `go`.
 
 Документація, якої немає:
 
-1. Перевірка JSON Schema на Go (у прототипі на TypeScript це ajv): бібліотеку не вибрано; специфікація є в
-   примірнику `jsonschema`.
-2. pgvector і `pgvector-go` — коли дійде до пошуку за змістом (у прототипі відкладено).
-3. Сервер MCP на Go (`modelcontextprotocol/go-sdk`) — якщо агент-ремонтник працюватиме через MCP.
-4. Налагоджувач delve — тема іспиту Ardan.
-
-Уже є все інше, що називає прототип: `ollama` (разом із кодом пакета Go `api`), `jsonschema`, `libreoffice`,
-`doc-tools` (poppler, ImageMagick), `tesseract`, `gvisor`, `docker`, `postgresql`, `owasp`, `mdn`, `react`, `vite`,
-`kubernetes`, `anthropic-api` (Go SDK для хмарного адаптера) і 11 бібліотек Go нинішнього плану.
+1. Бібліотека перевірки JSON Schema для Go `santhosh-tekuri/jsonschema` (фаза 2, дні 5–6; фаза 5, день 3);
+   специфікація є в примірнику `jsonschema`.
+2. Налагоджувач delve — тема іспиту Ardan.
+3. pgvector і `pgvector-go` — лише якщо дійде до пошуку за змістом (у плані — «Що далі»).
 
 ### Next.js
 
