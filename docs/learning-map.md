@@ -64,9 +64,9 @@ wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 ### План Go — [instances/go/LEARNING.md](../instances/go/LEARNING.md)
 
 Окрема лінійка фулстек-розробника з бекендом на Go і власним проєктом — читачем документів `reader` (прототип ради
-17.10.2026, реалізований на Go і React; код — у репозиторії навчання `goal2learn`, тека `reader/`). Мову фаза 0 вчить
-за книжкою «Learning Go» (примірник `learning-go`); лінія сертифікації Ardan Labs спирається на документи `cert-…`
-власного примірника `go`.
+17.10.2026, реалізований на Go і React, у фазі 8 — з інтерфейсом на Next.js; код — у репозиторії навчання
+`goal2learn`, тека `reader/`). Мову фаза 0 вчить за книжкою «Learning Go» (примірник `learning-go`); лінія
+сертифікації Ardan Labs спирається на документи `cert-…` власного примірника `go`.
 
 | Фаза | Примірники (дні) |
 |------|------------------|
@@ -78,6 +78,7 @@ wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 | 5. Розпізнавання, перевірки й інтерфейс | `ollama` (1–3), `jsonschema` (1), `owasp` (1, 10–11), `learning-go` (4), `postgresql` (5–6), `sqlc` (5–6), `mdn` (6, 8, 10–11), `vite` (7), `tanstack-query` (8–9), `react` (8, 10) |
 | 6. Замір і якість | `learning-go` (2, 4, 7), `ollama` (3), `testcontainers-go` (4), `golangci-lint` (5), `github-actions` (5) |
 | 7. Після прототипу: людина, видача, хмара, агент, кластер | `golang-x` (1, 6), `owasp` (1–3, 5–6, 8), `golang-jwt` (2), `webstandards` (2, 5), `mdn` (2, 6), `learning-go` (3), `react-hook-form` (4), `jsonschema` (4), `postgresql` (4–5, 12), `oapi-codegen` (5), `anthropic-api` (7–9), `docker` (7), `gvisor` (10), `tesseract` (10), `doc-tools` (10), `kubernetes` (11–12), `goose` (12), `ollama` (12) |
+| 8. Інтерфейс на Next.js | `nextjs` (1–8), `docker` (1), `react` (2, 5), `mdn` (3, 6), `owasp` (3, 7), `webstandards` (4), `playwright` (8), `kubernetes` (8) |
 | С. Лінія сертифікації Ardan Labs | `learning-go` (С4) |
 
 ### План Next.js — [instances/nextjs/LEARNING.md](../instances/nextjs/LEARNING.md)
@@ -150,7 +151,7 @@ wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 План Go з 28.10.2026 вчить на власному проєкті — читачі документів `reader` (прототип ради 17.10.2026; рішення,
 файл передачі й конституція — у репозиторії `reader`, код лінійки — у `goal2learn`, тека `reader/`). Фази 1–6
-відповідають фазам 0–8 прототипу, фаза 7 — його таблиці відкладеного.
+відповідають фазам 0–8 прототипу, фаза 7 — його таблиці відкладеного, фаза 8 переносить інтерфейс на Next.js.
 
 Що треба, крім документації:
 
