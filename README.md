@@ -3731,7 +3731,7 @@ npm); довідник API і CLI сайтів angular.dev v18–v22 і v4–v17
 code.angularjs.org; Material і CDK з `material2-docs-content`; давня документація CLI 1.0–8.3; журнали змін, релізи
 CLI до 12.0, README репозиторіїв і пакетів, реєстр npm 12 пакетів. Для цього додано читачів `adev-html`, `ng2-site`,
 `angularjs-docs` (`engine/readers/ngsites.py`), `ng-api-history` (`engine/readers/ngapi.py`) і поле `ng_docs` у
-`ghdocs-history` (`engine/readers/_ngdocs.py`). 24 366 документів, 92 620 фрагментів; вектори — на відеокарті.
+`ghdocs-history` (`engine/readers/_ngdocs.py`). 24 539 документів, 93 041 фрагмент; вектори — на відеокарті.
 
 - порт `8927`; запис у Claude Code — `angular-docs`, адреса `http://127.0.0.1:8927/mcp`; інструменти `search_docs` і
   `read_section`;
