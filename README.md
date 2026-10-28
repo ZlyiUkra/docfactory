@@ -3731,7 +3731,9 @@ npm); довідник API і CLI сайтів angular.dev v18–v22 і v4–v17
 code.angularjs.org; Material і CDK з `material2-docs-content`; давня документація CLI 1.0–8.3; журнали змін, релізи
 CLI до 12.0, README репозиторіїв і пакетів, реєстр npm 12 пакетів. Для цього додано читачів `adev-html`, `ng2-site`,
 `angularjs-docs` (`engine/readers/ngsites.py`), `ng-api-history` (`engine/readers/ngapi.py`) і поле `ng_docs` у
-`ghdocs-history` (`engine/readers/_ngdocs.py`). 24 539 документів, 93 041 фрагмент; вектори — на відеокарті.
+`ghdocs-history` (`engine/readers/_ngdocs.py`), а для довідника API Material і CDK 6.0–6.3 —
+`npm-dts-api` (`engine/readers/npmdtsapi.py`, типи тарбола npm). 26 145 документів, 96 473 фрагменти; вектори — на
+відеокарті.
 
 - порт `8927`; запис у Claude Code — `angular-docs`, адреса `http://127.0.0.1:8927/mcp`; інструменти `search_docs` і
   `read_section`;
@@ -3739,8 +3741,8 @@ CLI до 12.0, README репозиторіїв і пакетів, реєстр n
 - версія — мажор (`version: "22"`, `"17"`), AngularJS — `"1"`, давня документація CLI 1.x — `"cli-1"`; без названої
   версії — 22, а де 21 відрізняється, модель дає обидва способи (22 і 21 — 30 % і 28 % завантажень `@angular/core` за
   тиждень до 28.10.2026);
-- не входять: посібники 2.0–2.3 (жили в репозиторії angular.io без тегів, шаблонами Jade), довідник API Material
-  6.0–6.3, передрелізи, RxJS (примірник `rxjs`), NgRx, Nx, Ionic, AngularFire;
+- не входять: посібники 2.0–2.3 (жили в репозиторії angular.io без тегів, шаблонами Jade), передрелізи, RxJS
+  (примірник `rxjs`), NgRx, Nx, Ionic, AngularFire;
 - приклад питання агентові: `./df angular ask "How does linkedSignal differ from computed, and since which version is
   it stable?"`;
 - корпус і сховище сирого — в архіві від самого початку;

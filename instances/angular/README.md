@@ -55,13 +55,14 @@ Angular за десять років змінив форму кілька раз
 | Сайт v2.angular.io: посібники, рецепти, туторіал, API | 451 | 2.4.10 | HTML сторінок |
 | AngularJS: посібник, туторіал, API, помилки | 3 804 | 1.0.8, 1.2.32 … 1.8.3 | `partials/` на code.angularjs.org |
 | Material і CDK: API, огляди, посібники | 2 943 | кожна мінорна 6.4–22.2 і 5.0–5.2 | гілки й знімки `material2-docs-content` |
+| Material і CDK 6.0–6.3: довідник API, символ — документ (846 і 602 символи в 6.3) | 1 606 | 6.0.2, 6.1.0, 6.2.1, 6.3.3 | типи `.d.ts` і `index.metadata.json` тарболів npm |
 | Material і CDK: огляди й посібники markdown | 145 | 5.0–6.3 | теги angular/components |
 | Давня документація CLI | 372 | 1.0–8.3 | `docs/documentation` на тегах angular-cli |
 | Журнали змін і релізи CLI до 12.0 | 1 723 | усі стабільні | `CHANGELOG.md`, `CHANGELOG_ARCHIVE.md`, релізи GitHub |
 | README репозиторіїв і пакетів npm | 158 | усі мінорні | теги, тарболи, репозиторії |
 | Реєстр npm 12 пакетів | 215 | усі стабільні | registry.npmjs.org |
 
-Разом 31 899 файлів; документів після злиття однакових редакцій — 24 539, фрагментів в індексі — 93 041
+Разом 33 505 файлів; документів після злиття однакових редакцій — 26 145, фрагментів в індексі — 96 473
 (`expected_passages` у `checks.json`). Фрагменти — це шматки документів між заголовками, по яких іде пошук. Документ —
 неповторна редакція файла, і в рядку `# версія:` стоять усі версії, де текст був саме таким.
 
@@ -98,7 +99,10 @@ Angular за десять років змінив форму кілька раз
   посібники цих сайтів не беруться (вони є з тегів), лише згенеровані сторінки API і CLI. v2.angular.io — `ng2-site`,
   AngularJS — `angularjs-docs` (шматки `partials/*.html` застосунку документації).
 - **Material і CDK.** Зібраний HTML сайту з репозиторію `material2-docs-content`: гілка на кожну мінорну 6.4–22.2 і
-  найновіший знімок-тег 5.0, 5.1, 5.2; для 5.0–6.3 — ще й markdown оглядів із тегів angular/components.
+  найновіший знімок-тег 5.0, 5.1, 5.2; для 5.0–6.3 — ще й markdown оглядів із тегів angular/components. Стабільних
+  знімків 6.0–6.3 немає, тож довідник API цих ліній зібрано з пакета npm (`npm-dts-api`): символ — документ, перелік —
+  те, що експортує точка входу (`<точка>/index.d.ts` → `public-api.d.ts`), опис і члени — JSDoc типів, селектор,
+  `exportAs`, входи й виходи — `index.metadata.json`; службові `ɵ`, `_` і `@docs-private` не беруться.
 - **npm.** Реєстр 12 пакетів; README @angular/cli і `angular` — з репозиторію на кожній версії; README @angular/core,
   common, router, forms, platform-browser, compiler, animations, material і cdk є лише в пакеті — береться з тарбола
   останнього патча кожної мінорної (588 тарболів, 32 неповторні тексти).
@@ -107,7 +111,8 @@ Angular за десять років змінив форму кілька раз
 
 - Посібники Angular 2.0–2.3 недосяжні: тексти 2.x жили в репозиторії angular.io без тегів, шаблонами Jade. Є сайт
   v2.angular.io (2.4.10) і довідник API з коду кожної мінорної 2.0–2.4.
-- Довідника API Material 6.0–6.3 немає: стабільних знімків docs-content для цих ліній не існує.
+- Довідник API Material і CDK 6.0–6.3 — з пакета npm, а не з сайту: розмітка інша, ніж у сторінок 5.x і 6.4+ (символ —
+  документ, як у довіднику API Angular з коду), тож редакції цих ліній з 5.x і 6.4+ в одне місце видачі не складаються.
 - Сторінки сайтів — один знімок на мажор (остання мінорна); версії інших мінорних — з тегів і довідника з коду.
 - Нотатки релізів GitHub angular/angular і angular/components не беруться: їх складено з того самого журналу змін.
 - Передрелізів (next, rc, beta), RxJS, NgRx, Nx, Ionic, AngularFire та інших сторонніх бібліотек тут немає; RxJS має
@@ -119,10 +124,10 @@ Angular за десять років змінив форму кілька раз
 кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/angular-corpus-2026-10-28-examples.tar.gz` (тексти, паспорт і сховище сирого
-`raw/`; перед видаленням текстів розпакований окремо й звірений із диском), копія —
-`C:\Distr\angular-corpus-2026-10-28-examples.tar.gz` (`/mnt/c/Distr/…` з WSL), SHA-256 обох звірено. В історії git текстів
-немає ніде.
+**Де тексти.** В архіві `~/archives/docfactory/angular-corpus-2026-10-28-material6.tar.gz` (тексти, паспорт і сховище
+сирого `raw/`; перед видаленням текстів розпакований окремо й звірений із диском), копія —
+`C:\Distr\angular-corpus-2026-10-28-material6.tar.gz` (`/mnt/c/Distr/…` з WSL), SHA-256 обох звірено. В історії git
+текстів немає ніде.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
@@ -140,8 +145,24 @@ gzip -9 -c instances/angular/index/passages.json > instances/angular/index/passa
 **Як повернути тексти** — перед будь-яким оновленням корпусу; разом із ними повертається й сховище `raw/`:
 
 ```
-tar -xzf ~/archives/docfactory/angular-corpus-2026-10-28-examples.tar.gz -C instances/angular
+tar -xzf ~/archives/docfactory/angular-corpus-2026-10-28-material6.tar.gz -C instances/angular
 ./df angular smoke
+```
+
+**Витіснені редакції.** 28.10.2026 виправлення прикладів коду (коміт 7b6b9ad16) витіснило 849 старих редакцій
+документів `ng-api`, `ng-aio` і `ng-adev` із рядками «Example: шлях» замість коду; тоді їх не збережено. 826 з них
+відтворено тим самим вечором і запаковано в `~/archives/docfactory/angular-superseded-2026-10-28.tar.gz` (копія —
+`C:\Distr`, SHA-256 звірено; 826 файлів, 1 405 рядків-заглушок). Решта 23 — редакції, де бракувало файлів `.xlf` і
+`.conf`: ці файли вже лежать у сховищі, тож старий читач тепер підставляє код, і точно такими вони не відтворюються.
+Відтворити старі редакції можна будь-коли без мережі — читачі з коміту c2da77c3d, сховище `raw/` з чинного архіву:
+
+```
+git worktree add ../docfactory-c2da77c3d c2da77c3d
+cd ../docfactory-c2da77c3d
+ln -s ~/Projects/docfactory/.venvs .venvs && ln -s ~/Projects/docfactory/.env .env
+tar -xzf ~/archives/docfactory/angular-corpus-2026-10-28-material6.tar.gz -C instances/angular raw
+./df angular build ng-api ng-aio ng-adev   # старі тексти — у instances/angular/corpus/ цієї копії
+cd ~/Projects/docfactory && git worktree remove --force ../docfactory-c2da77c3d
 ```
 
 **Що перестає працювати.** `check`, `refresh` і `manifest` читають файли, і без текстів їм нема з чим працювати. Дві
