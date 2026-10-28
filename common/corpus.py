@@ -287,14 +287,16 @@ class Passage:
     def absorb(self, other: "Passage") -> None:
         """Той самий текст у документі іншої версії. Версія дописується, а
         представником стає найновіша: її адресу й назву бачить той, хто звіряє
-        цитату, — за старою адресою текст міг давно змінитися."""
+        цитату, — за старою адресою текст міг давно змінитися. Підпис фрагмента
+        береться звідти ж: у редакціях специфікації номер розділу в назві зсувається,
+        і підпис найстарішої редакції поруч з адресою найновішої давав би чужий номер."""
         newest = self.versions[0] if self.versions else ""
         for v in other.versions:
             if v not in self.versions:
                 self.versions.append(v)
         self.versions.sort(key=version_key, reverse=True)
         if other.versions and version_key(other.versions[0]) > version_key(newest):
-            for field in ("doc_id", "doc_title", "url", "fetched", "part", "parts"):
+            for field in ("doc_id", "doc_title", "url", "fetched", "part", "parts", "heading"):
                 setattr(self, field, getattr(other, field))
 
     @property
