@@ -101,6 +101,10 @@
                    value: 'nunit'}, …]}>` і `<TabItem value="nunit">`) дістають підпис «NUnit:»: сайт
                    playwright.dev для .NET показує той самий приклад для кожного раннера тестів, і без
                    підпису в тексті лишалися б чотири блоки коду поспіль невідомо для чого;
+                   `ng_docs` — `"aio"` чи `"adev"`: посібники Angular (`aio/content`, `adev/src/content`)
+                   з кодом прикладів, підставленим із файлів того самого тегу за областями
+                   `#docregion`, і розміткою `<docs-step>`, `<docs-callout>`, `{@link}` текстом (див.
+                   `_ngdocs`); редакція сторінки враховує й файли прикладів;
                    `{version}` у `folders` — мітка тегу: сайт, що тримав кожну версію у своїй теці
                    (`dotnet/versioned_docs/version-1.12`), береться одним джерелом, і на кожному
                    тезі — лише тека його версії, а не всі версії, що лежали в тому знімку поруч.
@@ -150,7 +154,8 @@ from textwrap import dedent
 from urllib.parse import quote, urlsplit
 
 from engine.readers import (Item, _astromdx, _baseui, _biomemdx, _jsonschemaorg, _markup, _mdbook,
-                            _nginxxml, _otelhugo, _prismamdx, _vitepress, _vocs, _vuepress, register)
+                            _ngdocs, _nginxxml, _otelhugo, _prismamdx, _vitepress, _vocs, _vuepress,
+                            register)
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _LOCALE = re.compile(r"\.[a-z]{2}-[A-Z]{2}\.md$")
@@ -938,6 +943,9 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     biome = source.get("biome_mdx") is True
     if biome:
         wanted += _biomemdx.WANTED
+    ng = source.get("ng_docs") if source.get("ng_docs") in ("aio", "adev") else ""
+    if ng:
+        wanted += _ngdocs.wanted(ng)
     # Для vocs: ім'я документа → адреса, з якої текст сторінки вже прочитано під час переліку.
     # Тег цієї адреси буває новіший за перший тег документа (сторінка та сама, вставка інша), і
     # читання з адреси першого тегу тягнуло б ту саму сторінку з мережі вдруге.
@@ -1053,6 +1061,11 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                                              lambda w, s, t=tag: blob_text(w, s, t),
                                              lambda u=origin[page_key]: ctx.text(u), line)
                     origin.setdefault(f"{lead}{_markup.slug(stem)}-{sha[:8]}", origin[page_key])
+                if ng:
+                    files_now = registry[tag]
+                    files_now.setdefault(path, sha)
+                    sha = _ngdocs.revision(path, sha, files_now,
+                                           lambda w, s, t=tag: blob_text(w, s, t), ng)
                 name = f"{lead}{_markup.slug(stem)}-{sha[:8]}"
                 seen.setdefault(name, [path, []])[1].append(tag)
 
@@ -1133,6 +1146,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 rest = _prismamdx.expand(rest, path, registry.get(tag, {}), fetch, meta or {})
             if biome:
                 rest = _biomemdx.expand(rest, path, registry.get(tag, {}), fetch, version)
+            if ng:
+                rest = _ngdocs.expand(rest, path, registry.get(tag, {}), fetch, ng)
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
