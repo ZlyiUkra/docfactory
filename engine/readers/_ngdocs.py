@@ -34,7 +34,7 @@ from textwrap import dedent
 
 from engine.readers import _markup
 
-_CODE_EXT = r"(?:ts|js|mjs|cjs|html|css|scss|sass|less|json|jsonc|sh|txt|yaml|yml|svg|xml|toml|md|xlf|conf)"
+_CODE_EXT = r"(?:ts|js|mjs|cjs|html|css|scss|sass|less|json|jsonc|sh|txt|yaml|yml|svg|xml|toml|md|xlf|conf|es6)"
 
 _ATTR = re.compile(r"""([\w-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'))?""")
 # Пара тегів із кодом усередині чи самозакритий тег.
@@ -69,7 +69,8 @@ _AIO_TAGS = re.compile(r"^@(?:intro|description)[ \t]*$\n?", re.M)
 
 _LANG = {"ts": "typescript", "js": "javascript", "mjs": "javascript", "html": "html",
          "css": "css", "scss": "scss", "json": "json", "sh": "shell", "yaml": "yaml",
-         "yml": "yaml", "svg": "xml", "xml": "xml"}
+         "yml": "yaml", "svg": "xml", "xml": "xml", "es6": "javascript",
+         "xlf": "xml", "conf": "nginx"}
 
 
 def wanted(kind: str) -> list:
@@ -156,17 +157,46 @@ def _fence(code: str, lang: str, header: str) -> str:
     return f"\n\n{head}{tick}{lang}\n{code}\n{tick}\n\n"
 
 
-def _code(attrs: dict, inner: str | None, kind: str, files: dict, fetch) -> str:
+def candidates(target: str) -> list[str]:
+    """Де ще може лежати файл прикладу aio, якого на тезі немає під цим шляхом. Перші версії aio
+    (4.0) писали шляхи за розкладкою репозиторію angular.io — з текою мови (`toh-pt5/ts/src/…`) і
+    префіксом рецептів (`cb-ts-to-js`), а в angular/angular той самий приклад лежить без них.
+    Спільні файли (`src/styles.css`) генератор брав із `_boilerplate`, якщо в прикладі їх немає."""
+    out = [target]
+    m = re.match(r"^(aio/content/examples/)([\w.-]+)/(.*)$", target)
+    if m:
+        root, name, rest = m.groups()
+        rest2 = re.sub(r"^ts/", "", rest)
+        name2 = re.sub(r"^cb-", "", name)
+        for c in (f"{root}{name}/{rest2}", f"{root}{name2}/{rest}", f"{root}{name2}/{rest2}",
+                  f"{root}_boilerplate/{rest2}"):
+            if c not in out:
+                out.append(c)
+    return out
+
+
+def _code(attrs: dict, inner: str | None, kind: str, files: dict, fetch, fallback=None) -> str:
     header = unescape(attrs.get("header") or attrs.get("title") or "").strip()
     lang = (attrs.get("language") or "").strip()
     target = _target(attrs, kind)
     if target:
         ext = target.rsplit(".", 1)[-1]
         lang = lang or _LANG.get(ext, ext)
-        if target not in files:
-            return f"\n\nExample: `{target}`" + (f" ({header})" if header else "") + "\n\n"
         name = attrs.get("visibleRegion") or attrs.get("region") or ""
-        return _fence(region(fetch(target, files[target]), name), lang, header)
+        if target in files:
+            return _fence(region(fetch(target, files[target]), name), lang, header)
+        for alt in candidates(target) if kind == "aio" else ():
+            if alt in files:
+                return _fence(region(fetch(alt, files[alt]), name), lang, header)
+        # На цьому тезі файла немає зовсім (у 4.0 приклади жили в іншому репозиторії): код — з
+        # найближчого тегу, де він є, і підпис каже, звідки.
+        got = fallback(target) if fallback else None
+        if got:
+            # Рядок над кодом каже, звідки він: відповідь не мусить видавати код новішого тегу
+            # за код версії сторінки.
+            text, note = got
+            return f"\n\n{note}" + _fence(region(text, name), lang, header)
+        return f"\n\nExample: `{target}`" + (f" ({header})" if header else "") + "\n\n"
     code = dedent(unescape(inner or "").replace("\r\n", "\n")).strip("\n")
     if not code.strip():
         return ""
@@ -177,7 +207,7 @@ def _title(attrs: dict) -> str:
     return unescape(attrs.get("title", "")).strip()
 
 
-def expand(text: str, path: str, files: dict, fetch, kind: str) -> str:
+def expand(text: str, path: str, files: dict, fetch, kind: str, fallback=None) -> str:
     """Сторінка з розміткою Angular → markdown для `_markup.markdown_body`."""
     if kind == "aio":
         # Перші версії aio (4.x) пишуть шапку тегами генератора: «@title» з назвою наступним
@@ -190,17 +220,17 @@ def expand(text: str, path: str, files: dict, fetch, kind: str) -> str:
     for line in text.replace("\r\n", "\n").split("\n"):
         if _FENCE.match(line):
             if not fenced:
-                out.append(_expand_prose("\n".join(chunk), files, fetch, kind))
+                out.append(_expand_prose("\n".join(chunk), files, fetch, kind, fallback))
                 chunk = []
             fenced = not fenced
             out.append(line)
             continue
         (out if fenced else chunk).append(line)
-    out.append(_expand_prose("\n".join(chunk), files, fetch, kind))
+    out.append(_expand_prose("\n".join(chunk), files, fetch, kind, fallback))
     return "\n".join(out)
 
 
-def _expand_prose(text: str, files: dict, fetch, kind: str) -> str:
+def _expand_prose(text: str, files: dict, fetch, kind: str, fallback=None) -> str:
     if not text:
         return text
     # Код ставиться на місце заглушок наприкінці: приклад HTML сам буває з `<table>` чи
@@ -211,13 +241,13 @@ def _expand_prose(text: str, files: dict, fetch, kind: str) -> str:
         blocks.append(code)
         return f"\x00{len(blocks) - 1}\x00"
 
-    text = _CODE_EL.sub(lambda m: keep(_code(_attrs(m.group(2)), m.group(3), kind, files, fetch)),
-                        text)
+    text = _CODE_EL.sub(lambda m: keep(_code(_attrs(m.group(2)), m.group(3), kind, files, fetch,
+                                             fallback)), text)
     if kind == "aio":
         def old(m):
             attrs = dict(_OLD_ATTR.findall(m.group(2)))
             attrs["path"] = m.group(1)
-            return keep(_code(attrs, None, kind, files, fetch))
+            return keep(_code(attrs, None, kind, files, fetch, fallback))
         text = _OLD_EXAMPLE.sub(old, text)
     text = _WRAPPERS.sub("\n", text)
     text = _STEP.sub(lambda m: f"\n\n### {_title(_attrs(m.group(1)))}\n\n", text)

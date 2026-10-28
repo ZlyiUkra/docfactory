@@ -39,11 +39,12 @@ import hashlib
 import io
 import json
 import re
+import sys
 import tarfile
 import zlib
 from urllib.parse import quote, urlsplit
 
-from engine.readers import Item, _markup, register
+from engine.readers import Item, _markup, _ngdocs, register
 
 _TREES = re.compile(r"^/repos/([^/]+)/([^/]+)/git/trees/$")
 _GOLDEN = re.compile(r"^(?:goldens/public-api|tools/public_api_guard)/(.+?)\.(?:api\.md|md|d\.ts)$")
@@ -58,7 +59,13 @@ _MEMBER = re.compile(r"/\*\*((?:(?!\*/).)*)\*/\s*(?:@[\w.]+(?:\((?:[^()]|\([^()]
                      r"(?:(?:public|protected|readonly|static|abstract|override|declare|async|get|set)\s+)*"
                      r"([\w$]+)\s*[?!]?\s*[(:<=;]", re.S)
 _LINK = re.compile(r"\{@link(?:Docs|plain|code)?\s+([^\s}]+)(?:\s+([^}]*))?\}")
-_EXAMPLE_REF = re.compile(r"\{@example\s+([^\s}]+)[^}]*\}")
+_EXAMPLE_REF = re.compile(r"\{@example\s+([^\s}]+)([^}]*)\}")
+_EX_ATTR = re.compile(r"""(\w+)\s*=\s*['"]([^'"]*)['"]""")
+# Приклади JSDoc лежать у пакеті `examples` репозиторію: `modules/@angular/examples` у 2.x, далі
+# `packages/examples`; шлях у `{@example}` — від цієї теки. Опис service-worker бере приклад посібника —
+# з `aio/content/examples`, згодом `adev/src/content/examples`.
+_EX_ROOTS = ("packages/examples/", "modules/@angular/examples/", "aio/content/examples/",
+             "adev/src/content/examples/")
 _DROP_TAGS = {"publicApi", "stable", "Annotation", "nodoc", "codeGenApi", "internal", "docsNotRequired",
               "docs-private", "ngInjectableDef", "globalApi", "docs-public", "breaking-change", "suppress",
               "ngModule", "overriddenImplementation", "pureOrBreakMyCode", "nocollapse"}
@@ -160,12 +167,19 @@ def _source_docs(text: str) -> dict:
     return out
 
 
-def _jsdoc(raw: str) -> str:
-    """Сирий коментар JSDoc → markdown: теги стають підписами, `{@link X}` — назвою."""
+def _jsdoc(raw: str, example=None) -> str:
+    """Сирий коментар JSDoc → markdown: теги стають підписами, `{@link X}` — назвою, а
+    `{@example шлях region='…'}` — кодом цієї області з `packages/examples` того самого тегу
+    (`example(шлях, область)` дає блок коду або None — тоді лишається рядок «Example: шлях»)."""
     lines = [re.sub(r"^\s*\* ?", "", ln) for ln in raw.replace("\r\n", "\n").split("\n")]
     text = "\n".join(lines).strip()
     text = _LINK.sub(lambda m: (m.group(2) or m.group(1)).strip(), text)
-    text = _EXAMPLE_REF.sub(lambda m: f"Example: `{m.group(1)}`", text)
+
+    def ex(m):
+        attrs = dict(_EX_ATTR.findall(m.group(2) or ""))
+        code = example(m.group(1), attrs.get("region", "")) if example else None
+        return code if code else f"Example: `{m.group(1)}`"
+    text = _EXAMPLE_REF.sub(ex, text)
     out, params, fence = [], [], False
     for ln in text.split("\n"):
         if ln.lstrip().startswith("```"):
@@ -265,6 +279,8 @@ def ng_api_history(source: dict, ctx) -> list[Item]:
     packages = re.compile(rf"^(?:{source.get('packages') or 'core'})$")
     registry = str(source.get("registry") or "https://registry.npmjs.org/@angular/")
     golden_cache: dict = {}
+    ex_seen: list = []   # (тег, версія, {шлях прикладу: sha}) пройдених тегів, від найновішого
+    ex_cache: dict = {}  # sha файла прикладу → текст
     tarballs: dict = {}  # пакет → {версія: адреса тарбола}
     # (точка входу, ім'я, вид) → {хеш тексту: [версії]}; хеш → (стиснутий текст, адреса)
     found: dict = {}
@@ -324,6 +340,34 @@ def ng_api_history(source: dict, ctx) -> list[Item]:
             if sha not in golden_cache:
                 golden_cache[sha] = _golden_blocks(raw(tag, path))
             entries[entry] = (path, golden_cache[sha])
+        ex_files = {sys.intern(e["path"]): sys.intern(e["sha"]) for e in tree.get("tree", [])
+                    if e.get("type") == "blob" and e["path"].startswith(_EX_ROOTS)}
+        ex_seen.append((tag, version, ex_files))
+
+        def example(rel: str, region_name: str, tag=tag, version=version) -> str | None:
+            # Той самий тег, а як там файла немає — найближчий уже пройдений (новіший) тег.
+            for t, v, files in reversed(ex_seen):
+                for root in _EX_ROOTS:
+                    path = root + rel
+                    sha = files.get(path)
+                    if not sha:
+                        continue
+                    if sha not in ex_cache:
+                        ex_cache[sha] = raw(t, path)
+                    if not ex_cache[sha]:
+                        continue
+                    code = _ngdocs.region(ex_cache[sha], region_name)
+                    ext = rel.rsplit(".", 1)[-1]
+                    head = rel + (f" ({region_name})" if region_name else "")
+                    block = _ngdocs._fence(code, _ngdocs._LANG.get(ext, ext), head).strip("\n")
+                    # Код не з тегу документа — так і сказано рядком над ним.
+                    return block if t == tag else (
+                        f"Example code from tag {v}: the file is not in tag {version}.\n\n{block}")
+            # Посилання, за яким файла немає ні на цьому тезі, ні на жодному новішому (опис
+            # NG_VALIDATORS у 2.x–4.0): сайт показував тут порожнє місце — так і сказано.
+            return (f"The example file `{rel}` referenced here does not exist in the repository at "
+                    f"tag {version} or any later tag.")
+
         # Описи — з типів тарбола кожного пакета цього тегу; тарбол читається один раз на тег.
         docs = {pkg: package_docs(pkg, version)
                 for pkg in sorted({e.split("/", 1)[0] for e in entries})}
@@ -345,7 +389,7 @@ def ng_api_history(source: dict, ctx) -> list[Item]:
                     parts.append("Status: deprecated")
                 seen_docs = []
                 for kind, doc, members, path in src:
-                    rendered = _jsdoc(doc)
+                    rendered = _jsdoc(doc, example)
                     if rendered and rendered not in seen_docs:
                         seen_docs.append(rendered)
                 body = ["\n".join(parts), *seen_docs]
@@ -357,7 +401,7 @@ def ng_api_history(source: dict, ctx) -> list[Item]:
                         mdocs.setdefault(k, v)
                 for member in _member_names(code):
                     if member in mdocs:
-                        text = _jsdoc(mdocs[member])
+                        text = _jsdoc(mdocs[member], example)
                         if text:
                             body.append(f"## {member}\n\n{text}")
                 text = "\n\n".join(body)

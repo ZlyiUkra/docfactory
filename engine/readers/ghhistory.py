@@ -104,7 +104,9 @@
                    `ng_docs` — `"aio"` чи `"adev"`: посібники Angular (`aio/content`, `adev/src/content`)
                    з кодом прикладів, підставленим із файлів того самого тегу за областями
                    `#docregion`, і розміткою `<docs-step>`, `<docs-callout>`, `{@link}` текстом (див.
-                   `_ngdocs`); редакція сторінки враховує й файли прикладів;
+                   `_ngdocs`); редакція сторінки враховує й файли прикладів; файл, якого на тезі
+                   немає, береться з найближчого тегу, де він є, а як ніде — з адрес поля
+                   `ng_examples_fallback` (префікси сирих файлів поза репозиторієм);
                    `{version}` у `folders` — мітка тегу: сайт, що тримав кожну версію у своїй теці
                    (`dotnet/versioned_docs/version-1.12`), береться одним джерелом, і на кожному
                    тезі — лише тека його версії, а не всі версії, що лежали в тому знімку поруч.
@@ -1070,6 +1072,33 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 seen.setdefault(name, [path, []])[1].append(tag)
 
     order = {t: i for i, t in enumerate(tags)}
+    ng_outside = [str(u) for u in source.get("ng_examples_fallback") or ()]
+
+    def ng_elsewhere(target: str, tag: str):
+        """Файл прикладу, якого на тегу сторінки немає: з найближчого новішого тегу, де він є (далі —
+        старішого), а як ніде — з оголошених поза репозиторієм адрес (`ng_examples_fallback`)."""
+        i = order[tag]
+        near = [t for t in reversed(list(tags)[:i])] + list(tags)[i + 1:]
+        for t in near:
+            for alt in _ngdocs.candidates(target):
+                sha = registry.get(t, {}).get(alt)
+                if sha:
+                    text = blob_text(alt, sha, t)
+                    if text:
+                        return text, (f"Example code from tag {tags[t]}: the file is not in tag "
+                                      f"{tags[tag]}.")
+        rel = target.split("/examples/", 1)[-1]
+        for prefix in ng_outside:
+            url = prefix + quote(rel)
+            if ctx.allowed(url):
+                code, data = ctx.fetch(url)
+                if code == "200":
+                    where = "/".join(url.split("/")[3:6])
+                    return data.decode("utf-8", errors="replace"), (
+                        f"Example code from {where}: the file is not in tag {tags[tag]} of this "
+                        f"repository.")
+        return None
+
     items = []
     for name, (path, found) in seen.items():
         found = sorted(set(found), key=order.get)
@@ -1147,7 +1176,8 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
             if biome:
                 rest = _biomemdx.expand(rest, path, registry.get(tag, {}), fetch, version)
             if ng:
-                rest = _ngdocs.expand(rest, path, registry.get(tag, {}), fetch, ng)
+                rest = _ngdocs.expand(rest, path, registry.get(tag, {}), fetch, ng,
+                                      lambda target, tag=tag: ng_elsewhere(target, tag))
             # Обидва — до викидання `export`: таблиці беруть дані саме з них.
             if source.get("jsx_props") is True:
                 rest = _jsx_props(rest)
