@@ -16,11 +16,11 @@ nestjs-cls, nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghtt
 node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, oapi-codegen, observable-plot,
 ollama, openapi-typescript, openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns,
 payload, pgx, platformatic-kafka, playwright, postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq,
-react, react-email, react-hook-form, react-native, react-router, react-window, redis, redux, resend, river, rxjs,
-sanity, sealed-secrets, sentry, shadcn, socketio, solidjs, sqlc, sqlserver, storybook, stripe, supabase, supertest,
-svelte, sveltekit, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet,
-testcontainers-go, testing-library, threejs, trpc, turborepo, typeorm, typescript, uploadthing, upstash, v8,
-vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+react, react-email, react-hook-form, react-native, react-router, react-three-fiber, react-window, redis, redux,
+resend, river, rxjs, sanity, sealed-secrets, sentry, shadcn, socketio, solidjs, sqlc, sqlserver, storybook, stripe,
+supabase, supertest, svelte, sveltekit, swr, tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract,
+testcontainers-dotnet, testcontainers-go, testing-library, threejs, trpc, turborepo, typeorm, typescript, uploadthing,
+upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 
