@@ -498,6 +498,14 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `vue` | `vue-docs` | 8929 | Vue 0.7–3.5 (vuejs.org на кожен стабільний реліз), Vue Router, Pinia, Vuex, Vue Test Utils, журнал передрелізу 3.6 |
 | `vueuse` | `vueuse-docs` | 8930 | VueUse 2.x–15.0, `@vueuse/motion`, `@vueuse/gesture`, `@vueuse/sound`, `@vueuse/head` |
 
+**Родина Svelte** — сам компілятор з CLI `sv` і SvelteKit, фреймворк застосунків на ньому. Сторінка SvelteKit —
+компонент Svelte, тож питання про `load` чи form actions часто закінчується в рунах і синтаксисі шаблонів:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `svelte` | `svelte-docs` | 8931 | Svelte 1.x–5.57 (svelte.dev з тегу кожної мінорної), підручник, блог, CLI `sv`, vite-plugin-svelte, svelte-check |
+| `sveltekit` | `sveltekit-docs` | 8932 | SvelteKit 1.0–3.1, довідник модулів, адаптери, `@sveltejs/package`, `@sveltejs/enhanced-img`, Sapper |
+
 Щоб підняти родину: `./df <примірник> serve` для кожного члена в окремому терміналі (порти різні) і по одному
 `claude mcp add --transport http --scope user <сервер> http://127.0.0.1:<порт>/mcp` у WSL і у Windows.
 
@@ -3850,6 +3858,7 @@ language tools; журнали змін без передрелізів, рел�
 - не входять: SvelteKit, адаптери й Sapper (примірник `sveltekit`), передрелізи, сторонні бібліотеки, сам Vite;
 - приклад питання агентові: `./df svelte ask "How do snippets replace slots in Svelte 5?"`;
 - корпус і сховище сирого — в архіві від самого початку;
+- член родини Svelte (розділ «Родини примірників»): піднімати разом з `sveltekit`;
 - докладніше — у [instances/svelte/README.md](instances/svelte/README.md).
 
 ### sveltekit
@@ -3871,6 +3880,7 @@ package, enhanced-img, create-svelte і sapper. 1 940 документів, 4 64
   `cloudflare-workers`;
 - приклад питання агентові: `./df sveltekit ask "How do form actions work, and what changed in SvelteKit 2?"`;
 - корпус і сховище сирого — в архіві від самого початку;
+- член родини Svelte (розділ «Родини примірників»): піднімати разом з `svelte`;
 - докладніше — у [instances/sveltekit/README.md](instances/sveltekit/README.md).
 
 ## Захист
