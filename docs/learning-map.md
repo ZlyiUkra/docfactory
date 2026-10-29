@@ -4,7 +4,7 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 28.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, angular, anthropic-api, argocd, argon2,
+Стан на 29.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, angular, anthropic-api, argocd, argon2,
 aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot,
 class-transformer, class-validator, claude-code, clerk, coder-websocket, confluent-kafka-javascript, contentful,
 csharp, csrf-csrf, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo,
@@ -20,7 +20,7 @@ react-email, react-hook-form, react-native, react-router, react-window, redis, r
 sealed-secrets, sentry, shadcn, socketio, solidjs, sqlc, sqlserver, storybook, stripe, supabase, supertest, swr,
 tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testcontainers-go,
 testing-library, trpc, turborepo, typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest,
-wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+vue, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 
@@ -184,4 +184,4 @@ Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy.
 1. Платформи розгортання: Cloudflare (3), Vercel і Netlify (по 1) — документація Astro описує лише адаптери до них.
 2. Контент поза документацією Astro: remark і rehype (3), Shiki (1).
 3. Lighthouse (1).
-4. Лише в переліку плану, без днів: Vue, Svelte, Preact (острови не на React).
+4. Лише в переліку плану, без днів: Svelte, Preact (острови не на React).

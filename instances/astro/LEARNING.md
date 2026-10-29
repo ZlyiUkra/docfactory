@@ -371,11 +371,13 @@ Cloudflare.
 - Sanity (CMS: Studio і типи схеми, Content Lake, GROQ, посібник «Use Sanity with Astro»: сайт sanity.io/docs,
   довідник API reference.sanity.io, README пакетів, реєстр npm, релізи) — `sanity`;
 - SolidJS для островів на Solid (сигнали, сховища, керування потоком, ресурси: docs.solidjs.com на кожен стабільний
-  реліз, давня solidjs.com 1.0–1.8, Router, Start, Meta, Solid Primitives) — `solidjs`.
+  реліз, давня solidjs.com 1.0–1.8, Router, Start, Meta, Solid Primitives) — `solidjs`;
+- Vue для островів на Vue (реактивність, однофайлові компоненти й `<script setup>`, композиційні функції: vuejs.org
+  на кожен стабільний реліз 0.7–3.5, Vue Router, Pinia, Vuex, Vue Test Utils) — `vue`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- фреймворки островів, окрім React: Vue, Svelte, Preact;
+- фреймворки островів, окрім React: Svelte, Preact;
 - платформи розгортання: Cloudflare, Vercel, Netlify;
 - спостереження: Lighthouse;
 - контент: Starlight, інші CMS, Shiki, remark і rehype поза документацією Astro.
