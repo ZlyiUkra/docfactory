@@ -11,6 +11,10 @@
 - **Новий пакет `@vueuse/*`** у монорепозиторії — нове джерело `npm-vueuse-<ім'я>` за зразком наявних; сторінки його
   функцій `docs` підхопить сам (тека `packages/`).
 - **Лінії 2.x/3.x** (`docs-2020`) більше не виходять.
+- **Окремі проєкти** (`motion-docs`, `gesture-docs`): поле `tags` — тег або повний SHA коміту публікації (`gitHead`
+  у реєстрі npm) останньої версії кожної мінорної, з версією під префіксом (`"v3.0.3": "motion-3.0.3"`). Нова мінорна —
+  новий рядок на початку `tags`. Якщо motion знову перекладе теки, — правило в `slug_rewrite`. README, реєстр, журнал
+  motion і релізи head беруть нові версії самі.
 
 Правило: **нічого не видаляється.** Ані `refresh`, ані `vectors`, ані `manifest` нічого не стирають самі.
 
@@ -22,6 +26,7 @@
 
 ```
 ./df vueuse refresh docs releases npm-readme-vueuse-core npm-vueuse-core   # і решту npm-vueuse-*
+# вийшов окремий проєкт: motion-docs changelog-motion npm-readme-vueuse-motion npm-vueuse-motion тощо
 ./df vueuse refresh --missing    # джерела, яких не названо, лише докачуються
 ./df vueuse manifest
 ./df vueuse vectors
