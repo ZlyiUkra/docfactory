@@ -373,11 +373,13 @@ Cloudflare.
 - SolidJS для островів на Solid (сигнали, сховища, керування потоком, ресурси: docs.solidjs.com на кожен стабільний
   реліз, давня solidjs.com 1.0–1.8, Router, Start, Meta, Solid Primitives) — `solidjs`;
 - Vue для островів на Vue (реактивність, однофайлові компоненти й `<script setup>`, композиційні функції: vuejs.org
-  на кожен стабільний реліз 0.7–3.5, Vue Router, Pinia, Vuex, Vue Test Utils) — `vue`.
+  на кожен стабільний реліз 0.7–3.5, Vue Router, Pinia, Vuex, Vue Test Utils) — `vue`;
+- Svelte для островів на Svelte (руни, синтаксис шаблонів, переходи: svelte.dev з тегу кожної мінорної 3.0–5.57,
+  посібник 1.x–2.x, CLI `sv`) — `svelte`; SvelteKit для порівняння з Astro (маршрути, `load`, адаптери) — `sveltekit`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- фреймворки островів, окрім React: Svelte, Preact;
+- фреймворки островів, окрім React: Preact;
 - платформи розгортання: Cloudflare, Vercel, Netlify;
 - спостереження: Lighthouse;
 - контент: Starlight, інші CMS, Shiki, remark і rehype поза документацією Astro.
