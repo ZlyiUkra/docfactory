@@ -22,7 +22,8 @@
   заголовку випуск, що її додав, давав би розділу новий ключ, і редакції перестали б зливатися.
   Поза заголовком позначка версії стає текстом «(3.4+)», позначка TypeScript знімається.
 - **Контейнери VitePress і VuePress** (`::: tip`, `::: details`, `::: code-group`), підписи блоків
-  коду й позначки підсвічування — як у `_vitepress`: «Tip: …» замість рядків із двокрапками.
+  коду й позначки підсвічування — як у `_vitepress`: «Tip: …» замість рядків із двокрапками;
+  `{{ $frontmatter.title }}` у заголовку сторінок VuePress стає назвою з шапки.
 - **Розмітка Hexo давнього сайту** (`{% raw %}`, `{% codeblock lang:js %}`, `<p class="tip">`):
   обгортки знімаються, блок коду стає огорожею, порада — рядком «Tip: …». Блок `{% raw %}` на
   власних рядках — це живий приклад (HTML і `<script>` демо на сторінці), він знімається цілим.
@@ -38,8 +39,7 @@
 
 import re
 
-from engine.readers import register
-from engine.readers import _vitepress
+from engine.readers import _markup, _vitepress, register
 from engine.readers.ghdated import ghsite_dated
 from engine.readers.ghhistory import ghdocs_history
 from engine.readers.github import ghdocs
@@ -167,7 +167,8 @@ def _rework(text: str) -> str:
         style = next((s for s in reversed(divs) if s), "")
         prose.extend(_heading(line, style))
     flush()
-    return head + _vitepress._markup("\n".join(out), {})
+    meta = _markup.front_matter(head + "\n")[0] if head else {}
+    return head + _vitepress._markup("\n".join(out), {"$frontmatter": meta or {}})
 
 
 class _Ctx:
