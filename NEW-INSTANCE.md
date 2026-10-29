@@ -79,6 +79,11 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   for each stable release, the last commit of the documentation repository before the release was published
   (`git rev-list -1 --before=<published_at> master` in a bare clone); its full SHA is the key in `tags`. Two releases
   on the same commit share one key: `"<sha>": "1.3.4, 1.3.3"`.
+- **A dated site whose repository merged the next major's branch** (v2.vuejs.org: branch `2.0` merged into master
+  hours before 2.0.0 reached npm): the snapshot of the last 1.x release falls after the merge and gets the 2.0
+  text. The old line goes into its own source whose `branch` in `eras` is the full SHA of the last master commit
+  before the merge; `before` does not help, because the commit list up to that moment also holds commits of the
+  merged branch, and the newest of them leads the first-parent chain into it.
 - **A site whose generated pages are synced from the code before a release** (biomejs.dev: rule pages, the CLI and
   configuration references arrive as «synchronize to `<code commit>`» commits): a snapshot «before the next release»
   would already carry the next release's rules. The snapshot of a version is the last commit before the first sync
@@ -1081,6 +1086,11 @@ and what a taken port and a failed connection look like. A domain list in the ro
   кожного стабільного релізу — останній коміт репозиторію документації перед публікацією релізу
   (`git rev-list -1 --before=<published_at> master` у голому клоні); його повний SHA стає ключем у `tags`. Два релізи
   на тому самому коміті ділять один ключ: `"<sha>": "1.3.4, 1.3.3"`.
+- **Сайт без тегів, чий репозиторій злив гілку наступного мажору** (v2.vuejs.org: гілку `2.0` злито в master за
+  кілька годин до виходу 2.0.0 у npm): знімок останнього релізу 1.x припадає на мить після злиття й дістає текст
+  2.0. Стара лінія — окреме джерело, де `branch` в `eras` — повний SHA останнього коміту master перед злиттям;
+  `before` тут не рятує: перелік комітів до цієї миті тримає й коміти злитої гілки, і найновіший із них веде
+  ланцюжок перших батьків у неї.
 - **Сайт, чиї згенеровані сторінки синхронізуються з кодом ще до релізу** (biomejs.dev: сторінки правил, довідники
   CLI й конфігурації приходять комітами «synchronize to `<коміт коду>`»): знімок «перед наступною версією» ніс би вже
   правила наступної. Знімок версії — останній коміт перед першою синхронізацією коміту коду, якого в релізі немає
@@ -2058,6 +2068,11 @@ errada.
   lançamento: para cada versão estável, o último commit do repositório da documentação antes da publicação do release
   (`git rev-list -1 --before=<published_at> master` num clone *bare*); o SHA completo é a chave em `tags`. Duas
   versões no mesmo commit dividem uma chave: `"<sha>": "1.3.4, 1.3.3"`.
+- **Um site sem tags cujo repositório mesclou o ramo da próxima major** (v2.vuejs.org: o ramo `2.0` entrou no
+  master horas antes de a 2.0.0 chegar ao npm): o instantâneo da última versão 1.x cai depois da mesclagem e recebe
+  o texto da 2.0. A linha antiga vira uma fonte própria cujo `branch` em `eras` é o SHA completo do último commit
+  do master antes da mesclagem; `before` não resolve, porque a lista de commits até esse instante também traz
+  commits do ramo mesclado, e o mais novo deles leva a cadeia de primeiros pais para dentro dele.
 - **Um site cujas páginas geradas são sincronizadas com o código antes do release** (biomejs.dev: páginas de regras e
   as referências da CLI e da configuração chegam como commits «synchronize to `<commit do código>`»): um snapshot
   «antes da próxima versão» já traria as regras da próxima. O snapshot de uma versão é o último commit antes da
