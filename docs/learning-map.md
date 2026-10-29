@@ -7,7 +7,7 @@
 Стан на 29.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, angular, anthropic-api, argocd, argon2,
 aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot,
 class-transformer, class-validator, claude-code, clerk, coder-websocket, confluent-kafka-javascript, contentful,
-csharp, csrf-csrf, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo,
+csharp, csrf-csrf, d3, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript, entityframework, eslint, expo,
 express, express-rate-limit, fastify, ffmpeg, flux, foundry, frontend-architecture, github-actions, go, golang-jwt,
 golang-migrate, golang-x, golangci-lint, golevelup-nestjs-rabbitmq, goose, grafana, gvisor, helmet, htdp, i18next,
 icu, ioredis, iron-session, jose, jsonschema, kafka, kafkajs, kraken-spot, kubernetes, learning-go, libreoffice,
