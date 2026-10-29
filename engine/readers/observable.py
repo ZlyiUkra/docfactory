@@ -6,7 +6,10 @@
                            (…/document/@ВЛАСНИК/СЛАГ) стає документом. Необов'язкові:
                            `label` — підпис перед назвою («D3 notebook» → «D3 notebook: Bar
                            Chart»), `notebooks` — шляхи зошитів поза збірками («@d3/d3-fcumsum»),
-                           на які посилається документація, `skip` — вираз шляхів, що не беруться.
+                           на які посилається документація, `skip` — вираз шляхів, що не беруться,
+                           `collections` — вираз слагів збірок, які беруться: власник @observablehq
+                           тримає збірки всіх своїх продуктів, а примірнику Plot потрібні лише
+                           збірки Plot. Без поля беруться всі збірки.
 
 Навіщо. Приклади D3 — галерея графіків, підручник «Learn D3», приклад до кожної функції
 довідника — живуть не в репозиторії, а в зошитах Observable: d3js.org посилається на них
@@ -99,11 +102,12 @@ def observable_collections(source: dict, ctx) -> list[Item]:
                          f"{_API}/collections/@ВЛАСНИК.")
     owner = m.group(1)
     skip = re.compile(source["skip"]) if source.get("skip") else None
+    wanted = re.compile(source["collections"]) if source.get("collections") else None
     # Шлях зошита → назви збірок, де він стоїть; порядок — як у збірках.
     found: dict[str, list] = {}
     for col in json.loads(ctx.text(source["url"])):
         url = f"{_API}/collection/@{owner}/{quote(col['slug'])}"
-        if not ctx.allowed(url):
+        if (wanted and not wanted.search(col["slug"])) or not ctx.allowed(url):
             continue
         for entry in json.loads(ctx.text(url)).get("listings") or []:
             if entry.get("listing_type") != "notebook":
