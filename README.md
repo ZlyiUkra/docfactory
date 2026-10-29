@@ -515,6 +515,15 @@ Plot бере в D3 шкали, фігури, проєкції й формати
 | `d3` | `d3-docs` | 8933 | D3 3.x–7.9: d3js.org, довідник 3.x, README 42 модулів на кожну версію, зошити Observable команди D3 |
 | `observable-plot` | `observable-plot-docs` | 8934 | Observable Plot 0.1–0.6.17: сайт Plot з тегу кожного релізу 0.6, README, журнали, зошити про Plot |
 
+**Родина three.js** — бібліотека 3D-графіки three.js і React Three Fiber, React-рендерер для неї, з drei — бібліотекою
+готових компонентів. Кожен елемент JSX у Fiber — це клас three.js з його пропсами, тож питання про Fiber часто
+закінчується в довіднику three.js — і навпаки:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `threejs` | `threejs-docs` | 8935 | three.js r54–r186: довідник, доповнення, посібник, приклади, вікі, релізи |
+| `react-three-fiber` | `react-three-fiber-docs` | 8936 | @react-three/fiber 1.0–9.8 і drei 1.5–10.7: документація, README, релізи, реєстр npm |
+
 Щоб підняти родину: `./df <примірник> serve` для кожного члена в окремому терміналі (порти різні) і по одному
 `claude mcp add --transport http --scope user <сервер> http://127.0.0.1:<порт>/mcp` у WSL і у Windows.
 
@@ -3946,10 +3955,33 @@ d3/d3-3.x-api-reference); README пакета d3 і 42 модулів (30 нин
 - колекція у Qdrant — `docs-threejs`, модель векторів — `bge-small`;
 - версія — назва релізу three.js (`version: "r186"`, `"r170"`), як на сайті й у журналі; README і реєстр npm — номер
   npm (`"0.186"`); без названого релізу — r186 (28 % завантажень за тиждень до 29.10.2026; r170 — 14 %);
-- не входять: переклади сайту, передрелізи, React Three Fiber і drei (наступний примірник родини), A-Frame;
+- не входять: переклади сайту, передрелізи, React Three Fiber і drei (примірник `react-three-fiber`), A-Frame;
 - приклад питання агентові: `./df threejs ask "How do I load a glTF model and play its animation?"`;
 - корпус і сховище сирого — в архіві від самого початку;
+- член родини three.js (розділ «Родини примірників»): піднімати разом з `react-three-fiber`;
 - докладніше — у [instances/threejs/README.md](instances/threejs/README.md).
+
+### react-three-fiber
+
+Документація React Three Fiber англійською — React-рендерера для three.js — і drei, бібліотеки готових компонентів
+тієї ж команди pmndrs. Документація Fiber (docs.pmnd.rs, тека `docs/` репозиторію, у 1.x–6.x — `markdown/`) з
+останнього тегу кожної мінорної 1.0–9.8; документація drei (`docs/`) з тегу кожної мінорної 10.0–10.7, а для drei 1.5–9.x
+— README, що був усім довідником; README кожної стабільної версії і реєстр npm `@react-three/fiber`, `react-three-fiber`,
+`@react-three/drei`, `drei` і `@react-three/test-renderer`; релізи GitHub обох репозиторіїв. 1 547 документів, 4 285
+фрагментів; вектори — на відеокарті.
+
+- порт `8936`; запис у Claude Code — `react-three-fiber-docs`, адреса `http://127.0.0.1:8936/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-react-three-fiber`, модель векторів — `bge-small`;
+- версія — лінія Fiber (`version: "9.8"`, `"9"`, `"8.18"`), drei і test-renderer — з префіксом (`"drei-10.7"`,
+  `"drei-9"`, `"test-renderer-9"`); без названої версії — Fiber 9.8 і drei 10.7 (Fiber 9 — 82 % завантажень за тиждень
+  до 29.10.2026, Fiber 8 — 18 %);
+- не входять: передрелізи, сам three.js (примірник `threejs`), `@react-three/rapier`, `postprocessing`, `xr` та інші
+  бібліотеки pmndrs, мінорна Fiber 8.4 (її коміту публікації немає в репозиторії);
+- приклад питання агентові: `./df react-three-fiber ask "How do I animate a mesh with useFrame?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- член родини three.js (розділ «Родини примірників»): піднімати разом з `threejs`;
+- докладніше — у [instances/react-three-fiber/README.md](instances/react-three-fiber/README.md).
 
 ## Захист
 
