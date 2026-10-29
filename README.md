@@ -3852,6 +3852,27 @@ language tools; журнали змін без передрелізів, рел�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/svelte/README.md](instances/svelte/README.md).
 
+### sveltekit
+
+Документація SvelteKit англійською, а також адаптерів, `@sveltejs/package`, `@sveltejs/enhanced-img` і Sapper.
+`documentation/docs` і FAQ репозиторію sveltejs/kit — з останнього тегу кожної мінорної 1.0–3.1; довідник модулів
+(`$app/*`, `$env/*`, `@sveltejs/kit`), який сайт генерує з типів, — з репозиторію svelte.dev на кожен реліз з червня
+2024; підручник SvelteKit зі svelte.dev; документація Sapper з тегів; журнали змін без передрелізів, README кожної
+стабільної версії й реєстр npm `@sveltejs/kit`, семи адаптерів (auto, node, static, vercel, netlify, cloudflare, bun),
+package, enhanced-img, create-svelte і sapper. 1 940 документів, 4 644 фрагменти; вектори — на відеокарті.
+
+- порт `8932`; запис у Claude Code — `sveltekit-docs`, адреса `http://127.0.0.1:8932/mcp`; інструменти `search_docs`
+  і `read_section`;
+- колекція у Qdrant — `docs-sveltekit`, модель векторів — `bge-small`;
+- версія — лінія Kit (`version: "2.70"`, `"2"`, `"3.1"`), інші пакети — з префіксом (`"adapter-node-5"`,
+  `"package-2"`, `"sapper-0.29"`); без названої версії — 2.70 (SvelteKit 2 — більшість завантажень за тиждень до
+  29.10.2026), де 3.x відрізняється — обидві;
+- не входять: передрелізи `1.0.0-next`, сам Svelte, `sv`, vite-plugin-svelte (примірник `svelte`), адаптер
+  `cloudflare-workers`;
+- приклад питання агентові: `./df sveltekit ask "How do form actions work, and what changed in SvelteKit 2?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/sveltekit/README.md](instances/sveltekit/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
