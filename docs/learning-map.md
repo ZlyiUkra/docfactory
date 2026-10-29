@@ -20,7 +20,7 @@ react-email, react-hook-form, react-native, react-router, react-window, redis, r
 sealed-secrets, sentry, shadcn, socketio, solidjs, sqlc, sqlserver, storybook, stripe, supabase, supertest, swr,
 tailwind, tanstack-query, tanstack-router, tanstack-virtual, tesseract, testcontainers-dotnet, testcontainers-go,
 testing-library, trpc, turborepo, typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest,
-vue, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+vue, vueuse, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 
