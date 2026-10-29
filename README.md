@@ -490,6 +490,14 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 Поза родиною, але за потреби підключається так само: `playwright` (`playwright-docs`, порт 8788) — у ньому є Playwright
 для .NET (пакет NuGet `Microsoft.Playwright`) поруч із версіями для Node.js, Python і Java.
 
+**Родина Vue** — сам фреймворк з офіційними бібліотеками й VueUse з окремими проєктами організації. Функції VueUse
+стоять на реактивності Vue, тож питання про них часто закінчується в самому Vue, Vue Router чи Pinia:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `vue` | `vue-docs` | 8929 | Vue 0.7–3.5 (vuejs.org на кожен стабільний реліз), Vue Router, Pinia, Vuex, Vue Test Utils, журнал передрелізу 3.6 |
+| `vueuse` | `vueuse-docs` | 8930 | VueUse 2.x–15.0, `@vueuse/motion`, `@vueuse/gesture`, `@vueuse/sound`, `@vueuse/head` |
+
 Щоб підняти родину: `./df <примірник> serve` для кожного члена в окремому терміналі (порти різні) і по одному
 `claude mcp add --transport http --scope user <сервер> http://127.0.0.1:<порт>/mcp` у WSL і у Windows.
 
@@ -3792,7 +3800,8 @@ VitePress і розмітка Hexo — звичайним текстом. 5 452 
 - версія — лінія vue (`version: "3.5"`, `"2.7"`, `"3"`), інші пакети — з префіксом (`"router-4.6"`, `"pinia-3.0"`,
   `"vuex-4.1"`, `"test-utils-2.4"`); без названої версії — 3.5 (близько 85 % завантажень vue за тиждень до
   29.10.2026), стиль — Composition API з `<script setup>`, якщо користувач не пише в Options API;
-- не входять: інші передрелізи, переклади, Nuxt, VueUse, Vuetify, Quasar, PrimeVue, сам Vite;
+- не входять: інші передрелізи, переклади, Nuxt, Vuetify, Quasar, PrimeVue, сам Vite; VueUse — у примірнику `vueuse`;
+- член родини Vue (розділ «Родини примірників»): піднімати разом з `vueuse`;
 - приклад питання агентові: `./df vue ask "How does defineModel work, and since which version is it stable?"`;
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/vue/README.md](instances/vue/README.md).
@@ -3804,16 +3813,18 @@ VitePress і розмітка Hexo — звичайним текстом. 5 452 
 математика). Сайт vueuse.org живе в репозиторії коду vueuse/vueuse (тека `packages/`, сторінка функції поруч із її
 кодом) — з останнього тегу кожної мінорної 4.0–15.0; сторінки функцій ліній 2.x і 3.x 2020 року (тегів немає) —
 знімок гілки main на кожен реліз; релізи GitHub, README кожної стабільної версії `@vueuse/core` і реєстр npm десяти
-пакетів `@vueuse/*`. Читач — той самий `ghvue`, що в примірнику `vue`. 2 685 документів, 5 548 фрагментів; вектори —
-на відеокарті.
+пакетів `@vueuse/*`; окремі проєкти організації з власною нумерацією — документація `@vueuse/motion` 1.0–3.0 і
+`@vueuse/gesture` 1.0–2.0, README й реєстр `@vueuse/sound` і `@vueuse/head`, журнал motion, релізи head. Читач — той
+самий `ghvue`, що в примірнику `vue`. 2 922 документи, 6 226 фрагментів; вектори — на відеокарті.
 
 - порт `8930`; запис у Claude Code — `vueuse-docs`, адреса `http://127.0.0.1:8930/mcp`; інструменти `search_docs` і
   `read_section`;
 - колекція у Qdrant — `docs-vueuse`, модель векторів — `bge-small`;
-- версія — лінія VueUse (`version: "14.4"`, `"10.11"`, `"14"`); без названої версії — 14.4, для Vue 2 — 10.11 (мажори
+- версія — лінія VueUse (`version: "14.4"`, `"10.11"`, `"14"`), окремі проєкти — з префіксом (`"motion-3"`,
+  `"gesture-2"`, `"sound-2"`, `"head-2"`); без названої версії — 14.4, для Vue 2 — 10.11 (мажори
   10 і 14 — 29 % і 28 % завантажень `@vueuse/core` за тиждень до 29.10.2026), де лінії відрізняються — обидві;
-- не входять: передрелізи, сам Vue (примірник `vue`), Nuxt, `@vueuse/motion`, `@vueuse/gesture`, `@vueuse/sound`,
-  `@vueuse/head`;
+- не входять: передрелізи, сам Vue (примірник `vue`), Nuxt, Unhead;
+- член родини Vue (розділ «Родини примірників»): піднімати разом з `vue`;
 - приклад питання агентові: `./df vueuse ask "How do I persist state with useStorage, and what changed in it since
   VueUse 10?"`;
 - корпус і сховище сирого — в архіві від самого початку;
