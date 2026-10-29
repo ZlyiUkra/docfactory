@@ -506,6 +506,15 @@ ecma-international.org, unicode.org і rfc-editor.org). Оригінали на 
 | `svelte` | `svelte-docs` | 8931 | Svelte 1.x–5.57 (svelte.dev з тегу кожної мінорної), підручник, блог, CLI `sv`, vite-plugin-svelte, svelte-check |
 | `sveltekit` | `sveltekit-docs` | 8932 | SvelteKit 1.0–3.1, довідник модулів, адаптери, `@sveltejs/package`, `@sveltejs/enhanced-img`, Sapper |
 
+**Родина D3** — бібліотека візуалізації D3 і Observable Plot, бібліотека графіків тієї ж команди, побудована на D3.
+Plot бере в D3 шкали, фігури, проєкції й формати, тож питання про графік Plot часто закінчується в модулі D3 — і
+навпаки, швидкий графік, який на D3 пишуть руками, на Plot — один рядок:
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `d3` | `d3-docs` | 8933 | D3 3.x–7.9: d3js.org, довідник 3.x, README 42 модулів на кожну версію, зошити Observable команди D3 |
+| `observable-plot` | `observable-plot-docs` | 8934 | Observable Plot 0.1–0.6.17: сайт Plot з тегу кожного релізу 0.6, README, журнали, зошити про Plot |
+
 Щоб підняти родину: `./df <примірник> serve` для кожного члена в окремому терміналі (порти різні) і по одному
 `claude mcp add --transport http --scope user <сервер> http://127.0.0.1:<порт>/mcp` у WSL і у Windows.
 
@@ -3901,7 +3910,27 @@ d3/d3-3.x-api-reference); README пакета d3 і 42 модулів (30 нин
 - не входять: передрелізи, архівні плагіни 3.x (`d3/d3-plugins`), Observable Plot, TopoJSON;
 - приклад питання агентові: `./df d3 ask "How does selection.join work, and what did it replace?"`;
 - корпус і сховище сирого — в архіві від самого початку;
+- член родини D3 (розділ «Родини примірників»): піднімати разом з `observable-plot`;
 - докладніше — у [instances/d3/README.md](instances/d3/README.md).
+
+### observable-plot
+
+Документація Observable Plot англійською — бібліотеки графіків на основі D3 від команди Observable. Сайт Plot (тека
+`docs/` репозиторію observablehq/plot) — з тегу кожного релізу 0.6.6–0.6.17; README кожної стабільної версії 0.1–0.6.17
+(до 0.6.6 — увесь довідник); журнали змін 2021–2025, по документу на реліз; реєстр npm; 102 зошити Observable зі
+збірок Plot (давня документація, приклади, шпаргалки, курс). 380 документів, 2 443 фрагменти; вектори — на
+відеокарті.
+
+- порт `8934`; запис у Claude Code — `observable-plot-docs`, адреса `http://127.0.0.1:8934/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-observable-plot`, модель векторів — `bge-small`;
+- версія — реліз Plot (`version: "0.6"`, `"0.6.17"`, `"0.4"`); без названої версії — 0.6.17 (лінія 0.6 — близько
+  99,8 % завантажень за тиждень до 29.10.2026);
+- не входять: передрелізи, релізи GitHub (ті самі записи, що в журналі), сам D3 (примірник `d3`), Observable Framework;
+- приклад питання агентові: `./df observable-plot ask "How do I make a histogram with Plot.binX?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- член родини D3 (розділ «Родини примірників»): піднімати разом з `d3`;
+- докладніше — у [instances/observable-plot/README.md](instances/observable-plot/README.md).
 
 ## Захист
 
