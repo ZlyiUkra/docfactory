@@ -3988,17 +3988,18 @@ d3/d3-3.x-api-reference); README пакета d3 і 42 модулів (30 нин
 Документація Cloudflare англійською: увесь сайт developers.cloudflare.com — платформа розробника (Workers, Pages, R2,
 D1, KV, Durable Objects, Queues, Workflows, Workers AI, Agents тощо), DNS, кеш і CDN, правила, SSL/TLS, WAF, захист від
 DDoS, Zero Trust і Cloudflare One, мережеві сервіси, дописи журналу змін — поточним знімком (сайт версій не має);
-README кожної стабільної версії `wrangler`, `@cloudflare/workers-types`, `miniflare`, `create-cloudflare` і
-`@cloudflare/vitest-pool-workers`; журнали змін чотирьох пакетів репозиторію workers-sdk. 10 197 документів, 65 308
-фрагментів; вектори — на відеокарті.
+README кожної стабільної версії `wrangler`, `@cloudflare/workers-types`, `miniflare`, `create-cloudflare`,
+`@cloudflare/vitest-pool-workers` і його наступника `@cloudflare/vitest-plugin`; журнали змін чотирьох пакетів
+репозиторію workers-sdk. 10 198 документів, 65 309 фрагментів; вектори — на відеокарті.
 
 - порт `8937`; запис у Claude Code — `cloudflare-docs`, адреса `http://127.0.0.1:8937/mcp`; інструменти
   `search_docs` і `read_section`;
 - колекція у Qdrant — `docs-cloudflare`, модель векторів — `bge-small`;
 - версія — лише в пакетів: `wrangler` без префікса (`version: "4"`), решта з префіксом (`"miniflare-4"`,
-  `"create-cloudflare-2"`, `"vitest-pool-workers-0"`, `"workers-types-4"`); сторінки сайту версії не несуть;
+  `"create-cloudflare-2"`, `"vitest-pool-workers-0"`, `"vitest-plugin-1"`, `"workers-types-4"`); сторінки сайту
+  версії не несуть;
 - не входять: передрелізи пакетів, сторінки-переліки журналу змін (вони повторюють дописи), довідник API
-  REST API (`/api/` сайту, його немає в sitemap), README `@cloudflare/vitest-plugin` 1.x (наступника `vitest-pool-workers`; його журнал змін є);
+  REST API (`/api/` сайту, його немає в sitemap);
 - приклад питання агентові: `./df cloudflare ask "How do I bind a KV namespace to a Worker?"`;
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/cloudflare/README.md](instances/cloudflare/README.md).

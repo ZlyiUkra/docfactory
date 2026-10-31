@@ -4,7 +4,7 @@
 developers.cloudflare.com — платформа розробника (Workers і їхні API, прив'язки, Wrangler, Pages, R2, D1, KV, Durable
 Objects, Queues, Workflows, Workers AI, Vectorize, Hyperdrive, AI Gateway, Agents, Containers), DNS, кеш і CDN, правила,
 SSL/TLS, WAF, захист від DDoS, боти, Zero Trust і Cloudflare One, Tunnel, мережеві сервіси, аналітика, дописи журналу
-змін; README кожної стабільної версії п'яти пакетів і журнали змін workers-sdk. Код спільний і лежить у
+змін; README кожної стабільної версії шести пакетів і журнали змін workers-sdk. Код спільний і лежить у
 `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
 [../../README.md](../../README.md).
 
@@ -25,24 +25,24 @@ Cloudflare — платформа розгортання з безкоштовн
 | README `miniflare` | 45 | 299 | npm 0.1–4.2026…; 1.x–2.x — cloudflare/miniflare, з 3.x — workers-sdk |
 | README `create-cloudflare` | 7 | 280 | npm 0.0–2.74; 0.x–1.x — lukeed/create-cloudflare, з 2.x — C3 у workers-sdk |
 | README `@cloudflare/vitest-pool-workers` | 1 | 315 | npm 0.1–0.23, workers-sdk |
+| README `@cloudflare/vitest-plugin` | 1 | 43 | npm 1.0–1.4, workers-sdk; наступник `vitest-pool-workers` під новим ім'ям |
 | Журнали змін | 1 400 | 1 400 | workers-sdk: `wrangler` 525, `miniflare` 230, `create-cloudflare` 279, `vitest-pool-workers` 366 записів |
 
-Разом 10 197 записів паспорта. В індексі 65 308 фрагментів (`expected_passages` у `checks.json`). Замір `quality`:
+Разом 10 198 записів паспорта. В індексі 65 309 фрагментів (`expected_passages` у `checks.json`). Замір `quality`:
 по словах 5 із 10, за змістом 3, разом 5, «як модель» 10 із 10. Перша десятка своїми словами низька: сайт тримає
 кожну тему в кількох місцях (продукт, розв'язки `use-cases`, навчальні шляхи, Cloudflare One і окремий розділ
 Tunnel), і видача своїми словами приносить сусідні сторінки. Запити назвами документації знаходять ціль усі.
 
-У 27 версій README немає ні на тезі, ні на коміті публікації (вони названі в журналі `refresh`): wrangler 0.0.1–0.0.5,
+У частини версій README немає ні на тезі, ні на коміті публікації (вони названі в журналі `refresh`): wrangler 0.0.1–0.0.5,
 3.63.2, 3.78.3, 4.45.2, 4.152.0; workers-types 2.2.1–2.2.2; miniflare 3.20240909.2; create-cloudflare 0.0.0–0.0.3,
-2.0.0, 2.0.1, 2.20.0, 2.74.3; vitest-pool-workers 0.1.0, 0.2.1, 0.4.10, 0.4.15, 0.5.3, 0.10.2, 0.23.0.
+2.0.0, 2.0.1, 2.20.0, 2.74.3; vitest-pool-workers 0.1.0, 0.2.1, 0.4.10, 0.4.15, 0.5.3, 0.10.2, 0.23.0; vitest-plugin
+0.0.0 (заглушка імені) і 1.4.7. Разом 29 версій.
 
 Чого немає:
 
 - Довідника REST API (`developers.cloudflare.com/api/`): його немає в sitemap сайту.
 - Сторінок-переліків журналу змін (`/changelog/product/…`, `/changelog/2/` тощо): вони повторюють дописи, і
   `exclude` їх відкидає.
-- README `@cloudflare/vitest-plugin` 1.x — так тепер зветься `vitest-pool-workers`; його журнал змін тут (тека
-  `packages/vitest-plugin/`, з усією історією 0.x), а налаштування описує сайт (`cloudflareTest`).
 - Передрелізів пакетів і сторінок інших сайтів Cloudflare (блог, cloudflare.com).
 
 ## Що в цій теці
@@ -65,7 +65,7 @@ Tunnel), і видача своїми словами приносить сусі
 | Що | Джерело | Читач |
 |----|---------|-------|
 | сайт | `developers.cloudflare.com/sitemap-0.xml`; кожна сторінка — markdown, який сайт віддає на `Accept: text/markdown` | `sitemap-accept` |
-| README | реєстр npm п'яти пакетів; текст — raw.githubusercontent.com з тегу версії або коміту публікації | `npm-readme` |
+| README | реєстр npm шести пакетів; текст — raw.githubusercontent.com з тегу версії або коміту публікації | `npm-readme` |
 | журнали змін | `packages/<пакет>/CHANGELOG.md` гілки main workers-sdk (changesets, запис на версію) | `changelog-regex` |
 
 Поле `drop` джерела `site` вирізає навігацію, однакову на кожній сторінці: посилання «Skip to content», примітку про
@@ -76,7 +76,9 @@ llms.txt, рядок «Last updated | Copy as Markdown», усе від «Was th
 
 Сайт версії не несе: його сторінки описують Cloudflare на день завантаження. Версію несуть README і журнали змін
 пакетів: `wrangler` — без префікса (`version: "4"`, `"4.156"`), решта — з префіксом пакета (`"miniflare-4"`,
-`"create-cloudflare-2"`, `"vitest-pool-workers-0"`, `"workers-types-4"`), щоб нумерації не змішувалися. Промпт
+`"create-cloudflare-2"`, `"vitest-pool-workers-0"`, `"vitest-plugin-1"`, `"workers-types-4"`), щоб нумерації не
+змішувалися. Журнал змін інтеграції з Vitest — один на обидва імені (тека `packages/vitest-plugin/`), і всі його
+записи, 1.x теж, несуть префікс `vitest-pool-workers-`. Промпт
 шукає «як зробити» без версії, а версію передає лише для питань про історію пакета.
 
 ## Архівний режим: сервер без корпусу
@@ -85,9 +87,9 @@ llms.txt, рядок «Last updated | Copy as Markdown», усе від «Was th
 кешу фрагментів (`index/passages.json`) і колекції Qdrant. Відповіді ті самі до символа, бо кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/cloudflare-corpus-2026-10-31.tar.gz` (10 197 текстів, паспорт і
+**Де тексти.** В архіві `~/archives/docfactory/cloudflare-corpus-2026-10-31-vitest-plugin.tar.gz` (10 198 текстів, паспорт і
 сховище сирого `raw/`; перед видаленням текстів архів розпаковано окремо й звірено з диском) і в копії на Windows
-`C:\Distr\cloudflare-corpus-2026-10-31.tar.gz` (звірено за SHA-256). В історії git текстів немає ніде.
+`C:\Distr\cloudflare-corpus-2026-10-31-vitest-plugin.tar.gz` (звірено за SHA-256). В історії git текстів немає ніде.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
@@ -105,7 +107,7 @@ gzip -9 -c instances/cloudflare/index/passages.json > instances/cloudflare/index
 **Як повернути тексти** — перед будь-яким оновленням корпусу; разом із текстами повертається сховище сирого:
 
 ```
-tar -xzf ~/archives/docfactory/cloudflare-corpus-2026-10-31.tar.gz -C instances/cloudflare
+tar -xzf ~/archives/docfactory/cloudflare-corpus-2026-10-31-vitest-plugin.tar.gz -C instances/cloudflare
 ./df cloudflare smoke
 ```
 
