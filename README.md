@@ -4026,6 +4026,26 @@ GitHub, реєстр npm `deno`, усі дописи блогу deno.com, док
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/deno/README.md](instances/deno/README.md).
 
+### bun
+
+Документація Bun англійською: bun.com/docs (runtime, `bunfig.toml`, сумісність із Node.js, `Bun.serve`, `Bun.file`,
+`bun:sqlite`, shell `Bun.$`, менеджер пакетів і робочі простори, збирач і `--compile`, `bun test`, `bun lint`,
+посібники) на кожен сталий патч 1.0.0–1.4.4 і останній патч кожної мінорної 0.1–0.8, довідник API з типів
+`packages/bun-types` на ті самі версії, релізи GitHub, реєстр npm `bun`, `bun-types` і `@types/bun`, теги образу Docker
+`oven/bun` з Docker Hub, усі дописи блогу bun.com. 4 753 документи, 27 077 фрагментів; вектори — на відеокарті.
+
+- порт `8939`; запис у Claude Code — `bun-docs`, адреса `http://127.0.0.1:8939/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-bun`, модель векторів — `bge-small`;
+- версія — номер випуску (`version: "1"`, `"1.2"`, `"1.2.5"`); Docker — лінія (`"1.4"`), блог версії не несе; без версії
+  старі теки документації (`cli/`, `api/`, `install/`), блог і релізи стоять на десять місць нижче;
+- теги Docker читає `dockerhub-tags` (API hub.docker.com: реєстр без токена протоколу OCI не віддає);
+- не входять: canary-збірки й передрелізи, лінія 0.0, згенеровані сторінки bun.com/reference, дублі блогу під
+  `/blog/release-notes/`;
+- приклад питання агентові: `./df bun ask "How do I install dependencies with Bun?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/bun/README.md](instances/bun/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
