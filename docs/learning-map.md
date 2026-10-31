@@ -5,7 +5,7 @@
 із підрозділами «Документація у фабриці» самих планів.
 
 Стан на 31.10.2026. Примірники: alpine, amqp-connection-manager, amqplib, angular, anthropic-api, argocd, argon2,
-aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, cares, casl, certbot,
+aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, bun, cares, casl, certbot,
 class-transformer, class-validator, claude-code, clerk, cloudflare, coder-websocket, confluent-kafka-javascript,
 contentful, csharp, csrf-csrf, d3, deno, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript,
 entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, flux, foundry, frontend-architecture,
