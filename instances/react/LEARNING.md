@@ -420,11 +420,13 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   EIP-7702, OP Stack, Account Abstraction, Tempo; приклади, журнал змін і таблиця версій npm) — `viem`;
 - Foundry (Foundry Book на день виходу кожної стабільної версії 0.3.0–1.8.5: forge, cast, anvil, chisel, читкоди,
   forge-std, `foundry.toml`, довідник CLI; документація репозиторію, нотатки релізів, код forge-std і таблиця
-  версій npm) — `foundry`.
+  версій npm) — `foundry`;
+- Cloudflare як хостинг (увесь developers.cloudflare.com: Pages, статичні ресурси Workers, wrangler, DNS, кеш)
+  — `cloudflare`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- поза таблицями: хостинги.
+- поза таблицями: хостинги, окрім Cloudflare (Netlify, Vercel).
 
 ---
 
@@ -949,7 +951,7 @@ React — бібліотека поверх мови й браузера. Усе
   gzip — це і є число «JS-бандл» для журналу. `vite preview` запускає зібране локально.
 - **Читати:** у примірнику `vite` — `Building for Production`, `static-deploy` (розділи про Netlify, Vercel чи
   Cloudflare — оберіть один хостинг з безкоштовним планом).
-- **Сервери MCP:** `vite-docs`.
+- **Сервери MCP:** `vite-docs`; якщо хостинг — Cloudflare, ще `cloudflare-docs`.
 - **Зробити:** 1) `npm run build` і подивитися на `dist`; 2) `npx vite preview`; 3) викотити `dist` на обраний
   хостинг; 4) Lighthouse в режимі mobile на викоченій адресі, три прогони; 5) завести в README журнал вимірів:
   дата, «перший викот», LCP і CLS (медіана), INP — прочерк (його перший замір у фазі 2, день 5), КБ gzip
