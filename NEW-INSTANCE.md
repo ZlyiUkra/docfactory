@@ -701,6 +701,15 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   digit count: `(?:(?<=std-datetime-0\.\d)|(?<=std-datetime-0\.\d\d\d)|…)(?=\n\n)` → `\n\n> **Unstable…**`.
 - **JSR names and repository folders differ**: `@std/data-structures` lives in `data_structures/` of denoland/std; an
   `include` built from the JSR name finds nothing («жодного файла за `include`»).
+- **Docker Hub image tags**: the registry answers 401 to the OCI `tags/list` without a token, and mirror.gcr.io keeps
+  only part of the tags (171 of 665 for `oven/bun`). `dockerhub-tags` reads the open API
+  `hub.docker.com/v2/namespaces/<owner>/repositories/<image>/tags?page_size=100` (pages through `next`, each inside
+  `within`) and resolves every floating tag (`latest`, `1.4-alpine`) to its version by digest.
+- **A blog that serves each post at two addresses** (bun.com: `/blog/bun-v1.1.27` and `/blog/release-notes/bun-v1.1.27`,
+  160 identical pairs in `sitemap.xml`): compare a pair before vectors; `exclude` one folder and take the posts that
+  exist only there (five full release notes) as an `html-list`. Move the dropped files out of `corpus/`, never delete.
+- **Release notes crowd out «how to» answers** when every patch has its own post (Bun): `demote` the blog and the GitHub
+  releases together with the old folders of the docs; a query with a version number still finds them.
 
 ## Anatomy of an instance
 
@@ -1698,6 +1707,15 @@ and what a taken port and a failed connection look like. A domain list in the ro
   пакет і кількість цифр: `(?:(?<=std-datetime-0\.\d)|(?<=std-datetime-0\.\d\d\d)|…)(?=\n\n)` → `\n\n> **Unstable…**`.
 - **Імена JSR і теки репозиторію різняться**: `@std/data-structures` лежить у `data_structures/` denoland/std;
   `include`, складений з імені JSR, не знаходить нічого («жодного файла за `include`»).
+- **Теги образу на Docker Hub**: реєстр без токена відповідає 401 на OCI `tags/list`, а mirror.gcr.io тримає лише
+  частину тегів (171 з 665 у `oven/bun`). `dockerhub-tags` читає відкритий API
+  `hub.docker.com/v2/namespaces/<власник>/repositories/<образ>/tags?page_size=100` (сторінки — через `next`, кожна в
+  `within`) і за дайджестом знаходить версію кожного плаваючого тега (`latest`, `1.4-alpine`).
+- **Блог, що тримає кожен допис за двома адресами** (bun.com: `/blog/bun-v1.1.27` і `/blog/release-notes/bun-v1.1.27`,
+  160 однакових пар у `sitemap.xml`): до векторів звірити пару; одну теку відкинути `exclude`, а дописи, що є лише там
+  (п'ять повних нотаток), узяти через `html-list`. Відкинуті файли винести з `corpus/`, не видаляти.
+- **Нотатки до випусків витісняють відповіді «як зробити»**, коли кожен патч має свій допис (Bun): `demote` для блогу й
+  релізів GitHub разом зі старими теками документації; запит з номером версії однаково їх знаходить.
 
 ## З чого складається примірник
 
@@ -2736,6 +2754,15 @@ errada.
   `\n\n> **Unstable…**`.
 - **Nomes do JSR e pastas do repositório diferem**: `@std/data-structures` fica em `data_structures/` de denoland/std;
   um `include` montado a partir do nome do JSR não encontra nada («жодного файла за `include`»).
+- **Tags de imagem no Docker Hub**: o registro responde 401 ao `tags/list` OCI sem token, e o mirror.gcr.io guarda só
+  parte das tags (171 de 665 em `oven/bun`). `dockerhub-tags` lê a API aberta
+  `hub.docker.com/v2/namespaces/<dono>/repositories/<imagem>/tags?page_size=100` (páginas por `next`, cada uma dentro de
+  `within`) e resolve cada tag flutuante (`latest`, `1.4-alpine`) para a sua versão pelo digest.
+- **Um blog que serve cada post em dois endereços** (bun.com: `/blog/bun-v1.1.27` e `/blog/release-notes/bun-v1.1.27`,
+  160 pares idênticos no `sitemap.xml`): compare um par antes dos vetores; descarte uma pasta com `exclude` e pegue os
+  posts que só existem lá (cinco notas completas) por `html-list`. Tire os arquivos descartados de `corpus/`, não apague.
+- **Notas de versão tomam o lugar das respostas «como fazer»** quando cada patch tem o seu post (Bun): `demote` no blog e
+  nos releases do GitHub junto com as pastas antigas da documentação; uma consulta com número de versão ainda os acha.
 
 ## Anatomia de uma instância
 
