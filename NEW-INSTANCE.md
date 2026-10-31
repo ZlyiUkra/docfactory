@@ -685,6 +685,22 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   archive only gives addresses, the text still comes from the live site. Watch for two traps: a `200` stub "Page Not
   Found" (field `not_found`) and the same text under several addresses (the site resolves a subsection address as
   the parent page) — the reader keeps one document under the address that matches the page title.
+- **A docs repository without version tags, and no registry history to date it** (denoland/docs; npm `deno` has only
+  2.x, so `ghsite-dated` cannot work): give `ghdocs-history` and `ghcode-history-ts` commit SHAs as the `tags` keys —
+  the trees API takes a commit as well as a tag. For each minor take the last commit of main before the `.0` release
+  of the next minor (dates from the GitHub releases API); the newest minor gets the current main.
+- **`folders: [""]` with `recursive: true` takes only the root files** in `ghdocs-history`: a folder matches as the
+  prefix `folder + "/"`, and for `""` that is `/`. List the top-level folders explicitly, as the union over all tags
+  (denoland/manual: 97 documents instead of 811 until the 18 folders were named).
+- **Type files where everything sits in `declare namespace`** (`lib.deno.ns.d.ts`: the whole `Deno` namespace is one
+  block of 200 000 characters): `ghcode-history-ts` splits only top-level declarations and gives a handful of sections.
+  `ghcode-history-dts` makes a section of every declaration at any depth, with the full name (`function
+  Deno.readFile`), and members of interfaces and classes as subsections (`Deno.Kv.atomic()`).
+- **A visible mark on every document of some versions** (unstable `@std` packages 0.x): `redact` substitutes its text
+  literally, without backreferences. Insert after the version line with fixed-width lookbehinds, one per package and
+  digit count: `(?:(?<=std-datetime-0\.\d)|(?<=std-datetime-0\.\d\d\d)|…)(?=\n\n)` → `\n\n> **Unstable…**`.
+- **JSR names and repository folders differ**: `@std/data-structures` lives in `data_structures/` of denoland/std; an
+  `include` built from the JSR name finds nothing («жодного файла за `include`»).
 
 ## Anatomy of an instance
 
@@ -1666,6 +1682,22 @@ and what a taken port and a failed connection look like. A domain list in the ro
   живого сайту. Дві пастки: заглушка «Page Not Found» з кодом `200` (поле `not_found`) і той самий текст за кількома
   адресами (сайт віддає сторінку-батька за адресою підрозділу) — читач лишає один документ під адресою, що збігається
   з назвою сторінки.
+- **Репозиторій документації без версійних тегів і без історії в реєстрі, щоб її датувати** (denoland/docs; npm `deno`
+  має лише 2.x, тож `ghsite-dated` не годиться): ключами `tags` у `ghdocs-history` і `ghcode-history-ts` дають SHA
+  комітів — API дерев приймає коміт так само, як тег. Для кожної мінорної — останній коміт main перед виходом `.0`
+  наступної мінорної (дати — з API релізів GitHub); найновіша мінорна — поточний main.
+- **`folders: [""]` разом із `recursive: true` бере лише кореневі файли** в `ghdocs-history`: тека збігається як префікс
+  `тека + "/"`, а для `""` це `/`. Теки верхнього рівня перелічують явно, об'єднанням з усіх тегів (denoland/manual: 97
+  документів замість 811, доки 18 тек не названо).
+- **Файли типів, де все лежить у `declare namespace`** (`lib.deno.ns.d.ts`: увесь простір `Deno` — один блок на 200 000
+  символів): `ghcode-history-ts` ділить лише оголошення верхнього рівня й дає кілька розділів. `ghcode-history-dts`
+  робить розділ з кожного оголошення на будь-якій глибині з повною назвою (`function Deno.readFile`), а члени
+  інтерфейсів і класів — підрозділами (`Deno.Kv.atomic()`).
+- **Видима позначка на кожному документі частини версій** (нестабільні пакети `@std` 0.x): `redact` підставляє текст
+  буквально, без зворотних посилань. Вставляють після рядка версії виразами lookbehind сталої ширини, по одному на
+  пакет і кількість цифр: `(?:(?<=std-datetime-0\.\d)|(?<=std-datetime-0\.\d\d\d)|…)(?=\n\n)` → `\n\n> **Unstable…**`.
+- **Імена JSR і теки репозиторію різняться**: `@std/data-structures` лежить у `data_structures/` denoland/std;
+  `include`, складений з імені JSR, не знаходить нічого («жодного файла за `include`»).
 
 ## З чого складається примірник
 
@@ -2687,6 +2719,23 @@ errada.
   vindo do site vivo. Duas armadilhas: a página "Page Not Found" com código `200` (campo `not_found`) e o mesmo texto
   em vários endereços (o site resolve o endereço de uma subseção como a página-mãe) — o leitor guarda um documento
   sob o endereço que coincide com o título da página.
+- **Um repositório de documentação sem tags de versão e sem histórico no registro para datá-lo** (denoland/docs; o npm
+  `deno` só tem 2.x, então `ghsite-dated` não serve): use SHAs de commits como chaves de `tags` em `ghdocs-history` e
+  `ghcode-history-ts` — a API de árvores aceita um commit tanto quanto uma tag. Para cada minor, o último commit da
+  main antes do `.0` da minor seguinte (datas da API de releases do GitHub); a minor mais nova recebe a main atual.
+- **`folders: [""]` com `recursive: true` pega só os arquivos da raiz** em `ghdocs-history`: uma pasta casa como prefixo
+  `pasta + "/"`, e para `""` isso é `/`. Liste as pastas de primeiro nível explicitamente, pela união de todas as tags
+  (denoland/manual: 97 documentos em vez de 811 até as 18 pastas serem nomeadas).
+- **Arquivos de tipos em que tudo fica em `declare namespace`** (`lib.deno.ns.d.ts`: todo o namespace `Deno` é um bloco
+  de 200 000 caracteres): `ghcode-history-ts` divide só as declarações de primeiro nível e dá poucas seções.
+  `ghcode-history-dts` faz uma seção de cada declaração em qualquer profundidade, com o nome completo (`function
+  Deno.readFile`), e membros de interfaces e classes como subseções (`Deno.Kv.atomic()`).
+- **Uma marca visível em cada documento de algumas versões** (pacotes `@std` instáveis 0.x): `redact` substitui o texto
+  literalmente, sem referências de volta. Insira depois da linha de versão com lookbehinds de largura fixa, um por
+  pacote e número de dígitos: `(?:(?<=std-datetime-0\.\d)|(?<=std-datetime-0\.\d\d\d)|…)(?=\n\n)` →
+  `\n\n> **Unstable…**`.
+- **Nomes do JSR e pastas do repositório diferem**: `@std/data-structures` fica em `data_structures/` de denoland/std;
+  um `include` montado a partir do nome do JSR não encontra nada («жодного файла за `include`»).
 
 ## Anatomia de uma instância
 
