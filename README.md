@@ -4046,6 +4046,26 @@ GitHub, реєстр npm `deno`, усі дописи блогу deno.com, док
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/bun/README.md](instances/bun/README.md).
 
+### emberjs
+
+Документація Ember.js англійською: гайди guides.emberjs.com (компоненти, `@tracked`, маршрути, сервіси, Ember Data,
+тести, `<template>` і `.gjs`, посібник, перехід на Octane) на кожну мінорну 1.10–7.2, довідник API api.emberjs.com —
+Ember 1.0–7.3 і Ember Data 1.13–5.5, гайд застарілого, гайди Ember CLI і WarpDrive, усі дописи блогу, 267 RFC, журнали
+змін, релізи GitHub `ember.js`, `ember-cli` і `warp-drive`, реєстр npm `ember-source`, `ember-cli` і `ember-data`.
+24 408 документів, 32 911 фрагментів; вектори — на відеокарті.
+
+- порт `8940`; запис у Claude Code — `emberjs-docs`, адреса `http://127.0.0.1:8940/mcp`; інструменти
+  `search_docs` і `read_section`;
+- колекція у Qdrant — `docs-emberjs`, модель векторів — `bge-small`;
+- версія — мінорна лінія (`version: "6"`, `"6.4"`); Ember Data — з префіксом (`"ember-data-5.4"`), Ember CLI —
+  `"ember-cli-6"`; без версії RFC, блог, журнали й релізи стоять на десять місць нижче;
+- гайди читає `ghdocs-folders` (теки версій одного коміту, кожен різний текст — один раз), довідник — `ember-api-json`
+  (записи YUIDoc у JSON), релізи з тегами `v7.4.0-ember-source` — `ghreleases-pattern`;
+- не входять: передрелізи, гайди 7.3 (у джерелі ще немає), приватні члени класів;
+- приклад питання агентові: `./df emberjs ask "How do I pass arguments to a component in Ember?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/emberjs/README.md](instances/emberjs/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
