@@ -710,6 +710,19 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   exist only there (five full release notes) as an `html-list`. Move the dropped files out of `corpus/`, never delete.
 - **Release notes crowd out «how to» answers** when every patch has its own post (Bun): `demote` the blog and the GitHub
   releases together with the old folders of the docs; a query with a version number still finds them.
+- **Versions kept as folders of one commit** (ember-learn/guides-source: `guides/v1.10.0` … `guides/v7.2.0`, no tags):
+  a source per folder downloads every unchanged page once per folder (14 127 fetches for 4 558 different texts).
+  `ghdocs-folders` reads one tree, groups the files by «path inside the version folder, blob sha», fetches each text
+  once and gives it every folder that held it as its versions. `title_from: "path"` when the files carry no title
+  (Ember keeps the titles in `pages.yml`, and the first heading of a cookbook page was «Problem»).
+- **A reference that exists only as JSON** (api.emberjs.com renders the YUIDoc output kept in `ember-api-docs-data`):
+  `ember-api-json` makes a document per class, namespace and module, a subsection per own member, inherited members
+  as names only. Check file-name collisions over the whole listing before a long refresh: `@ember/test` and
+  `Ember.Test` slug alike, and 87 files overwrote each other silently (13 708 writes in the log, 13 621 files).
+- **The package name at the end of the tag** (`v7.4.0-ember-source` since Ember 6.0, `v7.3.0-ember-cli` since Ember
+  CLI 6.5): `ghreleases-stable` reads the suffix as a pre-release and drops whole majors. Compare the newest GitHub
+  release in the corpus with the newest version on npm; `ghreleases-pattern` takes the version from the group `v` of
+  `tag_pattern` and keeps the old plain tags under the same expression.
 
 ## Anatomy of an instance
 
@@ -1716,6 +1729,19 @@ and what a taken port and a failed connection look like. A domain list in the ro
   (п'ять повних нотаток), узяти через `html-list`. Відкинуті файли винести з `corpus/`, не видаляти.
 - **Нотатки до випусків витісняють відповіді «як зробити»**, коли кожен патч має свій допис (Bun): `demote` для блогу й
   релізів GitHub разом зі старими теками документації; запит з номером версії однаково їх знаходить.
+- **Версії — теки одного коміту** (ember-learn/guides-source: `guides/v1.10.0` … `guides/v7.2.0`, тегів немає):
+  джерело на теку завантажує кожну незмінну сторінку стільки разів, скільки тек (14 127 завантажень на 4 558 різних
+  текстів). `ghdocs-folders` читає одне дерево, групує файли за парою «шлях у теці версії, хеш blob», завантажує кожен
+  текст раз і дає йому версіями всі теки, де він лежав. `title_from: "path"` — коли у файлах немає назви (Ember тримає
+  назви в `pages.yml`, а першим заголовком сторінки рецептів був «Problem»).
+- **Довідник, що існує лише як JSON** (api.emberjs.com показує вивід YUIDoc з `ember-api-docs-data`): `ember-api-json`
+  складає документ на клас, простір імен і модуль, підрозділ на кожен власний член, успадковане — лише іменами. Перед
+  довгим `refresh` перевірити збіг імен файлів на всьому переліку: `@ember/test` і `Ember.Test` мають однаковий слаг,
+  і 87 файлів мовчки затерли один одного (13 708 записів у журналі, 13 621 файл у теці).
+- **Ім'я пакета в кінці тегу** (`v7.4.0-ember-source` з Ember 6.0, `v7.3.0-ember-cli` з Ember CLI 6.5):
+  `ghreleases-stable` бере суфікс за передреліз і викидає цілі мажорні. Звірити найновіший реліз GitHub у корпусі з
+  найновішою версією в npm; `ghreleases-pattern` бере версію з групи `v` виразу `tag_pattern` і тим самим виразом
+  лишає старі прості теги.
 
 ## З чого складається примірник
 
@@ -2763,6 +2789,20 @@ errada.
   posts que só existem lá (cinco notas completas) por `html-list`. Tire os arquivos descartados de `corpus/`, não apague.
 - **Notas de versão tomam o lugar das respostas «como fazer»** quando cada patch tem o seu post (Bun): `demote` no blog e
   nos releases do GitHub junto com as pastas antigas da documentação; uma consulta com número de versão ainda os acha.
+- **Versões como pastas de um só commit** (ember-learn/guides-source: `guides/v1.10.0` … `guides/v7.2.0`, sem tags):
+  uma fonte por pasta baixa cada página inalterada uma vez por pasta (14 127 downloads para 4 558 textos diferentes).
+  `ghdocs-folders` lê uma árvore, agrupa os arquivos por «caminho dentro da pasta da versão, hash do blob», baixa cada
+  texto uma vez e lhe dá como versões todas as pastas onde ele estava. `title_from: "path"` quando os arquivos não têm
+  título (o Ember guarda os títulos em `pages.yml`, e o primeiro título de uma página de receitas era «Problem»).
+- **Uma referência que só existe em JSON** (api.emberjs.com mostra a saída do YUIDoc guardada em
+  `ember-api-docs-data`): `ember-api-json` faz um documento por classe, namespace e módulo, uma subseção por membro
+  próprio, os herdados só pelo nome. Antes de um `refresh` longo, confira colisões de nomes de arquivo na listagem
+  inteira: `@ember/test` e `Ember.Test` dão o mesmo slug, e 87 arquivos se sobrescreveram em silêncio (13 708
+  gravações no log, 13 621 arquivos na pasta).
+- **O nome do pacote no fim da tag** (`v7.4.0-ember-source` desde o Ember 6.0, `v7.3.0-ember-cli` desde o Ember CLI
+  6.5): `ghreleases-stable` lê o sufixo como pré-release e descarta majors inteiras. Compare o release mais novo do
+  GitHub no corpus com a versão mais nova no npm; `ghreleases-pattern` tira a versão do grupo `v` de `tag_pattern` e
+  mantém as tags simples antigas com a mesma expressão.
 
 ## Anatomia de uma instância
 
