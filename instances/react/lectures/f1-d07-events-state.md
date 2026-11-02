@@ -853,15 +853,11 @@ console.log('виклики:', JSON.stringify(onPick.mock.calls))
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d07-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [`<input>` у довіднику React](https://react.dev/reference/react-dom/components/input): усі пропи поля, зокрема
-  розділ `Controlling an input with a state variable`.
-- [React event object](https://react.dev/reference/react-dom/components/common#react-event-object): поля й методи
-  об'єкта події.
-- [`<button>` на MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/button): атрибут `type` і
-  поведінка кнопки у формі.
-- [`change` на MDN](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event): коли браузерна подія
-  спрацьовує насправді.
-- [Render and Commit](https://react.dev/learn/render-and-commit): сторінка, яку ви читатимете в день 8.
+- `<input>` у довіднику React: усі пропи поля, зокрема розділ `Controlling an input with a state variable`.
+- React event object: поля й методи об'єкта події.
+- `<button>` на MDN: атрибут `type` і поведінка кнопки у формі.
+- `change` на MDN: коли браузерна подія спрацьовує насправді.
+- Render and Commit: сторінка, яку ви читатимете в день 8.
 
 ---
 

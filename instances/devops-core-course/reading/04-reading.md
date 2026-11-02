@@ -385,5 +385,4 @@ terraform/`.
 ---
 
 Цей розбір написано для цього плану. Він спирається на лекцію 4 і лабораторну 4 курсу DevOps Engineering: Core
-Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за
-[посиланням](https://github.com/inno-devops-labs/DevOps-Core-Course).
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за посиланням.

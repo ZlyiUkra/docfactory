@@ -253,16 +253,12 @@ B`. Наприклад, послідовність `A, A, B, A, B, B` є ціл�
 
 ## Що читати далі
 
-- [Лекція 9 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec9.md) і [лабораторна
-  9](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab09.md); [розбір
-  читання](../reading/09-reading.md) пояснює їх і код `echo`.
-- [Virtual IPs and Service Proxies](https://kubernetes.io/docs/reference/networking/virtual-ips/): як kube-proxy
-  вибирає под.
-- [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/): параметри оновлення.
+- Лекція 9 курсу і лабораторна 9; [розбір читання](../reading/09-reading.md) пояснює їх і код `echo`.
+- Virtual IPs and Service Proxies: як kube-proxy вибирає под.
+- Deployments: параметри оновлення.
 - [Лекція 10](10-helm-chart.md): ці маніфести стануть чартом.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 9 і лабораторну 9 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Лекцію написано для цього плану. Вона спирається на лекцію 9 і лабораторну 9 курсу DevOps Engineering: Core Practices
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

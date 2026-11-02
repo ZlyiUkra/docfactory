@@ -587,16 +587,12 @@ hooks.tsx(28,76): error TS2339: Property 'title' does not exist on type '{ id: n
 
 ## Що читати далі
 
-- Розбір читання цього дня проводить через [Generics](https://www.typescriptlang.org/docs/handbook/2/generics.html),
-  [Keyof Type Operator](https://www.typescriptlang.org/docs/handbook/2/keyof-types.html) і [Utility
-  Types](https://www.typescriptlang.org/docs/handbook/utility-types.html).
-- Розділ [Guidelines for Writing Good Generic
-  Functions](https://www.typescriptlang.org/docs/handbook/2/functions.html) сторінки More on Functions дає правила,
-  коли дженерик не потрібен.
+- Розбір читання цього дня проводить через Generics, Keyof Type Operator і Utility Types.
+- Розділ Guidelines for Writing Good Generic Functions сторінки More on Functions дає правила, коли дженерик не
+  потрібен.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на TypeScript Handbook і на сторінки
-[useState](https://react.dev/reference/react/useState) та [useRef](https://react.dev/reference/react/useRef)
-документації React, переказані своїми словами. Код запущено на Node 24 і перевірено компілятором TypeScript 6.0.3;
-файл для React перевірено з пакетом `@types/react` 19.3.
+Лекцію написано для цього плану. Вона спирається на TypeScript Handbook і на сторінки useState та useRef документації
+React, переказані своїми словами. Код запущено на Node 24 і перевірено компілятором TypeScript 6.0.3; файл для React
+перевірено з пакетом `@types/react` 19.3.

@@ -423,18 +423,13 @@ nixpkgs описує `pyproject` і `dependencies` і каже, що інші ф
 
 - [Розбір читання до лабораторної 18](../reading/18-reading.md): лабораторна за завданнями.
 - [Розбір читання до лабораторної 16](../reading/16-reading.md): лекція 16 курсу повністю.
-- Посібник Nix: [`nix build`](https://nix.dev/manual/nix/stable/command-ref/new-cli/nix3-build.html),
-  [`nix flake`](https://nix.dev/manual/nix/stable/command-ref/new-cli/nix3-flake.html), [адресування за
-  входами](https://nix.dev/manual/nix/stable/store/derivation/outputs/input-address.html), [перевірка
-  відтворюваності](https://nix.dev/manual/nix/stable/advanced-topics/diff-hook.html).
-- [Посібник nixpkgs](https://nixos.org/manual/nixpkgs/stable/): `dockerTools`, `writeShellApplication`, Python.
-- [Сторінка BuildKit про відтворювані збірки](https://github.com/moby/buildkit/blob/master/docs/build-repro.md) для
-  порівняння.
+- Посібник Nix: `nix build`, `nix flake`, адресування за входами, перевірка відтворюваності.
+- Посібник nixpkgs: `dockerTools`, `writeShellApplication`, Python.
+- Сторінка BuildKit про відтворювані збірки для порівняння.
 - Після цієї лекції бонусна частина плану закінчена. Розділ «Після плану» в [плані](../LEARNING.md) каже, куди йти
   далі.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 16 і лабораторну 18 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Лекцію написано для цього плану. Вона спирається на лекцію 16 і лабораторну 18 курсу DevOps Engineering: Core
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

@@ -538,8 +538,7 @@ x)`?**
 
 - [Розбір читання до цього дня](../reading/f0-d02-reading.md): сторінки MDN про `Array` і `Object.freeze()` і
   алгоритми специфікації.
-- [Updating Arrays in State](https://react.dev/learn/updating-arrays-in-state): розділ документації React, до якого ви
-  дійдете у фазі 1.
+- Updating Arrays in State: розділ документації React, до якого ви дійдете у фазі 1.
 
 ---
 

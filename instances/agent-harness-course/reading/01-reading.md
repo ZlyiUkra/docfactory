@@ -825,7 +825,6 @@ def from_env(fallback: LLM | None = None) -> LLM:
 ---
 
 Цей розбір написано для плану. Він спирається на модуль 1 і файли `harness/llm.py`, `harness/loop.py`,
-`harness/tools.py` та `docs/debugging.md` курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0, код за
-ліцензією MIT) і наводить фрагменти цього коду. Відомості про API звірено з документацією Anthropic і Ollama та з
+`harness/tools.py` та `docs/debugging.md` курсу Agent Harness Course (автор justxor, текст за ліцензією CC BY 4.0, код
+за ліцензією MIT) і наводить фрагменти цього коду. Відомості про API звірено з документацією Anthropic і Ollama та з
 офіційною бібліотекою OpenAI станом на листопад 2026 року. Права на оригінальні тексти належать їхнім авторам.

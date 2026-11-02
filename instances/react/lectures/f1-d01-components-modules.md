@@ -756,11 +756,9 @@ Node зв'язує імпорти з експортами під час зава
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d01-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Preserving and Resetting State](https://react.dev/learn/preserving-and-resetting-state), розділи
-  `Same component at the same position preserves state` і `Different components at the same position reset state`. Це
-  джерело правила про місце й тип, а докладно його вивчає день 12.
-- [`static-components`](https://react.dev/reference/eslint-plugin-react-hooks/lints/static-components): сторінка
-  правила лінтера з прикладами й порадою передавати дані пропсами.
+- Preserving and Resetting State, розділи `Same component at the same position preserves state` і `Different
+  components at the same position reset state`. Це джерело правила про місце й тип, а докладно його вивчає день 12.
+- `static-components`: сторінка правила лінтера з прикладами й порадою передавати дані пропсами.
 
 ---
 

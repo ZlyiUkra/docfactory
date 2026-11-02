@@ -965,20 +965,15 @@ next[0].liked = true; setSongs(next)` неправильно?**
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d09-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Updating Objects in State](https://react.dev/learn/updating-objects-in-state) і [Updating Arrays in
-  State](https://react.dev/learn/updating-arrays-in-state): глави React, які ви читаєте сьогодні.
-- [Застереження до функції `set`](https://react.dev/reference/react/useState#setstate-caveats): там сказано про
-  порівняння через `Object.is` і про виклик компонента перед пропуском оновлення.
-- [Object.freeze()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/freeze):
-  сторінка MDN, зокрема розділ `Deep freezing` про рекурсію й цикли.
-- [Env Variables and Modes](https://vite.dev/guide/env-and-mode): сторінка Vite про `import.meta.env.DEV`.
-- [Readonly properties](https://www.typescriptlang.org/docs/handbook/2/objects.html#readonly-properties): як
-  TypeScript забороняє запис у поле під час компіляції.
-- [expect](https://vitest.dev/api/expect): сторінка Vitest про матчери `toBe` і `toEqual`.
-- [Designing with Self-Referential Data
-  Definitions](https://htdp.org/2023-8-14/Book/part_two.html#%28part._ch~3adesign-lists%29): глава книжки про опис
-  даних, який посилається сам на себе.
-- [Immer](https://immerjs.github.io/immer/): документація бібліотеки, якщо вирішите нею скористатися.
+- Updating Objects in State і Updating Arrays in State: глави React, які ви читаєте сьогодні.
+- Застереження до функції `set`: там сказано про порівняння через `Object.is` і про виклик компонента перед пропуском
+  оновлення.
+- Object.freeze(): сторінка MDN, зокрема розділ `Deep freezing` про рекурсію й цикли.
+- Env Variables and Modes: сторінка Vite про `import.meta.env.DEV`.
+- Readonly properties: як TypeScript забороняє запис у поле під час компіляції.
+- expect: сторінка Vitest про матчери `toBe` і `toEqual`.
+- Designing with Self-Referential Data Definitions: глава книжки про опис даних, який посилається сам на себе.
+- Immer: документація бібліотеки, якщо вирішите нею скористатися.
 
 ---
 

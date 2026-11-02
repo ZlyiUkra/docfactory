@@ -264,16 +264,11 @@ helm upgrade
 
 ## Що читати далі
 
-- [Лекція 10 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec10.md) і
-  [лабораторна 10](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab10.md); [розбір
-  читання](../reading/10-reading.md) пояснює їх.
-- [Chart Hooks](https://helm.sh/docs/topics/charts_hooks/), [Named
-  Templates](https://helm.sh/docs/chart_template_guide/named_templates/), [Helm 4
-  Overview](https://helm.sh/docs/overview/).
+- Лекція 10 курсу і лабораторна 10; [розбір читання](../reading/10-reading.md) пояснює їх.
+- Chart Hooks, Named Templates, Helm 4 Overview.
 - [Лекція 11](11-secrets-openbao.md): у цей чарт прийде секрет.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 10 і лабораторну 10 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Лекцію написано для цього плану. Вона спирається на лекцію 10 і лабораторну 10 курсу DevOps Engineering: Core
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

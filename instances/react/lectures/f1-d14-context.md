@@ -816,16 +816,12 @@ function formatTemperature(celsius: number, unit: Unit): string {
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d14-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Passing Data Deeply with Context](https://react.dev/learn/passing-data-deeply-with-context) і [Scaling Up with
-  Reducer and Context](https://react.dev/learn/scaling-up-with-reducer-and-context): дві глави React, які ви читаєте
-  сьогодні.
-- [useContext](https://react.dev/reference/react/useContext): довідник із застереженнями про `Object.is`, `memo` і
-  власний провайдер, а також із розділом про об'єкти в значенні.
-- [createContext](https://react.dev/reference/react/createContext): довідник про сам об'єкт контексту.
-- [React Developer Tools](https://react.dev/learn/react-developer-tools): де взяти розширення.
-- [Код підсвічування в репозиторії
-  React](https://github.com/facebook/react/tree/main/packages/react-devtools-shared/src/backend/views/TraceUpdates):
-  якщо хочете самі перевірити, як розширення малює рамки.
+- Passing Data Deeply with Context і Scaling Up with Reducer and Context: дві глави React, які ви читаєте сьогодні.
+- useContext: довідник із застереженнями про `Object.is`, `memo` і власний провайдер, а також із розділом про об'єкти
+  в значенні.
+- createContext: довідник про сам об'єкт контексту.
+- React Developer Tools: де взяти розширення.
+- Код підсвічування в репозиторії React: якщо хочете самі перевірити, як розширення малює рамки.
 
 ---
 

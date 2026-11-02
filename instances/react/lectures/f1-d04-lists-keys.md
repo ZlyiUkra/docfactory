@@ -934,14 +934,12 @@ key={s.id} studentId={s.id} name={s.name} />`.
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d04-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Rendering Lists](https://react.dev/learn/rendering-lists): головна сторінка дня.
-- [Preserving and Resetting State](https://react.dev/learn/preserving-and-resetting-state): сторінка, яку ви
-  читатимете в день 12, а вправа `Fix misplaced state in the list` там є тією самою помилкою з індексом.
-- [Fragment](https://react.dev/reference/react/Fragment): розділ про список фрагментів.
-- [Crypto: randomUUID()](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID): сторінка MDN про метод і
-  захищений контекст.
-- [Differences from fireEvent](https://testing-library.com/docs/user-event/intro#differences-from-fireevent): чим
-  `user-event` відрізняється від простих подій.
+- Rendering Lists: головна сторінка дня.
+- Preserving and Resetting State: сторінка, яку ви читатимете в день 12, а вправа `Fix misplaced state in the list`
+  там є тією самою помилкою з індексом.
+- Fragment: розділ про список фрагментів.
+- Crypto: randomUUID(): сторінка MDN про метод і захищений контекст.
+- Differences from fireEvent: чим `user-event` відрізняється від простих подій.
 
 ---
 

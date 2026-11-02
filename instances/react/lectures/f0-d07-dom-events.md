@@ -531,16 +531,11 @@ article target B | currentTarget ARTICLE | nativeEvent.currentTarget root
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f0-d07-reading.md): що саме написано в матеріалах дня.
-- [Event bubbling](https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling) на
-  MDN, особливо розділи про делегування й `target`.
-- [Responding to Events](https://react.dev/learn/responding-to-events) у документації React, коли дійдете до подій у
-  React.
+- Event bubbling на MDN, особливо розділи про делегування й `target`.
+- Responding to Events у документації React, коли дійдете до подій у React.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на
-[MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model) (тексти за ліцензією CC BY-SA 2.5),
-стандарти WHATWG [DOM](https://dom.spec.whatwg.org/) і [HTML](https://html.spec.whatwg.org/) (ліцензія CC BY 4.0),
-документацію [React](https://react.dev/reference/react-dom/components/common) і запис про [зміни в React
-17](https://legacy.reactjs.org/blog/2020/08/10/react-v17-rc.html), переказуючи їх своїми словами. Приклади коду
-написано для лекції. Їхній вивід отримано в jsdom 26 і React 19, а не в справжньому браузері.
+Лекцію написано для цього плану. Вона спирається на MDN (тексти за ліцензією CC BY-SA 2.5), стандарти WHATWG DOM і
+HTML (ліцензія CC BY 4.0), документацію React і запис про зміни в React 17, переказуючи їх своїми словами. Приклади
+коду написано для лекції. Їхній вивід отримано в jsdom 26 і React 19, а не в справжньому браузері.

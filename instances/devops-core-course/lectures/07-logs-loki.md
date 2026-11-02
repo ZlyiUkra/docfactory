@@ -457,18 +457,15 @@ healthcheck:
 
 ## Що читати далі
 
-- [Огляд Loki](https://grafana.com/docs/loki/latest/get-started/overview/) і
-  [правила вибору міток](https://grafana.com/docs/loki/latest/get-started/labels/bp-labels/).
-- [Довідник Alloy](https://grafana.com/docs/alloy/latest/reference/components/): сторінки компонентів, які
-  використовує лабораторна.
-- [Запити до журналів](https://grafana.com/docs/loki/latest/query/log_queries/) і
-  [метричні запити](https://grafana.com/docs/loki/latest/query/metric_queries/).
-- [Видалення старих журналів](https://grafana.com/docs/loki/latest/operations/storage/retention/).
+- Огляд Loki і правила вибору міток.
+- Довідник Alloy: сторінки компонентів, які використовує лабораторна.
+- Запити до журналів і метричні запити.
+- Видалення старих журналів.
 - [Розбір читання до лабораторної 7](../reading/07-reading.md) пояснює лекцію й лабораторну курсу за розділами.
   Наступна тема — метрики, у [лекції 8](08-metrics-prometheus.md).
 
 ---
 
 Лекцію написано для цього плану. Вона спирається на лекцію 7 і лабораторну 7 курсу DevOps Engineering: Core Practices
-(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за посиланням:
-[DevOps-Core-Course](https://github.com/inno-devops-labs/DevOps-Core-Course).
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі:
+DevOps-Core-Course.

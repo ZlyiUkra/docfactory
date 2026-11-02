@@ -792,12 +792,10 @@ React викликає компонент із новим `first` і стари�
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d17-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect): глава React, яку ви читаєте
-  сьогодні.
-- [set-state-in-effect](https://react.dev/reference/eslint-plugin-react-hooks/lints/set-state-in-effect): сторінка
-  правила лінту.
-- [useMemo](https://react.dev/reference/react/useMemo): довідник про мемоізацію.
-- [useSyncExternalStore](https://react.dev/reference/react/useSyncExternalStore): довідник про підписку на сховище.
+- You Might Not Need an Effect: глава React, яку ви читаєте сьогодні.
+- set-state-in-effect: сторінка правила лінту.
+- useMemo: довідник про мемоізацію.
+- useSyncExternalStore: довідник про підписку на сховище.
 
 ---
 

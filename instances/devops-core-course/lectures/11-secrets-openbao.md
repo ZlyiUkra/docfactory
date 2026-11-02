@@ -401,20 +401,13 @@ ESO:       OpenBao --> контролер --> Secret у сховищі клас�
 
 ## Що читати далі
 
-- [Лекція 11 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec11.md) і
-  [лабораторна 11](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab11.md); [розбір
-  читання](../reading/11-reading.md) пояснює їх.
-- [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/), [Encrypting Confidential Data at
-  Rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/).
-- [OpenBao: dev server](https://openbao.org/docs/concepts/dev-server/), [KV
-  v2](https://openbao.org/docs/secrets/kv/kv-v2/), [policies](https://openbao.org/docs/concepts/policies/),
-  [Kubernetes auth](https://openbao.org/docs/auth/kubernetes/).
-- [ESO: HashiCorp Vault provider](https://external-secrets.io/latest/provider/hashicorp-vault/): OpenBao працює через
-  нього.
+- Лекція 11 курсу і лабораторна 11; [розбір читання](../reading/11-reading.md) пояснює їх.
+- Secrets, Encrypting Confidential Data at Rest.
+- OpenBao: dev server, KV v2, policies, Kubernetes auth.
+- ESO: HashiCorp Vault provider: OpenBao працює через нього.
 - [Лекція 12](12-config-storage.md): конфігурація й дані, що переживають под.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 11 і лабораторну 11 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Лекцію написано для цього плану. Вона спирається на лекцію 11 і лабораторну 11 курсу DevOps Engineering: Core
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

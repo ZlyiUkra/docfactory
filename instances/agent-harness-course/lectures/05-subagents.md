@@ -444,24 +444,16 @@ LearnHarness передає сигнал скасування в кожен ви
 
 ## Що читати далі
 
-- [Модуль 5 курсу](https://github.com/justxor/agent-harness-course#модуль-5-субагенты-и-фоновые-задачи-неделя-6):
-  короткий текст, який ця лекція розгортає.
-- [`harness/jobs.py`](https://github.com/justxor/agent-harness-course/blob/0c90ce7bbeef858426abfeeacacbdb438921c078/harness/jobs.py):
-  код цієї лекції.
-- [How we built our multi-agent research system](https://www.anthropic.com/research/multi-agent-research-system):
-  система з кількох агентів у справжньому продукті.
-- [Factor 10: Small, focused
-  agents](https://github.com/humanlayer/12-factor-agents/blob/main/content/factor-10-small-focused-agents.md): чому
-  агентів варто робити малими.
-- [`docs/architecture.md`
-  LearnHarness](https://github.com/amosblomqvist/learnharness/blob/v0.4.1/docs/architecture.md), розділ `5. Background
-  work and delivery`: доставка в готовому застосунку.
+- Модуль 5 курсу: короткий текст, який ця лекція розгортає.
+- `harness/jobs.py`: код цієї лекції.
+- How we built our multi-agent research system: система з кількох агентів у справжньому продукті.
+- Factor 10: Small, focused agents: чому агентів варто робити малими.
+- `docs/architecture.md` LearnHarness, розділ `5. Background work and delivery`: доставка в готовому застосунку.
 - [Розбір читання до модуля 5](../reading/05-reading.md): пояснення всіх цих текстів і кожної функції `jobs.py`.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 5 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0, код за
-ліцензією MIT), переказує статтю «How we built our multi-agent research system» компанії Anthropic і Factor 10 із
-[12-Factor Agents](https://github.com/humanlayer/12-factor-agents), а також своїми словами описує
-[LearnHarness](https://github.com/amosblomqvist/learnharness) (AGPL-3.0), не копіюючи його коду.
+Лекцію написано для цього плану. Вона спирається на модуль 5 курсу Agent Harness Course (автор justxor, текст за
+ліцензією CC BY 4.0, код за ліцензією MIT), переказує статтю «How we built our multi-agent research system» компанії
+Anthropic і Factor 10 із 12-Factor Agents, а також своїми словами описує LearnHarness (AGPL-3.0), не копіюючи його
+коду.

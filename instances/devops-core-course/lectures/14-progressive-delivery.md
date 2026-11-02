@@ -455,16 +455,12 @@ Rollouts, бо в лабораторній 13 вже стоїть Argo CD. До�
 
 ## Що читати далі
 
-- [Лекція 14 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec14.md) і
-  [лабораторна 14](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab14.md), а поруч [розбір
-  читання](../reading/14-reading.md).
-- [Документація Argo Rollouts](https://argoproj.github.io/argo-rollouts/): `Getting Started`, `Canary`, `BlueGreen`,
-  `Analysis`. Сайт описує найновішу версію, тому в разі розбіжності дивись [документацію тегу
-  1.8.4](https://github.com/argoproj/argo-rollouts/tree/v1.8.4/docs).
+- Лекція 14 курсу і лабораторна 14, а поруч [розбір читання](../reading/14-reading.md).
+- Документація Argo Rollouts: `Getting Started`, `Canary`, `BlueGreen`, `Analysis`. Сайт описує найновішу версію, тому
+  в разі розбіжності дивись документацію тегу 1.8.4.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 14 і лабораторну 14 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням. Факти про Argo Rollouts звірено з документацією й кодом
-версії 1.8.4.
+Лекцію написано для цього плану. Вона спирається на лекцію 14 і лабораторну 14 курсу DevOps Engineering: Core
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.
+Факти про Argo Rollouts звірено з документацією й кодом версії 1.8.4.

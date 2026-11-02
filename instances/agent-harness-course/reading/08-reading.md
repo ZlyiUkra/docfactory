@@ -831,8 +831,6 @@ LearnHarness вважає компакцію невдалою й нічого н
 
 ---
 
-Цей розбір написано для плану. Він спирається на модуль 8 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, ліцензія тексту CC BY 4.0, ліцензія коду MIT)
-і своїми словами переказує документацію та промпти [LearnHarness](https://github.com/amosblomqvist/learnharness)
-(автор Amos Blomqvist, ліцензія AGPL-3.0). Код і промпти LearnHarness тут не наведено. Права на оригінальні тексти
-належать їхнім авторам.
+Цей розбір написано для плану. Він спирається на модуль 8 курсу Agent Harness Course (автор justxor, ліцензія тексту
+CC BY 4.0, ліцензія коду MIT) і своїми словами переказує документацію та промпти LearnHarness (автор Amos Blomqvist,
+ліцензія AGPL-3.0). Код і промпти LearnHarness тут не наведено. Права на оригінальні тексти належать їхнім авторам.

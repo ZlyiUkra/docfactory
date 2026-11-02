@@ -821,15 +821,11 @@ Testing Library після кожної дії чекає на справжні�
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d08-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [`flushSync`](https://react.dev/reference/react-dom/flushSync): сторінка довідника з попередженням, коли не варто
-  цього робити.
-- [`Object.is`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is): сторінка
-  MDN про порівняння, яким користується React.
-- [`MutationObserver`](https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver): сторінка MDN про
-  спостерігач зі сьогоднішнього досліду.
-- [Fake timers у Vitest](https://vitest.dev/guide/mocking/timers): посібник про підроблені таймери.
-- [Updating Objects in State](https://react.dev/learn/updating-objects-in-state): сторінка, яку ви читатимете в день
-  9.
+- `flushSync`: сторінка довідника з попередженням, коли не варто цього робити.
+- `Object.is`: сторінка MDN про порівняння, яким користується React.
+- `MutationObserver`: сторінка MDN про спостерігач зі сьогоднішнього досліду.
+- Fake timers у Vitest: посібник про підроблені таймери.
+- Updating Objects in State: сторінка, яку ви читатимете в день 9.
 
 ---
 

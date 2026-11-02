@@ -466,20 +466,12 @@ React називає власний процес іншими словами, і
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f0-d08-reading.md): що саме написано в матеріалах дня.
-- [Avoid large, complex layouts and layout
-  thrashing](https://web.dev/articles/avoid-large-complex-layouts-and-layout-thrashing) на web.dev.
-- [Render and Commit](https://react.dev/learn/render-and-commit) і
-  [useLayoutEffect](https://react.dev/reference/react/useLayoutEffect) у документації React, коли дійдете до них.
+- Avoid large, complex layouts and layout thrashing на web.dev.
+- Render and Commit і useLayoutEffect у документації React, коли дійдете до них.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на
-[MDN](https://developer.mozilla.org/en-US/docs/Web/Performance/Guides/How_browsers_work) (тексти за ліцензією CC BY-SA
-2.5), стандарт WHATWG [HTML](https://html.spec.whatwg.org/multipage/webappapis.html#event-loop-processing-model)
-(ліцензія CC BY 4.0), статті
-[web.dev](https://web.dev/articles/stick-to-compositor-only-properties-and-manage-layer-count) про компонування, шари,
-[INP](https://web.dev/articles/inp) і [CLS](https://web.dev/articles/cls), документацію [Chrome
-DevTools](https://developer.chrome.com/docs/devtools/performance/reference) і
-[React](https://react.dev/learn/render-and-commit), переказуючи їх своїми словами. Лише приклад із симуляцією кадрів
-запущено в Node 24. Решту прикладів написано для консолі браузера й не запускали, тому числа в таблицях вигадані для
-пояснення, а не виміряні.
+Лекцію написано для цього плану. Вона спирається на MDN (тексти за ліцензією CC BY-SA 2.5), стандарт WHATWG HTML
+(ліцензія CC BY 4.0), статті web.dev про компонування, шари, INP і CLS, документацію Chrome DevTools і React,
+переказуючи їх своїми словами. Лише приклад із симуляцією кадрів запущено в Node 24. Решту прикладів написано для
+консолі браузера й не запускали, тому числа в таблицях вигадані для пояснення, а не виміряні.

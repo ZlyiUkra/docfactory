@@ -775,15 +775,10 @@ none`. Сторінка попереджає, що за великих прих�
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d12-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Sharing State Between Components](https://react.dev/learn/sharing-state-between-components) і [Preserving and
-  Resetting State](https://react.dev/learn/preserving-and-resetting-state): глави React, які ви читаєте сьогодні.
-- [Resetting all state when a prop
-  changes](https://react.dev/learn/you-might-not-need-an-effect#resetting-all-state-when-a-prop-changes): розділ про
-  скидання ефектом і ключем.
-- [Застереження до `useEffect`](https://react.dev/reference/react/useEffect#caveats): там сказано, коли ефект
-  виконується відносно малювання екрана.
-- [Designing with Itemizations](https://htdp.org/2023-8-14/Book/part_one.html#%28part._sec~3adesign-itemization%29):
-  розділ книжки про дані з кількох варіантів.
+- Sharing State Between Components і Preserving and Resetting State: глави React, які ви читаєте сьогодні.
+- Resetting all state when a prop changes: розділ про скидання ефектом і ключем.
+- Застереження до `useEffect`: там сказано, коли ефект виконується відносно малювання екрана.
+- Designing with Itemizations: розділ книжки про дані з кількох варіантів.
 
 ---
 

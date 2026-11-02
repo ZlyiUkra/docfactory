@@ -433,17 +433,13 @@ Init-контейнери неможливо додати чи видалити 
 
 ## Що читати далі
 
-- [Design](https://prometheus-operator.dev/docs/getting-started/design/) і
-  [Troubleshooting](https://prometheus-operator.dev/docs/platform/troubleshooting/) оператора Prometheus.
-- [README чарта](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack).
-- [Init Containers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/) і [Sidecar
-  Containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/).
-- [Лабораторна 16 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab16.md) разом із
-  [розбором читання](../reading/16-reading.md).
+- Design і Troubleshooting оператора Prometheus.
+- README чарта.
+- Init Containers і Sidecar Containers.
+- Лабораторна 16 курсу разом із [розбором читання](../reading/16-reading.md).
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 8 і лабораторну 16 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням. Лекцію 16 курсу присвячено іншій темі: її розглядають
-лабораторні 17 і 18.
+Лекцію написано для цього плану. Вона спирається на лекцію 8 і лабораторну 16 курсу DevOps Engineering: Core Practices
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі. Лекцію 16
+курсу присвячено іншій темі: її розглядають лабораторні 17 і 18.

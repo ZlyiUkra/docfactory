@@ -958,9 +958,7 @@ PROTOCOL` у `src/core/contracts/jobs.ts`. Тому завдання з план
 
 ---
 
-Цей розбір написано для плану. Він спирається на модуль 5 і код курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0, код за
-ліцензією MIT), переказує своїми словами статтю «How we built our multi-agent research system» компанії Anthropic і
-Factor 10 із [12-Factor Agents](https://github.com/humanlayer/12-factor-agents), а також описує
-[LearnHarness](https://github.com/amosblomqvist/learnharness) (AGPL-3.0), не копіюючи його коду. Права на оригінальні
-тексти належать їхнім авторам.
+Цей розбір написано для плану. Він спирається на модуль 5 і код курсу Agent Harness Course (автор justxor, текст за
+ліцензією CC BY 4.0, код за ліцензією MIT), переказує своїми словами статтю «How we built our multi-agent research
+system» компанії Anthropic і Factor 10 із 12-Factor Agents, а також описує LearnHarness (AGPL-3.0), не копіюючи його
+коду. Права на оригінальні тексти належать їхнім авторам.

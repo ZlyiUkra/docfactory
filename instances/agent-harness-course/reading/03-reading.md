@@ -1028,9 +1028,7 @@ Anthropic пропонує компакцію як можливість свог
 
 ---
 
-Цей розбір написано для плану. Він спирається на модуль 3 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0), наводить код
-курсу (ліцензія MIT) і переказує своїми словами статтю «Effective context engineering for AI agents» компанії
-Anthropic, третє правило [12-Factor Agents](https://github.com/humanlayer/12-factor-agents) і документ
-[LearnHarness](https://github.com/amosblomqvist/learnharness) (ліцензія AGPL-3.0, код цього проєкту не наведено).
-Права на оригінальні тексти належать їхнім авторам.
+Цей розбір написано для плану. Він спирається на модуль 3 курсу Agent Harness Course (автор justxor, текст за
+ліцензією CC BY 4.0), наводить код курсу (ліцензія MIT) і переказує своїми словами статтю «Effective context
+engineering for AI agents» компанії Anthropic, третє правило 12-Factor Agents і документ LearnHarness (ліцензія
+AGPL-3.0, код цього проєкту не наведено). Права на оригінальні тексти належать їхнім авторам.

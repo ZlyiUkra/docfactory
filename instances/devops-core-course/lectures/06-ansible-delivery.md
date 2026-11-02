@@ -430,22 +430,13 @@ redis_wipe`?**
 
 ## Що читати далі
 
-- [Лекція 6 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec6.md) і [розбір
-  читання до лабораторної 6](../reading/06-reading.md).
-- [Лабораторна 6 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab06.md): робоче
-  завдання.
-- Документація Ansible: [блоки](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_blocks.html),
-  [теги](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html), [обробка
-  помилок](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_error_handling.html), [партії й
-  стратегії](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_strategies.html), [модуль
-  `docker_compose_v2`](https://docs.ansible.com/ansible/latest/collections/community/docker/docker_compose_v2_module.html).
-- Документація GitHub: [OIDC](https://docs.github.com/en/actions/concepts/security/openid-connect),
-  [середовища](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
-  Запити про Actions став на сервер `github-actions-docs`.
+- Лекція 6 курсу і [розбір читання до лабораторної 6](../reading/06-reading.md).
+- Лабораторна 6 курсу: робоче завдання.
+- Документація Ansible: блоки, теги, обробка помилок, партії й стратегії, модуль `docker_compose_v2`.
+- Документація GitHub: OIDC, середовища. Запити про Actions став на сервер `github-actions-docs`.
 
 ---
 
 Лекцію написано для цього плану. Вона спирається на лекцію 6 і лабораторну 6 курсу DevOps Engineering: Core Practices
-(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за
-[посиланням](https://github.com/inno-devops-labs/DevOps-Core-Course). Факти про Ansible та GitHub Actions звірено з
-їхньою офіційною документацією.
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за посиланням. Факти про
+Ansible та GitHub Actions звірено з їхньою офіційною документацією.

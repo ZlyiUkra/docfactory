@@ -574,8 +574,8 @@ setOrder(order)`; б) `setOrder({ ...order, total: 900 })`; в) `setOrder({ ...o
 
 - [Розбір читання до цього дня](../reading/f0-d01-reading.md): `Object.is()`, розгортання, `structuredClone` і розділ
   2.7 стандарту HTML, частина за частиною.
-- [Updating Objects in State](https://react.dev/learn/updating-objects-in-state): розділ документації React, до якого
-  ви дійдете у фазі 1. Після цієї лекції він буде зрозумілий уже зараз.
+- Updating Objects in State: розділ документації React, до якого ви дійдете у фазі 1. Після цієї лекції він буде
+  зрозумілий уже зараз.
 
 ---
 

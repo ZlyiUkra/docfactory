@@ -484,12 +484,10 @@ var o;console.log((o=120,console.error("Задача тривала "+o+" мс: 
 
 ## Що читати далі
 
-- [Inspect network activity](https://developer.chrome.com/docs/devtools/network) і [Network features
-  reference](https://developer.chrome.com/docs/devtools/network/reference).
-- [Analyze runtime performance](https://developer.chrome.com/docs/devtools/performance) і [Performance features
-  reference](https://developer.chrome.com/docs/devtools/performance/reference).
-- [Why lab and field data can be different](https://web.dev/articles/lab-and-field-data-differences).
-- [Карти коду в документації DevTools](https://developer.chrome.com/docs/devtools/javascript/source-maps).
+- Inspect network activity і Network features reference.
+- Analyze runtime performance і Performance features reference.
+- Why lab and field data can be different.
+- Карти коду в документації DevTools.
 
 ---
 

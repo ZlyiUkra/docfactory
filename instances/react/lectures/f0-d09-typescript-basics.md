@@ -550,15 +550,12 @@ data.currency === "string"`, і лише після неї компілятор 
 
 ## Що читати далі
 
-- Розбір читання цього дня проводить через [The
-  Basics](https://www.typescriptlang.org/docs/handbook/2/basic-types.html), [Everyday
-  Types](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html) і
-  [Narrowing](https://www.typescriptlang.org/docs/handbook/2/narrowing.html).
-- [Using TypeScript](https://react.dev/learn/typescript) у документації React стане в пригоді у фазі 1.
+- Розбір читання цього дня проводить через The Basics, Everyday Types і Narrowing.
+- Using TypeScript у документації React стане в пригоді у фазі 1.
 
 ---
 
 Лекцію написано для цього плану. Вона спирається на TypeScript Handbook, примітки до TypeScript 6.0, документацію
-Node.js, сторінку про `typeof` на MDN і сторінку [Using TypeScript](https://react.dev/learn/typescript) документації
-React, переказані своїми словами. Код запущено на Node 24 і перевірено компілятором TypeScript 6.0.3; файл для React
-перевірено з пакетом `@types/react` 19.3.
+Node.js, сторінку про `typeof` на MDN і сторінку Using TypeScript документації React, переказані своїми словами. Код
+запущено на Node 24 і перевірено компілятором TypeScript 6.0.3; файл для React перевірено з пакетом `@types/react`
+19.3.

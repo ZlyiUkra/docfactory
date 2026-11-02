@@ -425,16 +425,13 @@ LearnHarness віддає таку оцінку моделі.
 ## Що читати далі
 
 - Сервер `python-docs`: документація мови й стандартної бібліотеки для всього коду фінального проєкту.
-- [Фінальний проєкт у курсі](https://github.com/justxor/agent-harness-course#-финальный-проект-обучающий-агент) і
-  [`examples/capstone/mini_tutor.py`](https://github.com/justxor/agent-harness-course/blob/0c90ce7bbeef858426abfeeacacbdb438921c078/examples/capstone/mini_tutor.py).
+- Фінальний проєкт у курсі і `examples/capstone/mini_tutor.py`.
 - Розбір читання до фінального проєкту: кожна функція файла рядок за рядком.
-- [`docs/project-ideas.md`](https://github.com/justxor/agent-harness-course/blob/0c90ce7bbeef858426abfeeacacbdb438921c078/docs/project-ideas.md)
-  у курсі: 25 ідей, якщо вибереш шлях власного агента.
+- `docs/project-ideas.md` у курсі: 25 ідей, якщо вибереш шлях власного агента.
 - Розділ курсу про просунуті теми, якщо закінчиш раніше: MCP, агенти для коду, агенти з браузером, продакшн.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на фінальний проєкт курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, ліцензія тексту CC BY 4.0, ліцензія коду MIT)
-і порівнює його з документацією [LearnHarness](https://github.com/amosblomqvist/learnharness) (автор Amos Blomqvist,
+Лекцію написано для цього плану. Вона спирається на фінальний проєкт курсу Agent Harness Course (автор justxor,
+ліцензія тексту CC BY 4.0, ліцензія коду MIT) і порівнює його з документацією LearnHarness (автор Amos Blomqvist,
 ліцензія AGPL-3.0). Код LearnHarness тут не наведено.

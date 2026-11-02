@@ -227,16 +227,11 @@ k3s ставить **Local Path Provisioner** із типовим класом `
 
 ## Що читати далі
 
-- [Лекція 12 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec12.md) і
-  [лабораторна 12](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab12.md); [розбір
-  читання](../reading/12-reading.md) пояснює їх.
-- [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) і [Local Path
-  Provisioner](https://github.com/rancher/local-path-provisioner).
-- [Charts Tips and Tricks](https://helm.sh/docs/howto/charts_tips_and_tricks/): розділ `Automatically Roll
-  Deployments` для бонусу.
+- Лекція 12 курсу і лабораторна 12; [розбір читання](../reading/12-reading.md) пояснює їх.
+- Persistent Volumes і Local Path Provisioner.
+- Charts Tips and Tricks: розділ `Automatically Roll Deployments` для бонусу.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 12 і лабораторну 12 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Лекцію написано для цього плану. Вона спирається на лекцію 12 і лабораторну 12 курсу DevOps Engineering: Core
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

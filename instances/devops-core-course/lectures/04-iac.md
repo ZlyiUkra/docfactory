@@ -447,15 +447,11 @@ for env in ["dev", "staging", "prod"]:
 ## Що читати далі
 
 - Лекція 4 і лабораторна 4 курсу разом із [розбором читання](../reading/04-reading.md).
-- Terraform: [стан](https://developer.hashicorp.com/terraform/language/state), [секрети в
-  стані](https://developer.hashicorp.com/terraform/language/state/sensitive-data), [команда
-  plan](https://developer.hashicorp.com/terraform/cli/commands/plan).
-- OpenTofu: [посібник міграції](https://opentofu.org/docs/intro/migration/migration-guide/).
-- Pulumi: [як він працює](https://www.pulumi.com/docs/iac/concepts/how-pulumi-works/),
-  [секрети](https://www.pulumi.com/docs/iac/concepts/secrets/).
+- Terraform: стан, секрети в стані, команда plan.
+- OpenTofu: посібник міграції.
+- Pulumi: як він працює, секрети.
 
 ---
 
 Лекцію написано для цього плану. Вона спирається на лекцію 4 і лабораторну 4 курсу DevOps Engineering: Core Practices
-(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за
-[посиланням](https://github.com/inno-devops-labs/DevOps-Core-Course).
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за посиланням.

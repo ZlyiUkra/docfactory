@@ -267,15 +267,12 @@ Flask немає компільованих частин, тому компіл�
 ## Що читати далі
 
 - [Розбір читання до лабораторної 2](../reading/02-reading.md).
-- [Лекція 2 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec2.md) і [лабораторна
-  2 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab02.md), англійською.
-- [Building best practices](https://docs.docker.com/build/building/best-practices/) і [Multi-stage
-  builds](https://docs.docker.com/build/building/multi-stage/) у документації Docker.
-- [Документація Trivy](https://trivy.dev/).
+- Лекція 2 курсу і лабораторна 2 курсу, англійською.
+- Building best practices і Multi-stage builds у документації Docker.
+- Документація Trivy.
 - [Лекція 3](03-ci.md): цей самий образ збирає вже конвеєр.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 2 і лабораторну 2 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Лекцію написано для цього плану. Вона спирається на лекцію 2 і лабораторну 2 курсу DevOps Engineering: Core Practices
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

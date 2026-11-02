@@ -505,8 +505,6 @@ dispatchEvent повернув true | defaultPrevented false
 
 ---
 
-Цей розбір написано для плану. Він переказує своїми словами сторінки
-[MDN](https://developer.mozilla.org/en-US/docs/Web/API/Event) (CC BY-SA 2.5), стандарт WHATWG
-[DOM](https://dom.spec.whatwg.org/) (CC BY 4.0), документацію [React](https://react.dev/learn/responding-to-events) і
-коротко переказує книжку [How to Design Programs](https://htdp.org/). Права на оригінальні тексти належать їхнім
+Цей розбір написано для плану. Він переказує своїми словами сторінки MDN (CC BY-SA 2.5), стандарт WHATWG DOM (CC BY
+4.0), документацію React і коротко переказує книжку How to Design Programs. Права на оригінальні тексти належать їхнім
 авторам. Приклад із подією `ping` запущено в jsdom 26, а не в справжньому браузері.

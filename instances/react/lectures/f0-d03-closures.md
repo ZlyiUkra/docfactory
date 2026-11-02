@@ -634,11 +634,9 @@ Dependencies`](https://react.dev/learn/removing-effect-dependencies).
 
 ## Що читати далі
 
-- [`Closures`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Closures) і
-  [`let`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/let) на MDN: це читання дня, а
-  пояснення до них лежить у [розборі читання](../reading/f0-d03-reading.md).
-- Глава [`State as a Snapshot`](https://react.dev/learn/state-as-a-snapshot) буде у фазі 1, у дні про рендер, коміт і
-  знімок стану.
+- `Closures` і `let` на MDN: це читання дня, а пояснення до них лежить у [розборі
+  читання](../reading/f0-d03-reading.md).
+- Глава `State as a Snapshot` буде у фазі 1, у дні про рендер, коміт і знімок стану.
 
 ---
 

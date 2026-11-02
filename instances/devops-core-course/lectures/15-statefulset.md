@@ -261,16 +261,11 @@ Deployment за такою службою окремих імен не отри�
 
 ## Що читати далі
 
-- [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/): обмеження, гарантії,
-  стратегії оновлення.
-- [StatefulSet Basics](https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/): покроковий
-  підручник.
-- [Лекція 15 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec15.md) і
-  [лабораторна 15](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab15.md) разом із
-  [розбором читання](../reading/15-reading.md).
+- StatefulSets: обмеження, гарантії, стратегії оновлення.
+- StatefulSet Basics: покроковий підручник.
+- Лекція 15 курсу і лабораторна 15 разом із [розбором читання](../reading/15-reading.md).
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 15 і лабораторну 15 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Лекцію написано для цього плану. Вона спирається на лекцію 15 і лабораторну 15 курсу DevOps Engineering: Core
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

@@ -689,15 +689,11 @@ INP потребує дій користувача, а Lighthouse лише за�
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d20-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Building for Production](https://vite.dev/guide/build) і [Deploying a Static
-  Site](https://vite.dev/guide/static-deploy): дві сторінки Vite, які ви читаєте сьогодні.
-- [Env Variables and Modes](https://vite.dev/guide/env-and-mode): розділ `Protecting Secrets` про змінні `VITE_*`.
-- [Largest Contentful Paint](https://web.dev/articles/lcp) і [Cumulative Layout Shift](https://web.dev/articles/cls):
-  що означають два числа вашого журналу.
-- [Lighthouse Variability](https://github.com/GoogleChrome/lighthouse/blob/main/docs/variability.md): чому прогони
-  коливаються.
-- [JavaScript modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules): сторінка MDN, де є
-  попередження про модулі за адресою `file://`.
+- Building for Production і Deploying a Static Site: дві сторінки Vite, які ви читаєте сьогодні.
+- Env Variables and Modes: розділ `Protecting Secrets` про змінні `VITE_*`.
+- Largest Contentful Paint і Cumulative Layout Shift: що означають два числа вашого журналу.
+- Lighthouse Variability: чому прогони коливаються.
+- JavaScript modules: сторінка MDN, де є попередження про модулі за адресою `file://`.
 
 ---
 

@@ -540,18 +540,12 @@ def _post(url: str, headers: dict, body: dict, timeout: int = 120, attempts: int
 
 - Сервер `python-docs`: документація мови й стандартної бібліотеки. Відкривай його, коли незрозуміло, що робить функція чи
   конструкція Python у твоєму `llm.py`.
-- [Модуль 1
-  курсу](https://github.com/justxor/agent-harness-course#модуль-1-api-моделей-сообщения-токены-стриминг-неделя-1) і
-  [файл
-  `harness/llm.py`](https://github.com/justxor/agent-harness-course/blob/0c90ce7bbeef858426abfeeacacbdb438921c078/harness/llm.py):
-  обидва пояснено в розборі читання до модуля 1.
-- [Messages API в документації Anthropic](https://docs.anthropic.com/en/api/messages): повний опис запиту й відповіді.
-- [Довідник API OpenAI](https://platform.openai.com/docs/api-reference): формат, який повторюють майже всі сумісні
-  сервери.
+- Модуль 1 курсу і файл `harness/llm.py`: обидва пояснено в розборі читання до модуля 1.
+- Messages API в документації Anthropic: повний опис запиту й відповіді.
+- Довідник API OpenAI: формат, який повторюють майже всі сумісні сервери.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 1 і файли `docs/` курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0, код за
-ліцензією MIT) і наводить короткі фрагменти його коду. Відомості про API звірено з документацією Anthropic і Ollama та
-з офіційною бібліотекою OpenAI станом на листопад 2026 року.
+Лекцію написано для цього плану. Вона спирається на модуль 1 і файли `docs/` курсу Agent Harness Course (автор
+justxor, текст за ліцензією CC BY 4.0, код за ліцензією MIT) і наводить короткі фрагменти його коду. Відомості про API
+звірено з документацією Anthropic і Ollama та з офіційною бібліотекою OpenAI станом на листопад 2026 року.

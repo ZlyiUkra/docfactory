@@ -563,22 +563,18 @@ def measure(llm, case, runs=5, price_in=3.0, price_out=15.0):   # ціни ви�
 
 ## Що читати далі
 
-- [Модуль 7 курсу](https://github.com/justxor/agent-harness-course#модуль-7-evals-наблюдаемость-и-стоимость-неделя-7):
-  короткий текст, який ця лекція розгортає.
+- Модуль 7 курсу: короткий текст, який ця лекція розгортає.
 - Розбір читання до модуля 7: там `tests/test_harness.py` і `examples/07_evals.py` пояснено рядок за рядком, а статтю
   переказано за розділами.
-- [Your AI Product Needs Evals](https://hamel.dev/blog/posts/evals/): стаття про те, як будувати evals від помилок.
-- [How we built our multi-agent research system](https://www.anthropic.com/research/multi-agent-research-system):
-  розділ `Effective evaluation of agents`.
-- [Домовленості OpenTelemetry для GenAI](https://github.com/open-telemetry/semantic-conventions-genai): назви полів
-  для запису викликів моделей.
-- Курс радить ще два зразки готових наборів: [τ-bench](https://github.com/sierra-research/tau-bench) для агентів
-  підтримки з інструментами і [SWE-bench](https://www.swebench.com/) для агентів, які пишуть код.
+- Your AI Product Needs Evals: стаття про те, як будувати evals від помилок.
+- How we built our multi-agent research system: розділ `Effective evaluation of agents`.
+- Домовленості OpenTelemetry для GenAI: назви полів для запису викликів моделей.
+- Курс радить ще два зразки готових наборів: τ-bench для агентів підтримки з інструментами і SWE-bench для агентів,
+  які пишуть код.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 7 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст під ліцензією CC BY 4.0, код під
-ліцензією MIT), наводить короткі фрагменти коду курсу й переказує статті Hamel Husain «Your AI Product Needs Evals» і
-компанії Anthropic «How we built our multi-agent research system». Числа в таблиці «до» й «після» та ціни на токени
-вигадані для прикладу.
+Лекцію написано для цього плану. Вона спирається на модуль 7 курсу Agent Harness Course (автор justxor, текст під
+ліцензією CC BY 4.0, код під ліцензією MIT), наводить короткі фрагменти коду курсу й переказує статті Hamel Husain
+«Your AI Product Needs Evals» і компанії Anthropic «How we built our multi-agent research system». Числа в таблиці
+«до» й «після» та ціни на токени вигадані для прикладу.

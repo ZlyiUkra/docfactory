@@ -427,19 +427,12 @@ Git має бути джерелом правди, але секрет там л
 
 ## Що читати далі
 
-- [Лекція 13 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec13.md) і
-  [лабораторна 13 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab13.md): їх пояснює
-  [розбір читання](../reading/13-reading.md).
-- [Automated Sync Policy](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/auto_sync/), [Resource
-  Tracking](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/resource_tracking/), [Sync
-  Options](https://argo-cd.readthedocs.io/en/release-3.4/user-guide/sync-options/) і [ApplicationSet:
-  Template](https://argo-cd.readthedocs.io/en/release-3.4/operator-manual/applicationset/Template/): документація Argo
-  CD для лінії 3.4.
-- Для порівняння: у Flux `spec.prune` є [обов'язковим полем ресурсу
-  `Kustomization`](https://fluxcd.io/flux/components/kustomize/kustomizations/).
+- Лекція 13 курсу і лабораторна 13 курсу: їх пояснює [розбір читання](../reading/13-reading.md).
+- Automated Sync Policy, Resource Tracking, Sync Options і ApplicationSet: Template: документація Argo CD для лінії
+  3.4.
+- Для порівняння: у Flux `spec.prune` є обов'язковим полем ресурсу `Kustomization`.
 
 ---
 
 Лекцію написано для цього плану. Вона спирається на лекцію 13 і лабораторну 13 курсу DevOps Engineering: Core
-Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за
-[посиланням](https://github.com/inno-devops-labs/DevOps-Core-Course).
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за посиланням.

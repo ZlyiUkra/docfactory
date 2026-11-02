@@ -594,25 +594,17 @@ tool 120. Що поверне `select_cutoff` за `keep_tokens` 1450 і за 40
 
 ## Що читати далі
 
-- [Модуль 3 курсу](https://github.com/justxor/agent-harness-course#модуль-3-контекст-инжиниринг-и-компакция-неделя-4):
-  короткий текст, який ця лекція розгортає.
-- [Код
-  `harness/context.py`](https://github.com/justxor/agent-harness-course/blob/0c90ce7bbeef858426abfeeacacbdb438921c078/harness/context.py):
-  усі функції цієї лекції.
-- [Effective context engineering for AI
-  agents](https://www.anthropic.com/research/effective-context-engineering-for-ai-agents): спершу розділи
-  `Why context engineering is important to building capable agents` і `Context engineering for long-horizon tasks`.
-- [Factor 3: Own your context
-  window](https://github.com/humanlayer/12-factor-agents/blob/main/content/factor-03-own-your-context-window.md): чому
-  варто самому вибирати формат контексту.
-- [LearnHarness:
-  compaction-accounting.md](https://github.com/amosblomqvist/learnharness/blob/v0.4.1/docs/compaction-accounting.md):
-  як компакцію й облік токенів зроблено в справжньому продукті.
+- Модуль 3 курсу: короткий текст, який ця лекція розгортає.
+- Код `harness/context.py`: усі функції цієї лекції.
+- Effective context engineering for AI agents: спершу розділи `Why context engineering is important to building
+  capable agents` і `Context engineering for long-horizon tasks`.
+- Factor 3: Own your context window: чому варто самому вибирати формат контексту.
+- LearnHarness: compaction-accounting.md: як компакцію й облік токенів зроблено в справжньому продукті.
 - Розбір читання до модуля 3 пояснює кожен із цих текстів і кожну функцію `context.py`.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 3 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0), наводить
-короткі фрагменти коду курсу (ліцензія MIT) і переказує своїми словами статтю «Effective context engineering for AI
-agents» компанії Anthropic. Опис LearnHarness подано своїми словами, без коду цього проєкту (ліцензія AGPL-3.0).
+Лекцію написано для цього плану. Вона спирається на модуль 3 курсу Agent Harness Course (автор justxor, текст за
+ліцензією CC BY 4.0), наводить короткі фрагменти коду курсу (ліцензія MIT) і переказує своїми словами статтю
+«Effective context engineering for AI agents» компанії Anthropic. Опис LearnHarness подано своїми словами, без коду
+цього проєкту (ліцензія AGPL-3.0).

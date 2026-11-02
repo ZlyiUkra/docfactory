@@ -464,17 +464,14 @@ sum(rate(payments_total{result="failed"}[5m])) / sum(rate(payments_total[5m]))
 
 - Сервер `python-docs`: документація мови й стандартної бібліотеки, якщо код метрик у сервісі незрозумілий. Самої бібліотеки
   `prometheus_client` на цьому сервері немає.
-- [Типи метрик](https://prometheus.io/docs/concepts/metric_types/) і
-  [завдання та екземпляри](https://prometheus.io/docs/concepts/jobs_instances/).
-- [Функції PromQL](https://prometheus.io/docs/prometheus/latest/querying/functions/): `rate`, `irate`,
-  `histogram_quantile`.
-- [Гістограми й зведення](https://prometheus.io/docs/practices/histograms/): порівняння й приклади похибки.
-- [Метод RED](https://grafana.com/blog/the-red-method-how-to-instrument-your-services/) і
-  [метод USE](https://www.brendangregg.com/usemethod.html).
+- Типи метрик і завдання та екземпляри.
+- Функції PromQL: `rate`, `irate`, `histogram_quantile`.
+- Гістограми й зведення: порівняння й приклади похибки.
+- Метод RED і метод USE.
 - [Розбір читання до лабораторної 8](../reading/08-reading.md) пояснює лекцію й лабораторну курсу за розділами.
 
 ---
 
 Лекцію написано для цього плану. Вона спирається на лекцію 8 і лабораторну 8 курсу DevOps Engineering: Core Practices
-(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за посиланням:
-[DevOps-Core-Course](https://github.com/inno-devops-labs/DevOps-Core-Course).
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі:
+DevOps-Core-Course.

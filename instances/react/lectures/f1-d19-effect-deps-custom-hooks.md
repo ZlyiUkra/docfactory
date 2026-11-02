@@ -842,15 +842,10 @@ jsdom | подію offline отримано разів: 1 | navigator.onLine п�
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d19-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Removing Effect Dependencies](https://react.dev/learn/removing-effect-dependencies) і [Reusing Logic with Custom
-  Hooks](https://react.dev/learn/reusing-logic-with-custom-hooks): дві глави React, які ви читаєте сьогодні.
-- [README
-  `eslint-plugin-react-hooks`](https://github.com/facebook/react/blob/main/packages/eslint-plugin-react-hooks/README.md)
-  і [exhaustive-deps](https://react.dev/reference/eslint-plugin-react-hooks/lints/exhaustive-deps): налаштування й
-  опис правила.
-- [Navigator: onLine](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/onLine): сторінка MDN про стан
-  мережі.
-- [renderHook](https://testing-library.com/docs/react-testing-library/api/#renderhook): опис функції для тестів.
+- Removing Effect Dependencies і Reusing Logic with Custom Hooks: дві глави React, які ви читаєте сьогодні.
+- README `eslint-plugin-react-hooks` і exhaustive-deps: налаштування й опис правила.
+- Navigator: onLine: сторінка MDN про стан мережі.
+- renderHook: опис функції для тестів.
 
 ---
 

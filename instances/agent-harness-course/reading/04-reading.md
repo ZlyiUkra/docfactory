@@ -1019,9 +1019,8 @@ it».
 
 ---
 
-Цей розбір написано для плану. Він спирається на модуль 4 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0, код за
-ліцензією MIT), наводить фрагменти `harness/memory.py`, `examples/04_memory.py` і `tests/test_harness.py`, переказує
-своїми словами статті Factor 5 і Factor 12 із [12-Factor Agents](https://github.com/humanlayer/12-factor-agents) та
-сторінку `Memory tool` компанії Anthropic. Про LearnHarness (AGPL-3.0) сказано своїми словами, без коду. Права на
-оригінальні тексти належать їхнім авторам.
+Цей розбір написано для плану. Він спирається на модуль 4 курсу Agent Harness Course (автор justxor, текст за
+ліцензією CC BY 4.0, код за ліцензією MIT), наводить фрагменти `harness/memory.py`, `examples/04_memory.py` і
+`tests/test_harness.py`, переказує своїми словами статті Factor 5 і Factor 12 із 12-Factor Agents та сторінку `Memory
+tool` компанії Anthropic. Про LearnHarness (AGPL-3.0) сказано своїми словами, без коду. Права на оригінальні тексти
+належать їхнім авторам.

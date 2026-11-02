@@ -817,16 +817,11 @@ React не знає про зміну `ref.current`, тому показує з�
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d15-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Referencing Values with Refs](https://react.dev/learn/referencing-values-with-refs) і [Manipulating the DOM with
-  Refs](https://react.dev/learn/manipulating-the-dom-with-refs): дві глави React, які ви читаєте сьогодні.
-- [useRef](https://react.dev/reference/react/useRef): довідник із застереженнями й записом про початкове значення.
-- [refs](https://react.dev/reference/eslint-plugin-react-hooks/lints/refs): сторінка правила лінту.
-- [Ref-колбек](https://react.dev/reference/react-dom/components/common#ref-callback): розділ довідника про функцію в
-  атрибуті `ref`.
-- [HTMLElement.focus()](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus),
-  [Element.scrollIntoView()](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) і
-  [setInterval()](https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval): сторінки MDN про браузерні
-  функції дня.
+- Referencing Values with Refs і Manipulating the DOM with Refs: дві глави React, які ви читаєте сьогодні.
+- useRef: довідник із застереженнями й записом про початкове значення.
+- refs: сторінка правила лінту.
+- Ref-колбек: розділ довідника про функцію в атрибуті `ref`.
+- HTMLElement.focus(), Element.scrollIntoView() і setInterval(): сторінки MDN про браузерні функції дня.
 
 ---
 

@@ -383,17 +383,10 @@ Objects.
 
 - [Розбір читання до лабораторної 17](../reading/17-reading.md): лабораторна за завданнями.
 - [Розбір читання до лабораторної 16](../reading/16-reading.md): лекція 16 курсу повністю.
-- Документація Cloudflare: [How Workers
-  works](https://developers.cloudflare.com/workers/reference/how-workers-works/),
-  [Limits](https://developers.cloudflare.com/workers/platform/limits/),
-  [Pricing](https://developers.cloudflare.com/workers/platform/pricing/), [How KV
-  works](https://developers.cloudflare.com/kv/concepts/how-kv-works/),
-  [Rollbacks](https://developers.cloudflare.com/workers/configuration/versions-and-deployments/rollbacks/).
-- Стаття Cloudflare [Cloud Computing without
-  Containers](https://blog.cloudflare.com/cloud-computing-without-containers/): звідки взялися 5 мс і 3 МБ.
+- Документація Cloudflare: How Workers works, Limits, Pricing, How KV works, Rollbacks.
+- Стаття Cloudflare Cloud Computing without Containers: звідки взялися 5 мс і 3 МБ.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на лекцію 16 і лабораторну 17 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Лекцію написано для цього плану. Вона спирається на лекцію 16 і лабораторну 17 курсу DevOps Engineering: Core
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

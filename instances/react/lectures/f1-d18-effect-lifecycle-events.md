@@ -676,11 +676,9 @@ ref можна не писати, бо React гарантує, що вони т�
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d18-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Lifecycle of Reactive Effects](https://react.dev/learn/lifecycle-of-reactive-effects) і [Separating Events from
-  Effects](https://react.dev/learn/separating-events-from-effects): дві глави React, які ви читаєте сьогодні.
-- [useEffectEvent](https://react.dev/reference/react/useEffectEvent): довідник із застереженнями й типовими помилками.
-- [exhaustive-deps](https://react.dev/reference/eslint-plugin-react-hooks/lints/exhaustive-deps): сторінка правила
-  лінту.
+- Lifecycle of Reactive Effects і Separating Events from Effects: дві глави React, які ви читаєте сьогодні.
+- useEffectEvent: довідник із застереженнями й типовими помилками.
+- exhaustive-deps: сторінка правила лінту.
 
 ---
 

@@ -1020,14 +1020,10 @@ preview`.
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d16-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Synchronizing with Effects](https://react.dev/learn/synchronizing-with-effects): глава React, яку ви читаєте
-  сьогодні.
-- [useEffect](https://react.dev/reference/react/useEffect): довідник із застереженнями й розділом про типові проблеми.
-- [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController): сторінка MDN про об'єкт
-  скасування.
-- [vite preview](https://vite.dev/guide/cli#vite-preview) і [Multi-Page
-  App](https://vite.dev/guide/build#multi-page-app): сторінки документації Vite про перегляд збірки й про кілька
-  сторінок.
+- Synchronizing with Effects: глава React, яку ви читаєте сьогодні.
+- useEffect: довідник із застереженнями й розділом про типові проблеми.
+- AbortController: сторінка MDN про об'єкт скасування.
+- vite preview і Multi-Page App: сторінки документації Vite про перегляд збірки й про кілька сторінок.
 - Лекція «Коли ефект не потрібен»: наступний день.
 
 ---

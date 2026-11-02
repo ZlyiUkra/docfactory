@@ -847,17 +847,13 @@ TypeError: Cannot read properties of undefined (reading 'title')
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d11-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Choosing the State Structure](https://react.dev/learn/choosing-the-state-structure): глава React про п'ять
-  принципів.
-- [Параметри `useState`](https://react.dev/reference/react/useState#parameters): що сказано про початкове значення.
-- [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect): розділи `Updating state based
-  on props or state` і `Adjusting some state when a prop changes`.
-- [Array.prototype.find()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/find):
-  сторінка MDN про результат пошуку.
-- [noUncheckedIndexedAccess](https://www.typescriptlang.org/tsconfig/#noUncheckedIndexedAccess): параметр компілятора
-  TypeScript для читання за індексом.
-- [Designing with Structures](https://htdp.org/2023-8-14/Book/part_one.html#%28part._sec~3adesignstructs%29): розділ
-  книжки How to Design Programs про шаблон функції над структурою.
+- Choosing the State Structure: глава React про п'ять принципів.
+- Параметри `useState`: що сказано про початкове значення.
+- You Might Not Need an Effect: розділи `Updating state based on props or state` і `Adjusting some state when a prop
+  changes`.
+- Array.prototype.find(): сторінка MDN про результат пошуку.
+- noUncheckedIndexedAccess: параметр компілятора TypeScript для читання за індексом.
+- Designing with Structures: розділ книжки How to Design Programs про шаблон функції над структурою.
 
 ---
 

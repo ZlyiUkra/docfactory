@@ -512,14 +512,11 @@ useEffect(() => {
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f0-d06-reading.md): що саме написано в матеріалах дня.
-- [Using the Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch) на MDN, особливо
-  розділи `Canceling a request` і `Locked and disturbed streams`.
+- Using the Fetch API на MDN, особливо розділи `Canceling a request` і `Locked and disturbed streams`.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
-(тексти за ліцензією CC BY-SA 2.5), стандарти WHATWG [Fetch](https://fetch.spec.whatwg.org/) і
-[DOM](https://dom.spec.whatwg.org/) (ліцензія CC BY 4.0), документацію [Chrome
-DevTools](https://developer.chrome.com/docs/devtools/network/reference) і
-[React](https://react.dev/reference/react/useEffect), переказуючи їх своїми словами. Приклади коду написано для лекції
-й запущено в Node 24, а приклад із React запущено в jsdom. Поведінку вкладки «Мережа» описано за документацією.
+Лекцію написано для цього плану. Вона спирається на MDN (тексти за ліцензією CC BY-SA 2.5), стандарти WHATWG Fetch і
+DOM (ліцензія CC BY 4.0), документацію Chrome DevTools і React, переказуючи їх своїми словами. Приклади коду написано
+для лекції й запущено в Node 24, а приклад із React запущено в jsdom. Поведінку вкладки «Мережа» описано за
+документацією.

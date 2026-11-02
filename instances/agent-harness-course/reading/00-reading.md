@@ -270,6 +270,6 @@
 
 ---
 
-Цей розбір написано для плану. Він спирається на модуль 0 курсу [Agent Harness Course](https://github.com/justxor/agent-harness-course)
-(автор justxor, ліцензія CC BY 4.0), переказує своїми словами статтю «Building effective agents» компанії Anthropic і вступ до
-[12-Factor Agents](https://github.com/humanlayer/12-factor-agents). Права на оригінальні тексти належать їхнім авторам.
+Цей розбір написано для плану. Він спирається на модуль 0 курсу Agent Harness Course (автор justxor, ліцензія CC BY
+4.0), переказує своїми словами статтю «Building effective agents» компанії Anthropic і вступ до 12-Factor Agents.
+Права на оригінальні тексти належать їхнім авторам.

@@ -355,5 +355,5 @@ Loki. Другий запуск має показати `changed=0`.
 ---
 
 Цей розбір написано для цього плану. Він спирається на лекцію 8 і лабораторну 8 курсу DevOps Engineering: Core
-Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за посиланням:
-[DevOps-Core-Course](https://github.com/inno-devops-labs/DevOps-Core-Course).
+Practices (inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі:
+DevOps-Core-Course.

@@ -580,8 +580,6 @@ Fetch дізнається про скасування. Сторінка не б
 
 ---
 
-Цей розбір написано для плану. Він переказує своїми словами сторінки
-[MDN](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) (CC BY-SA 2.5), стандарти WHATWG
-[DOM](https://dom.spec.whatwg.org/) і [Fetch](https://fetch.spec.whatwg.org/) (CC BY 4.0) і коротко переказує книжку
-[How to Design Programs](https://htdp.org/). Права на оригінальні тексти належать їхнім авторам. Приклади коду
-запущено в Node 24.
+Цей розбір написано для плану. Він переказує своїми словами сторінки MDN (CC BY-SA 2.5), стандарти WHATWG DOM і Fetch
+(CC BY 4.0) і коротко переказує книжку How to Design Programs. Права на оригінальні тексти належать їхнім авторам.
+Приклади коду запущено в Node 24.

@@ -352,15 +352,12 @@ agents](https://www.anthropic.com/research/building-effective-agents): спер�
 
 ## Що читати далі
 
-- [Модуль 0 курсу](https://github.com/justxor/agent-harness-course#модуль-0-что-такое-llm-и-почему-нужен-харнес-неделя-1):
-  короткий текст, який ця лекція розгортає.
-- [Building effective agents](https://www.anthropic.com/research/building-effective-agents): спершу розділи `What are
-  agents?` і `When (and when not) to use agents`.
+- Модуль 0 курсу: короткий текст, який ця лекція розгортає.
+- Building effective agents: спершу розділи `What are agents?` і `When (and when not) to use agents`.
 - Курс радить ще відео Андрія Карпатого `Intro to Large Language Models` і `Let's build the GPT Tokenizer`, якщо хочеш
   глибше зрозуміти, як модель бачить текст.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 0 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, ліцензія CC BY 4.0) і переказує статтю
-«Building effective agents» компанії Anthropic.
+Лекцію написано для цього плану. Вона спирається на модуль 0 курсу Agent Harness Course (автор justxor, ліцензія CC BY
+4.0) і переказує статтю «Building effective agents» компанії Anthropic.

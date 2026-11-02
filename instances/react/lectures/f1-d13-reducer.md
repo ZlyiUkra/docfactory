@@ -693,14 +693,11 @@ Node стирає анотації типів і виконує решту, а �
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d13-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Extracting State Logic into a Reducer](https://react.dev/learn/extracting-state-logic-into-a-reducer): глава React,
-  яку ви читаєте сьогодні.
-- [useReducer](https://react.dev/reference/react/useReducer): довідник із застереженнями й типовими проблемами.
-- [Modules: TypeScript](https://nodejs.org/api/typescript.html): сторінка Node про стирання типів і його межі.
-- [console.assert()](https://developer.mozilla.org/en-US/docs/Web/API/console/assert_static): сторінка MDN про
-  перевірку в консолі.
-- [Itemizations and Structures](https://htdp.org/2023-8-14/Book/part_one.html#%28part._ch~3amix%29): глава книжки про
-  дані з варіантів, що мають поля.
+- Extracting State Logic into a Reducer: глава React, яку ви читаєте сьогодні.
+- useReducer: довідник із застереженнями й типовими проблемами.
+- Modules: TypeScript: сторінка Node про стирання типів і його межі.
+- console.assert(): сторінка MDN про перевірку в консолі.
+- Itemizations and Structures: глава книжки про дані з варіантів, що мають поля.
 
 ---
 

@@ -892,15 +892,11 @@ B: null | Спроб: 0
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d03-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Logical AND (&&)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_AND):
-  сторінка MDN про те, що саме повертає оператор.
-- [Binary Logical Operators](https://tc39.es/ecma262/#sec-binary-logical-operators-runtime-semantics-evaluation):
-  розділ стандарту ECMAScript, де записано цей самий алгоритм, а поруч
-  [ToBoolean](https://tc39.es/ecma262/#sec-toboolean), тобто перелік хибних значень.
-- [Discriminated unions](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions): розділ
-  документації TypeScript про звуження за спільним полем.
-- [Keeping Components Pure](https://react.dev/learn/keeping-components-pure): сторінка React, яку ви читатимете в день
-  5.
+- Logical AND (&&): сторінка MDN про те, що саме повертає оператор.
+- Binary Logical Operators: розділ стандарту ECMAScript, де записано цей самий алгоритм, а поруч ToBoolean, тобто
+  перелік хибних значень.
+- Discriminated unions: розділ документації TypeScript про звуження за спільним полем.
+- Keeping Components Pure: сторінка React, яку ви читатимете в день 5.
 
 ---
 

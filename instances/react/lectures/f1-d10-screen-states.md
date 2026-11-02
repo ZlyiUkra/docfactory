@@ -981,14 +981,11 @@ React порівнює старий і новий стан через `Object.is
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d10-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Reacting to Input with State](https://react.dev/learn/reacting-to-input-with-state): глава React про п'ять кроків.
-- [Thinking in React](https://react.dev/learn/thinking-in-react): та сама логіка на цілому екрані.
-- [Narrowing](https://www.typescriptlang.org/docs/handbook/2/narrowing.html): глава документації TypeScript, зокрема
-  розділи `Discriminated unions` і `Exhaustiveness checking`.
-- [Itemizations and Structures](https://htdp.org/2023-8-14/Book/part_one.html#%28part._ch~3amix%29): глава книжки How
-  to Design Programs про перелік зі структур.
-- [About Queries](https://testing-library.com/docs/queries/about/): сторінка Testing Library про різницю між `getBy`,
-  `queryBy` і `findBy`.
+- Reacting to Input with State: глава React про п'ять кроків.
+- Thinking in React: та сама логіка на цілому екрані.
+- Narrowing: глава документації TypeScript, зокрема розділи `Discriminated unions` і `Exhaustiveness checking`.
+- Itemizations and Structures: глава книжки How to Design Programs про перелік зі структур.
+- About Queries: сторінка Testing Library про різницю між `getBy`, `queryBy` і `findBy`.
 
 ---
 

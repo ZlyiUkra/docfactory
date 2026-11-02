@@ -782,14 +782,11 @@ test('addGuest: новий гість стає в кінець', () => {
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d05-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Keeping Components Pure](https://react.dev/learn/keeping-components-pure): головна сторінка дня, яка пояснює
-  правила чистоти.
-- [StrictMode](https://react.dev/reference/react/StrictMode): довідник про всі перевірки цього компонента.
-- [Understanding Your UI as a Tree](https://react.dev/learn/understanding-your-ui-as-a-tree): два дерева на прикладі
-  застосунку з цитатами.
-- [How to handle the Effect firing twice in
-  development?](https://react.dev/learn/synchronizing-with-effects#how-to-handle-the-effect-firing-twice-in-development):
-  розділ, який ви докладно читатимете в дні 16, а сьогодні він корисний як відповідь на запитання «чому два запуски».
+- Keeping Components Pure: головна сторінка дня, яка пояснює правила чистоти.
+- StrictMode: довідник про всі перевірки цього компонента.
+- Understanding Your UI as a Tree: два дерева на прикладі застосунку з цитатами.
+- How to handle the Effect firing twice in development?: розділ, який ви докладно читатимете в дні 16, а сьогодні він
+  корисний як відповідь на запитання «чому два запуски».
 
 ---
 

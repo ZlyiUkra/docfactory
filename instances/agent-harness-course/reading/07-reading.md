@@ -1383,8 +1383,8 @@ system](https://www.anthropic.com/research/multi-agent-research-system), роз�
 
 ---
 
-Цей розбір написано для плану. Він спирається на модуль 7 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст під ліцензією CC BY 4.0, код під
-ліцензією MIT) і наводить фрагменти файлів `tests/test_harness.py` та `examples/07_evals.py`. Він переказує своїми
-словами статті Hamel Husain «Your AI Product Needs Evals» і компанії Anthropic «How we built our multi-agent research
-system» та домовленості OpenTelemetry. Права на оригінальні тексти належать їхнім авторам.
+Цей розбір написано для плану. Він спирається на модуль 7 курсу Agent Harness Course (автор justxor, текст під
+ліцензією CC BY 4.0, код під ліцензією MIT) і наводить фрагменти файлів `tests/test_harness.py` та
+`examples/07_evals.py`. Він переказує своїми словами статті Hamel Husain «Your AI Product Needs Evals» і компанії
+Anthropic «How we built our multi-agent research system» та домовленості OpenTelemetry. Права на оригінальні тексти
+належать їхнім авторам.

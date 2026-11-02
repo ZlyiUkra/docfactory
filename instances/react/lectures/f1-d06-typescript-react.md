@@ -750,11 +750,9 @@ React.MouseEvent<HTMLButtonElement>)`. Чому `e.target.value` не компі
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d06-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Using TypeScript](https://react.dev/learn/typescript): сторінка React про типи в компонентах, хуках і подіях.
-- [Narrowing](https://www.typescriptlang.org/docs/handbook/2/narrowing.html): розділ документації TypeScript про
-  звуження, включно з перевіркою на повноту через `never`.
-- [useRef](https://react.dev/reference/react/useRef) і
-  [createContext](https://react.dev/reference/react/createContext): довідники, до яких ви повернетеся в днях 15 і 14.
+- Using TypeScript: сторінка React про типи в компонентах, хуках і подіях.
+- Narrowing: розділ документації TypeScript про звуження, включно з перевіркою на повноту через `never`.
+- useRef і createContext: довідники, до яких ви повернетеся в днях 15 і 14.
 
 ---
 

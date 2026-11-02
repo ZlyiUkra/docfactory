@@ -264,6 +264,5 @@ server-side apply. Для виміру часу `kubectl edit` достатнь�
 
 ---
 
-Розбір написано для цього плану. Він спирається на лекцію 12 і лабораторну 12 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Розбір написано для цього плану. Він спирається на лекцію 12 і лабораторну 12 курсу DevOps Engineering: Core Practices
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

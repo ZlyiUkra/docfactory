@@ -461,20 +461,13 @@ $ANSIBLE_VAULT;1.1;AES256          (файл із правами 600 у .gitigno
 
 ## Що читати далі
 
-- [Лекція 5 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec5.md) і [розбір
-  читання до лабораторної 5](../reading/05-reading.md).
-- [Лабораторна 5 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab05.md): робоче
-  завдання.
-- Документація Ansible: [обробники](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_handlers.html),
-  [ролі](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html),
-  [інвентар](https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html),
-  [Vault](https://docs.ansible.com/ansible/latest/vault_guide/index.html), [таблиця версій і
-  підтримки](https://docs.ansible.com/ansible/latest/reference_appendices/release_and_maintenance.html).
+- Лекція 5 курсу і [розбір читання до лабораторної 5](../reading/05-reading.md).
+- Лабораторна 5 курсу: робоче завдання.
+- Документація Ansible: обробники, ролі, інвентар, Vault, таблиця версій і підтримки.
 - [Лекція 6](06-ansible-delivery.md): як ці самі ролі постачають застосунок.
 
 ---
 
 Лекцію написано для цього плану. Вона спирається на лекцію 5 і лабораторну 5 курсу DevOps Engineering: Core Practices
-(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за
-[посиланням](https://github.com/inno-devops-labs/DevOps-Core-Course). Факти про Ansible звірено з його офіційною
-документацією.
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай за посиланням. Факти про
+Ansible звірено з його офіційною документацією.

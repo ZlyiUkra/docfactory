@@ -493,15 +493,13 @@ return as_untrusted(name, text) if "untrusted" in t.tags else text
 ## Що читати далі
 
 - [Розбір читання до модуля 6](../reading/06-reading.md): усі тексти модуля й рядковий розбір безпекового коду.
-- [Модуль 6 курсу](https://github.com/justxor/agent-harness-course#модуль-6-человек-в-цикле-и-безопасность-неделя-6) і
-  стаття [The lethal trifecta](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/).
+- Модуль 6 курсу і стаття The lethal trifecta.
 - `LLM Prompt Injection Prevention Cheat Sheet`: шпаргалка від OWASP, міжнародної спільноти з безпеки застосунків. Її
   відкриває сервер `owasp-docs`.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 6 і довідник `docs/safety.md` курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0, код за
-ліцензією MIT), наводить короткі фрагменти його коду й переказує своїми словами статтю Саймона Віллісона «The lethal
-trifecta» та правило Factor 7 зі збірки [12-Factor Agents](https://github.com/humanlayer/12-factor-agents). Права на
+Лекцію написано для цього плану. Вона спирається на модуль 6 і довідник `docs/safety.md` курсу Agent Harness Course
+(автор justxor, текст за ліцензією CC BY 4.0, код за ліцензією MIT), наводить короткі фрагменти його коду й переказує
+своїми словами статтю Саймона Віллісона «The lethal trifecta» та правило Factor 7 зі збірки 12-Factor Agents. Права на
 оригінальні тексти належать їхнім авторам.

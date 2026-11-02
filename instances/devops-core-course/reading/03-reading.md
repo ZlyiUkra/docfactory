@@ -403,6 +403,5 @@ GitHub](https://docs.github.com/en/actions/reference/security/secure-use) зга
 
 ---
 
-Цей розбір написано для плану. Він спирається на лекцію 3 і лабораторну 3 курсу [DevOps Engineering: Core
-Practices](https://github.com/inno-devops-labs/DevOps-Core-Course) (inno-devops-labs), переказано своїми словами; у
-курсу немає ліцензії, тому оригінал читай за посиланням.
+Цей розбір написано для плану. Він спирається на лекцію 3 і лабораторну 3 курсу DevOps Engineering: Core Practices
+(inno-devops-labs), переказано своїми словами; у курсу немає ліцензії, тому оригінал читай у самому курсі.

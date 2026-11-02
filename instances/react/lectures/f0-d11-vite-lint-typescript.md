@@ -514,9 +514,9 @@ React зупиняє рендер помилкою `Rendered fewer hooks than ex
 
 ## Що читати далі
 
-- [Build a React app from Scratch](https://react.dev/learn/build-a-react-app-from-scratch): кроки 1 і 2.
-- [Features](https://vite.dev/guide/features) у документації Vite.
-- [Rules of Hooks](https://react.dev/reference/rules/rules-of-hooks): усі заборонені місця для виклику хука.
+- Build a React app from Scratch: кроки 1 і 2.
+- Features у документації Vite.
+- Rules of Hooks: усі заборонені місця для виклику хука.
 
 ---
 

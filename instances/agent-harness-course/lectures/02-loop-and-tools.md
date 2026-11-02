@@ -604,16 +604,13 @@ print(validate_args(total, {"items": ["а", "б"]}))   # None: перевірк�
 
 - [Розбір читання до модуля 2](../reading/02-reading.md): рядок за рядком пояснює `harness/loop.py` і
   `harness/tools.py`, а також статтю й посібник із налагодження.
-- [Модуль 2 курсу](https://github.com/justxor/agent-harness-course#модуль-2-агентный-цикл-и-инструменты-недели-23):
-  короткий текст, який ця лекція розгортає.
-- [Writing effective tools for agents](https://www.anthropic.com/research/writing-tools-for-agents): стаття Anthropic
-  про проєктування інструментів і перевірку їх замірами.
+- Модуль 2 курсу: короткий текст, який ця лекція розгортає.
+- Writing effective tools for agents: стаття Anthropic про проєктування інструментів і перевірку їх замірами.
 - Модуль 3 пояснить, що робити, коли історія стає завеликою, і покаже компакцію, підключену до хука
   `before_model_call`.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 2 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст під ліцензією CC BY 4.0, код під
-ліцензією MIT), наводить короткі фрагменти коду курсу й переказує статтю «Writing effective tools for agents» компанії
-Anthropic.
+Лекцію написано для цього плану. Вона спирається на модуль 2 курсу Agent Harness Course (автор justxor, текст під
+ліцензією CC BY 4.0, код під ліцензією MIT), наводить короткі фрагменти коду курсу й переказує статтю «Writing
+effective tools for agents» компанії Anthropic.

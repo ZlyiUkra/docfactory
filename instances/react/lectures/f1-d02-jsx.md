@@ -686,13 +686,9 @@ React записує рядок як текстовий вузол, і парс�
 ## Що читати далі
 
 - [Розбір читання до цього дня](../reading/f1-d02-reading.md): що саме написано в матеріалах дня й де що шукати.
-- [Introducing the New JSX
-  Transform](https://legacy.reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html): стаття команди React
-  про те, чому компілятор тепер сам додає імпорт.
-- [Cross-site scripting (XSS)](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/XSS): стаття MDN про
-  атаку й захист від неї.
-- [Automatic Semicolon Insertion](https://tc39.es/ecma262/#sec-automatic-semicolon-insertion): розділ стандарту
-  ECMAScript про правило, яке обриває `return`.
+- Introducing the New JSX Transform: стаття команди React про те, чому компілятор тепер сам додає імпорт.
+- Cross-site scripting (XSS): стаття MDN про атаку й захист від неї.
+- Automatic Semicolon Insertion: розділ стандарту ECMAScript про правило, яке обриває `return`.
 
 ---
 

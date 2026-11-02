@@ -438,17 +438,14 @@ sessions.save(s)         # після останньої відповіді ху
 
 ## Що читати далі
 
-- [Модуль 4 курсу](https://github.com/justxor/agent-harness-course#модуль-4-состояние-и-память-неделя-5): короткий
-  текст, який ця лекція розгортає.
+- Модуль 4 курсу: короткий текст, який ця лекція розгортає.
 - [Розбір читання до модуля 4](../reading/04-reading.md): `harness/memory.py` рядок за рядком і статті Factor 5 та
   Factor 12.
-- [Сторінка Memory tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/memory-tool) у документації
-  Anthropic: пам'ять у вигляді файлів, якими керує сама модель.
+- Сторінка Memory tool у документації Anthropic: пам'ять у вигляді файлів, якими керує сама модель.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 4 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, текст за ліцензією CC BY 4.0, код за
-ліцензією MIT), наводить фрагменти `harness/memory.py` і `examples/04_memory.py` та переказує своїми словами статті
-Factor 5 і Factor 12 із [12-Factor Agents](https://github.com/humanlayer/12-factor-agents). Про LearnHarness
-(AGPL-3.0) сказано своїми словами, без коду.
+Лекцію написано для цього плану. Вона спирається на модуль 4 курсу Agent Harness Course (автор justxor, текст за
+ліцензією CC BY 4.0, код за ліцензією MIT), наводить фрагменти `harness/memory.py` і `examples/04_memory.py` та
+переказує своїми словами статті Factor 5 і Factor 12 із 12-Factor Agents. Про LearnHarness (AGPL-3.0) сказано своїми
+словами, без коду.

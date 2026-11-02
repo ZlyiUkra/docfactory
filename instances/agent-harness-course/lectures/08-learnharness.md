@@ -479,22 +479,14 @@ LearnHarness бери лише ідеї, бо код під AGPL-3.0.
 
 ## Що читати далі
 
-- [Модуль 8
-  курсу](https://github.com/justxor/agent-harness-course#модуль-8-архитектура-настоящего-харнеса-разбор-learnharness-неделя-8)
-  і
-  [`docs/learnharness-case-study.md`](https://github.com/justxor/agent-harness-course/blob/0c90ce7bbeef858426abfeeacacbdb438921c078/docs/learnharness-case-study.md).
-- [`docs/architecture.md`](https://github.com/amosblomqvist/learnharness/blob/v0.4.1/docs/architecture.md) у
-  LearnHarness: чинний опис програми.
-- [`docs/probe-teach-split.md`](https://github.com/amosblomqvist/learnharness/blob/v0.4.1/docs/probe-teach-split.md),
-  [`docs/compaction-accounting.md`](https://github.com/amosblomqvist/learnharness/blob/v0.4.1/docs/compaction-accounting.md)
-  і
-  [`docs/tool-content-recovery.md`](https://github.com/amosblomqvist/learnharness/blob/v0.4.1/docs/tool-content-recovery.md).
-- Промпти в [`src/agent/prompts`](https://github.com/amosblomqvist/learnharness/tree/v0.4.1/src/agent/prompts).
+- Модуль 8 курсу і `docs/learnharness-case-study.md`.
+- `docs/architecture.md` у LearnHarness: чинний опис програми.
+- `docs/probe-teach-split.md`, `docs/compaction-accounting.md` і `docs/tool-content-recovery.md`.
+- Промпти в `src/agent/prompts`.
 - Розбір читання до цього модуля пояснює кожен із цих текстів, а лекція 9 розбирає `mini_tutor.py`.
 
 ---
 
-Лекцію написано для цього плану. Вона спирається на модуль 8 курсу [Agent Harness
-Course](https://github.com/justxor/agent-harness-course) (автор justxor, ліцензія тексту CC BY 4.0, ліцензія коду MIT)
-і переказує своїми словами документацію [LearnHarness](https://github.com/amosblomqvist/learnharness) (автор Amos
-Blomqvist, ліцензія AGPL-3.0). Код LearnHarness тут не наведено.
+Лекцію написано для цього плану. Вона спирається на модуль 8 курсу Agent Harness Course (автор justxor, ліцензія
+тексту CC BY 4.0, ліцензія коду MIT) і переказує своїми словами документацію LearnHarness (автор Amos Blomqvist,
+ліцензія AGPL-3.0). Код LearnHarness тут не наведено.
