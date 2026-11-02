@@ -724,6 +724,17 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   release in the corpus with the newest version on npm; `ghreleases-pattern` takes the version from the group `v` of
   `tag_pattern` and keeps the old plain tags under the same expression.
 
+- **Several products in one monorepo** (TanStack Start beside Router in `TanStack/router`): `within` cannot narrow a
+  listing of examples, because permission is counted over all sources of the instance. `ghexamples` takes `only`, a
+  regular expression over the path of the example folder. In `within` a prefix with a trailing slash is a folder, and one
+  without it is exactly one page: that is how the `llms` source of a site leaves out pages with no markdown twin.
+- **A promise of «stable only» covers the registry too.** `npm-versions` lists pre-releases unless told otherwise, and
+  `2.0.0-beta.31` then shows among the versions of search results. Set `skip_versions: "-"` and look through the passport
+  for versions with a dash before `vectors`.
+- **«Every minor» with `npm-readme`:** `skip_versions` as a negative lookahead over the last release of each minor,
+  `^(?!(?:1\.31\.29|…)$)`. A monorepo that does not record `gitHead` gets two templates in `files`, the shared tag
+  `v{version}` and the package tag: they are tried in turn.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1742,6 +1753,17 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `ghreleases-stable` бере суфікс за передреліз і викидає цілі мажорні. Звірити найновіший реліз GitHub у корпусі з
   найновішою версією в npm; `ghreleases-pattern` бере версію з групи `v` виразу `tag_pattern` і тим самим виразом
   лишає старі прості теги.
+
+- **Кілька продуктів в одному монорепозиторії** (TanStack Start поряд із Router у `TanStack/router`): `within` не звузить
+  перелік прикладів, бо дозвіл рахується по всіх джерелах примірника. `ghexamples` бере поле `only` — вираз шляху теки
+  прикладу. У `within` префікс із завершальною рискою — це тека, а без неї — рівно одна сторінка: так джерело `llms` обминає
+  сторінки сайту без markdown-двійника.
+- **Обіцянка «лише сталі» стосується й реєстру.** `npm-versions` перелічує передрелізи, якщо не сказано інакше, і тоді
+  `2.0.0-beta.31` з'являється серед версій у видачі. Поставити `skip_versions: "-"` і перед `vectors` переглянути паспорт на
+  версії з дефісом.
+- **«Кожна мінорна» в `npm-readme`:** `skip_versions` як заперечне випередження над останнім випуском кожної мінорної,
+  `^(?!(?:1\.31\.29|…)$)`. Монорепозиторію, що не записує `gitHead`, у `files` дають два шаблони, спільний тег `v{version}` і
+  тег пакета: вони пробуються по черзі.
 
 ## З чого складається примірник
 
@@ -2803,6 +2825,17 @@ errada.
   6.5): `ghreleases-stable` lê o sufixo como pré-release e descarta majors inteiras. Compare o release mais novo do
   GitHub no corpus com a versão mais nova no npm; `ghreleases-pattern` tira a versão do grupo `v` de `tag_pattern` e
   mantém as tags simples antigas com a mesma expressão.
+
+- **Vários produtos em um monorrepositório** (TanStack Start ao lado do Router em `TanStack/router`): `within` não restringe
+  a lista de exemplos, porque a permissão é contada sobre todas as fontes da instância. `ghexamples` aceita `only`, uma
+  expressão regular sobre o caminho da pasta do exemplo. Em `within`, um prefixo com barra final é uma pasta, e sem ela é
+  exatamente uma página: assim a fonte `llms` de um site deixa de fora as páginas sem gêmeo markdown.
+- **A promessa de «apenas estáveis» vale também para o registro.** `npm-versions` lista pré-lançamentos, salvo indicação em
+  contrário, e `2.0.0-beta.31` aparece entre as versões dos resultados. Defina `skip_versions: "-"` e confira no passaporte,
+  antes de `vectors`, as versões com hífen.
+- **«Cada versão menor» com `npm-readme`:** `skip_versions` como lookahead negativo sobre o último lançamento de cada versão
+  menor, `^(?!(?:1\.31\.29|…)$)`. Um monorrepositório que não registra `gitHead` recebe dois modelos em `files`, a tag comum
+  `v{version}` e a tag do pacote: são tentados em ordem.
 
 ## Anatomia de uma instância
 
