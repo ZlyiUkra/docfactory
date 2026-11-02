@@ -114,8 +114,8 @@ upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev
 | Docker | 6. Міст до Kubernetes | `kubernetes` (1) |
 | [Kubernetes](../instances/kubernetes/LEARNING.md) | 2. Конфігурація, ресурси й безпека застосунку | `webstandards` (6) |
 | Kubernetes | 11. Мережа кластера | `nginx` (3) |
-| [DevOps Core Course](../instances/devops-core-course/LEARNING.md) | Лабораторні 1–3 | `docker`, `github-actions` |
-| DevOps Core Course | Лабораторна 4 | `python`, `oracle-cloud` |
+| [DevOps Core Course](../instances/devops-core-course/LEARNING.md) | Лабораторні 1–3 | `python`, `docker`, `github-actions` |
+| DevOps Core Course | Лабораторна 4 | `oracle-cloud` |
 | DevOps Core Course | Лабораторні 5–6 | `github-actions`, `docker` |
 | DevOps Core Course | Лабораторні 7–8 | `loki`, `prometheus`, `grafana` |
 | DevOps Core Course | Лабораторні 9–12 | `kubernetes`, `sealed-secrets` |
