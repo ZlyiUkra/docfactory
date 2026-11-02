@@ -4144,6 +4144,22 @@ Python Packaging User Guide і документація PyPI. 16 852 докум�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/python/README.md](instances/python/README.md).
 
+### sender
+
+Документація Sender.net — сервісу email- і SMS-розсилок із REST API `v2`. Примірник містить довідку api.sender.net, увесь
+центр допомоги, сайт, блог і шаблони sender.net, llms.txt, сторінку плагіна на wordpress.org, знімок OpenAPI від 21.04.2021 із
+веб-архіву, пакети `@sender-net/sender-transactional-nodejs` і `sendernet/sender-transactional-php`, код офіційних модуля
+PrestaShop і плагіна WordPress. Усього 1464 документи і 21 478 фрагментів; новий читач `sitemap-starlight`.
+
+- порт `8945`; запис у Claude Code — `sender-docs`, адреса `http://127.0.0.1:8945/mcp`; інструменти `search_docs` і
+  `read_section`;
+- сторінки сайтів версії не мають, бо API один живий сервіс; версію мають лише пакети (`version: "0"`, `version: "php-1"`);
+- не входять: пакети зі схожими назвами, що не належать Sender.net, а також Mailchimp, Shopify, WooCommerce і WordPress як
+  окремі проєкти;
+- приклад питання агентові: `./df sender ask "How do I add a subscriber to a group, and what are the API rate limits?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/sender/README.md](instances/sender/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
