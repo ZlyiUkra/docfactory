@@ -738,6 +738,8 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **A plain version number does not prove a stable release.** Every Start version looks ordinary on npm, yet the project
   calls only 1.169 and later stable, and everything before it a beta or a release candidate. Read the blog and the
   migration pages before writing «only stable releases» in the prompts, and say in them what the project itself says.
+- **Learning materials are written for a newcomer.** When an instance has a learning plan, each module gets a lecture and a
+  guide to its reading list, in plain language. The rules are in `docs/learning-materials.md`.
 
 ## Anatomy of an instance
 
@@ -1772,6 +1774,8 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Звичайний номер версії ще не доводить сталого випуску.** Кожна версія Start на npm виглядає звичайною, але сам проєкт
   називає сталими лише 1.169 і новіші, а все раніше — бетою й кандидатом у реліз. Перед тим як написати в промптах «лише сталі
   випуски», прочитати блог і сторінки міграції та сказати в промптах те, що каже сам проєкт.
+- **Навчальні матеріали пишуться для новачка.** Якщо примірник має план вивчення, кожен модуль отримує лекцію й розбір читання
+  людською мовою. Правила — у `docs/learning-materials.md`.
 
 ## З чого складається примірник
 
@@ -2848,6 +2852,8 @@ errada.
 - **Um número de versão comum não prova um lançamento estável.** Toda versão do Start parece comum no npm, mas o próprio
   projeto chama de estáveis apenas 1.169 e posteriores, e todo o resto de beta ou candidato a lançamento. Leia o blog e as
   páginas de migração antes de escrever «apenas lançamentos estáveis» nos prompts, e diga neles o que o próprio projeto diz.
+- **Os materiais de estudo são escritos para quem começa.** Quando a instância tem um plano de estudo, cada módulo recebe uma
+  aula e um guia da leitura, em linguagem simples. As regras estão em `docs/learning-materials.md`.
 
 ## Anatomia de uma instância
 
