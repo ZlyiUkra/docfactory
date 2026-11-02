@@ -9,6 +9,9 @@
                Необов'язкове `name_prefix` — рядок перед іменем документа («redis-js» →
                «redis-js-examples-nextjs»): приклади з однаковими назвами тек у кількох
                репозиторіях одного примірника інакше ділять один ключ розділу.
+               Необов'язкове `only` — вираз шляху теки прикладу: у монорепозиторії кількох
+               продуктів примірник бере приклади лише свого (TanStack Start поряд із Router).
+               `within` такого не зробить: дозвіл рахується по всіх джерелах примірника.
 
 Навіщо. Сторінка прикладу на сайті TanStack Query (…/examples/simple) markdown-двійника
 не має: вона показує код, який підтягує з теки прикладу в репозиторії. Тож приклад
@@ -75,7 +78,9 @@ def ghexamples(source: dict, ctx) -> list[Item]:
     prefix = f"{folder}/" if folder else ""
     blobs = {e["path"]: e.get("size", 0) for e in tree["tree"]
              if e.get("type") == "blob" and e.get("path", "").startswith(prefix)}
-    roots = sorted(posixpath.dirname(p) for p in blobs if p.endswith("/package.json"))
+    only = re.compile(source["only"]) if source.get("only") else None
+    roots = sorted(posixpath.dirname(p) for p in blobs if p.endswith("/package.json")
+                   and (only is None or only.search(posixpath.dirname(p))))
     # Тека прикладу всередині іншого прикладу (рідко, але буває) — окремий приклад, і
     # її файли не мусять удруге лягти в зовнішній.
     nested = lambda path, root: any(r != root and r.startswith(root + "/")
