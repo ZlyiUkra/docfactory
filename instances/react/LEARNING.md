@@ -382,6 +382,8 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
 - React Router — `react-router`; TanStack Query — `tanstack-query`; TanStack Virtual — `tanstack-virtual`;
 - TanStack Router і TanStack Start (документація всіх сталих версій 1.x з довідником API, попередник React Location,
   приклади, журнали змін) — `tanstack-router`;
+- TanStack Start окремо, свіжіший і без сторінок Router (сайт, кожна стала мінорна 1.49–1.169, README, приклади, журнали
+  змін, релізи, реєстр npm) — `tanstack-start`;
 - SWR (сайт усіх стабільних версій, README кожної версії, нотатки релізів, приклади) — `swr`;
 - react-window обох ліній (1.x і 2.x), react-window-infinite-loader і react-virtualized-auto-sizer — `react-window`;
 - React Hook Form — `react-hook-form`; zod — `zod`;

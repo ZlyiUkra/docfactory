@@ -4,24 +4,24 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 02.11.2026. Примірники: agent-harness-course, alpine, amqp-connection-manager, amqplib, angular, anthropic-api, argocd, argon2,
-aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, bun, cares, casl, certbot,
-class-transformer, class-validator, claude-code, clerk, cloudflare, coder-websocket, confluent-kafka-javascript,
-contentful, csharp, csrf-csrf, d3, deno, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript, emberjs,
-entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, flux, foundry, frontend-architecture,
-github-actions, go, golang-jwt, golang-migrate, golang-x, golangci-lint, golevelup-nestjs-rabbitmq, goose, grafana,
-gvisor, helmet, htdp, i18next, icu, ioredis, iron-session, jose, jsonschema, kafka, kafkajs, kraken-spot, kubernetes,
-learning-go, libreoffice, libuv, lightweight-charts, linux, llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion,
-msw, nats, nats-js, nestjs, nestjs-cls, nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx,
-node-mongodb, node-postgres, node-redis, nodejs, nodemailer, nuget, nuqs, nvidia-container-toolkit, oapi-codegen,
-observable-plot, ollama, openapi-typescript, openssl, opentelemetry, oracle-cloud, orval, owasp, partysocket,
-passport, patterns, payload, pgx, platformatic-kafka, playwright, postgrator, postgres-image, postgresql, prisma,
-prometheus, rabbitmq, react, react-email, react-hook-form, react-native, react-router, react-three-fiber,
-react-window, redis, redux, resend, river, rxjs, sanity, sealed-secrets, sentry, shadcn, socketio, solidjs, sqlc,
-sqlserver, storybook, stripe, supabase, supertest, svelte, sveltekit, swr, tailwind, tanstack-query, tanstack-router,
-tanstack-virtual, tesseract, testcontainers-dotnet, testcontainers-go, testing-library, threejs, trpc, turborepo,
-typeorm, typescript, uploadthing, upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev,
-webstandards, ws, zod, zustand.
+Стан на 02.11.2026. Примірники: agent-harness-course, alpine, amqp-connection-manager, amqplib, angular,
+anthropic-api, argocd, argon2, aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq,
+bun, cares, casl, certbot, class-transformer, class-validator, claude-code, clerk, cloudflare, coder-websocket,
+confluent-kafka-javascript, contentful, csharp, csrf-csrf, d3, deno, doc-tools, docker, dotnet, dotnet-testing,
+drizzle, ecmascript, emberjs, entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, flux,
+foundry, frontend-architecture, github-actions, go, golang-jwt, golang-migrate, golang-x, golangci-lint,
+golevelup-nestjs-rabbitmq, goose, grafana, gvisor, helmet, htdp, i18next, icu, ioredis, iron-session, jose,
+jsonschema, kafka, kafkajs, kraken-spot, kubernetes, learning-go, libreoffice, libuv, lightweight-charts, linux,
+llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion, msw, nats, nats-js, nestjs, nestjs-cls, nestjs-pino,
+next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs,
+nodemailer, nuget, nuqs, nvidia-container-toolkit, oapi-codegen, observable-plot, ollama, openapi-typescript, openssl,
+opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload, pgx, platformatic-kafka,
+playwright, postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq, react, react-email, react-hook-form,
+react-native, react-router, react-three-fiber, react-window, redis, redux, resend, river, rxjs, sanity,
+sealed-secrets, sentry, shadcn, socketio, solidjs, sqlc, sqlserver, storybook, stripe, supabase, supertest, svelte,
+sveltekit, swr, tailwind, tanstack-query, tanstack-router, tanstack-start, tanstack-virtual, tesseract,
+testcontainers-dotnet, testcontainers-go, testing-library, threejs, trpc, turborepo, typeorm, typescript, uploadthing,
+upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
 
 ## Як читати таблиці
 
