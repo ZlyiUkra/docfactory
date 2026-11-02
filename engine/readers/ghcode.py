@@ -5,7 +5,9 @@
            вирази шляхів, що не беруться (службові файли, згенероване, markdown,
            який уже бере інше джерело); `title_prefix` — рядок перед назвою кожного
            документа («Ardan Labs Ultimate Go (certification prep) — gotraining: …»):
-           код окремого призначення в корпусі видно з назви, а не лише з id.
+           код окремого призначення в корпусі видно з назви, а не лише з id;
+           `name_prefix` — рядок перед іменем документа: README і GUIDE двох репозиторіїв
+           одного примірника інакше ділять один ключ розділу, і видача ховає один з них.
 
 Навіщо. `ghexamples` вміє лише приклади JavaScript із власним `package.json`, а
 навчальний репозиторій на кшталт `danbev/learning-v8` тримає код інакше: тести
@@ -71,6 +73,8 @@ def ghcode(source: dict, ctx) -> list[Item]:
             continue
         blob = f"https://github.com/{owner}/{repo}/blob/{ref}/{quote(path)}"
         name = _markup.slug(path)
+        if source.get("name_prefix"):
+            name = f"{source['name_prefix']}-{name}"
 
         def make(path=path, raw=raw, blob=blob):
             text = ctx.text(raw)
