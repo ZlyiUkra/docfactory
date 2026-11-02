@@ -165,6 +165,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 **Є примірник:**
 
 - `agent-harness-course` — власний примірник цього плану: курс, його код, LearnHarness і сім статей;
+- `python` — мова, якою пишеться агент, і стандартна бібліотека: `json`, `subprocess`, `unittest`, `pathlib`;
 - `anthropic-api` — усе про API, чого курс не розгортає: виклик інструментів, `Tool use with prompt caching`, `Memory tool`,
   `Compaction that keeps recent turns`, `Compaction on demand`, `Compaction in the background`;
 - `ollama` — локальний запуск моделі: `OpenAI compatibility`, `Tool calling`;
@@ -221,7 +222,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 
 # Модуль 1. API моделі
 
-**Сервери MCP модуля:** `agent-harness-course-docs`, `anthropic-api-docs`, `ollama-docs`.
+**Сервери MCP модуля:** `agent-harness-course-docs`, `python-docs`, `anthropic-api-docs`, `ollama-docs`.
 
 **Лекція:** [Лекція 1. Як програма викликає мовну модель](lectures/01-model-api.md).
 
@@ -288,7 +289,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 Це найважливіший модуль курсу. Функція `run_agent`, яку ти тут розбереш, займає близько п'ятдесяти рядків, а всі
 наступні модулі лише додають нові частини навколо неї.
 
-**Сервери MCP модуля:** `agent-harness-course-docs`, `anthropic-api-docs`, `jsonschema-docs`.
+**Сервери MCP модуля:** `agent-harness-course-docs`, `python-docs`, `anthropic-api-docs`, `jsonschema-docs`.
 
 **Лекція:** [Лекція 2. Цикл агента й інструменти](lectures/02-loop-and-tools.md).
 
@@ -365,7 +366,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 
 # Модуль 3. Контекст і компакція
 
-**Сервери MCP модуля:** `agent-harness-course-docs`, `anthropic-api-docs`.
+**Сервери MCP модуля:** `agent-harness-course-docs`, `python-docs`, `anthropic-api-docs`.
 
 **Лекція:** [Лекція 3. Що бачить модель і як стиснути довгу розмову](lectures/03-context-compaction.md).
 
@@ -435,7 +436,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 
 # Модуль 4. Стан і пам'ять
 
-**Сервери MCP модуля:** `agent-harness-course-docs`, `anthropic-api-docs`.
+**Сервери MCP модуля:** `agent-harness-course-docs`, `python-docs`, `anthropic-api-docs`.
 
 **Лекція:** [Лекція 4. Як агент переживає падіння програми і що пам'ятає між сесіями](lectures/04-state-memory.md).
 
@@ -503,7 +504,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 
 # Модуль 5. Субагенти й фонові завдання
 
-**Сервери MCP модуля:** `agent-harness-course-docs`.
+**Сервери MCP модуля:** `agent-harness-course-docs`, `python-docs`.
 
 **Лекція:** [Лекція 5. Субагенти: як віддати велику роботу окремому агентові й отримати лише
 підсумок](lectures/05-subagents.md).
@@ -566,7 +567,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 
 # Модуль 6. Людина в циклі й безпека
 
-**Сервери MCP модуля:** `agent-harness-course-docs`, `owasp-docs`, `docker-docs`, `gvisor-docs`.
+**Сервери MCP модуля:** `agent-harness-course-docs`, `python-docs`, `owasp-docs`, `docker-docs`, `gvisor-docs`.
 
 **Лекція:** [Лекція 6. Людина в циклі й безпека: чому захищає код, а не промпт](lectures/06-safety.md).
 
@@ -629,7 +630,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 
 # Модуль 7. Evals, спостережуваність і вартість
 
-**Сервери MCP модуля:** `agent-harness-course-docs`, `opentelemetry-docs`.
+**Сервери MCP модуля:** `agent-harness-course-docs`, `python-docs`, `opentelemetry-docs`.
 
 **Лекція:** [Лекція 7. Як дізнатися, чи зміна зробила агента кращим](lectures/07-evals.md).
 
@@ -711,7 +712,7 @@ export LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=<м�
 
 # Модуль 8. Справжній харнес: LearnHarness
 
-**Сервери MCP модуля:** `agent-harness-course-docs`.
+**Сервери MCP модуля:** `agent-harness-course-docs`, `python-docs`.
 
 **Лекція:** [Лекція 8. Як улаштовано справжній харнес: LearnHarness](lectures/08-learnharness.md).
 

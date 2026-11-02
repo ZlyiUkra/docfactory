@@ -119,7 +119,7 @@ upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev
 | DevOps Core Course | Лабораторні 5–6 | `github-actions`, `docker` |
 | DevOps Core Course | Лабораторні 7–8 | `loki`, `prometheus`, `grafana` |
 | DevOps Core Course | Лабораторні 9–12 | `kubernetes`, `sealed-secrets` |
-| DevOps Core Course | Лабораторна 13 | `argocd`, `flux` |
+| DevOps Core Course | Лабораторна 13 | `python`, `argocd`, `flux` |
 | DevOps Core Course | Лабораторна 14 | `prometheus` |
 | DevOps Core Course | Лабораторні 15–16 | `kubernetes`, `prometheus`, `grafana` |
 | DevOps Core Course | Лабораторні 17–18 | `cloudflare` |
@@ -154,14 +154,14 @@ upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev
 | Модуль | Примірники |
 |--------|------------|
 | 0. Навіщо харнес | — |
-| 1. API моделі | `anthropic-api`, `ollama` |
-| 2. Цикл та інструменти | `anthropic-api`, `jsonschema` |
-| 3. Контекст і компакція | `anthropic-api` |
-| 4. Стан і пам'ять | `anthropic-api` |
-| 5. Субагенти | — |
-| 6. Людина в циклі й безпека | `owasp`, `docker`, `gvisor` |
-| 7. Evals і вартість | `opentelemetry` |
-| 8. LearnHarness | — |
+| 1. API моделі | `python`, `anthropic-api`, `ollama` |
+| 2. Цикл та інструменти | `python`, `anthropic-api`, `jsonschema` |
+| 3. Контекст і компакція | `python`, `anthropic-api` |
+| 4. Стан і пам'ять | `python`, `anthropic-api` |
+| 5. Субагенти | `python` |
+| 6. Людина в циклі й безпека | `python`, `owasp`, `docker`, `gvisor` |
+| 7. Evals і вартість | `python`, `opentelemetry` |
+| 8. LearnHarness | `python` |
 
 ## Чого бракує
 
