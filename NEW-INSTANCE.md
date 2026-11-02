@@ -735,6 +735,10 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   `^(?!(?:1\.31\.29|…)$)`. A monorepo that does not record `gitHead` gets two templates in `files`, the shared tag
   `v{version}` and the package tag: they are tried in turn.
 
+- **A plain version number does not prove a stable release.** Every Start version looks ordinary on npm, yet the project
+  calls only 1.169 and later stable, and everything before it a beta or a release candidate. Read the blog and the
+  migration pages before writing «only stable releases» in the prompts, and say in them what the project itself says.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1764,6 +1768,10 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **«Кожна мінорна» в `npm-readme`:** `skip_versions` як заперечне випередження над останнім випуском кожної мінорної,
   `^(?!(?:1\.31\.29|…)$)`. Монорепозиторію, що не записує `gitHead`, у `files` дають два шаблони, спільний тег `v{version}` і
   тег пакета: вони пробуються по черзі.
+
+- **Звичайний номер версії ще не доводить сталого випуску.** Кожна версія Start на npm виглядає звичайною, але сам проєкт
+  називає сталими лише 1.169 і новіші, а все раніше — бетою й кандидатом у реліз. Перед тим як написати в промптах «лише сталі
+  випуски», прочитати блог і сторінки міграції та сказати в промптах те, що каже сам проєкт.
 
 ## З чого складається примірник
 
@@ -2836,6 +2844,10 @@ errada.
 - **«Cada versão menor» com `npm-readme`:** `skip_versions` como lookahead negativo sobre o último lançamento de cada versão
   menor, `^(?!(?:1\.31\.29|…)$)`. Um monorrepositório que não registra `gitHead` recebe dois modelos em `files`, a tag comum
   `v{version}` e a tag do pacote: são tentados em ordem.
+
+- **Um número de versão comum não prova um lançamento estável.** Toda versão do Start parece comum no npm, mas o próprio
+  projeto chama de estáveis apenas 1.169 e posteriores, e todo o resto de beta ou candidato a lançamento. Leia o blog e as
+  páginas de migração antes de escrever «apenas lançamentos estáveis» nos prompts, e diga neles o que o próprio projeto diz.
 
 ## Anatomia de uma instância
 
