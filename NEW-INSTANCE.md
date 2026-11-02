@@ -353,6 +353,19 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   package with the control fields of every architecture and the long description. Such a repository usually keeps only
   the latest version, so the source answers «what does `apt-get install` put on the machine today» (number, size,
   checksums), not the history; the history comes from the tags.
+- **A reference whose API entries are Sphinx directives of the Python domain** (CPython `Doc/`: `.. function:: dumps(…)`
+  under `.. module:: json`): without a heading per entry the page stays a few long sections, and the name `json.dumps`
+  appears nowhere in the text. The field `python_domain` of `ghdocs-history` gives each function, class and method a
+  heading with its full name and the signature as code below it. Without it, a query that names a function returns the
+  long introduction of the page instead of that function. The same field reads the header of a PEP and the release
+  files of `Misc/NEWS.d`.
+- **A release log that lies in many later tags** (the file `Misc/NEWS.d/3.7.0.rst` is also in the tags of 3.8–3.15): the
+  field `path_version` takes the version from the file name. Without it, the log of 3.7.0 would count as a document of
+  3.15.
+- **Downloading faster in blocks:** run one `refresh` process per independent source; the files land in the one
+  `corpus/` folder, and `manifest` then joins them. Do not split one `ghdocs-history` source by tags: the same file text
+  in several tags would become several documents. Python took 55 minutes in four blocks and would have taken about two
+  hours in one process.
 - **A Sphinx site that publishes every version in a folder of its own** (docs.nvidia.com:
   `…/container-toolkit/1.20.1/`, `…/1.6.0/`): the version list (`versions1.json`) names only the newest few — probe
   the folders by the repository's tag numbers (`index.html` answers 200 or 404). Reader `sphinx-html`: one source with
@@ -1402,6 +1415,17 @@ and what a taken port and a failed connection look like. A domain list in the ro
   архітектури (`dists/<набір>/<компонент>/binary-<архітектура>/Packages`) — документ на пакет з полями керування
   кожної архітектури й довгим описом. Такий репозиторій зазвичай тримає лише останню версію, тож джерело відповідає на
   «що сьогодні ставить `apt-get install`» (номер, розмір, контрольні суми), а не на історію; історія — з тегів.
+- **Довідник, де записи API — директиви Sphinx домену Python** (тека `Doc/` CPython: `.. function:: dumps(…)` під
+  `.. module:: json`): без заголовка на кожен запис сторінка лишається кількома довгими розділами, а імені `json.dumps`
+  у тексті немає ніде. Поле `python_domain` читача `ghdocs-history` дає кожній функції, класу й методу заголовок із
+  повним іменем, а сигнатуру ставить під ним кодом. Без цього поля запит із назвою функції повертає довгий вступ
+  сторінки, а не саму функцію. Те саме поле читає шапку PEP і файли випусків `Misc/NEWS.d`.
+- **Журнал випуску, що лежить у багатьох пізніших тегах** (файл `Misc/NEWS.d/3.7.0.rst` є і в тегах 3.8–3.15): поле
+  `path_version` бере версію з імені файла. Без нього журнал 3.7.0 рахувався б документом версії 3.15.
+- **Швидше завантаження блоками:** на кожне незалежне джерело запускають окремий процес `refresh`; файли лягають у
+  спільну теку `corpus/`, а `manifest` потім зводить їх докупи. Одне джерело `ghdocs-history` за тегами не ділять:
+  однаковий текст файла в кількох тегах став би кількома документами. Python у чотирьох блоках завантажився за 55 хвилин,
+  а одним процесом ішов би близько двох годин.
 - **Сайт Sphinx, що викладає кожну версію окремою текою** (docs.nvidia.com: `…/container-toolkit/1.20.1/`, `…/1.6.0/`):
   перелік версій (`versions1.json`) називає лише кілька найновіших — теки перебирають за номерами тегів репозиторію
   (`index.html` відповідає 200 чи 404). Читач `sphinx-html`: одне джерело з `{version}` в `url` і переліком `versions`;
@@ -2454,6 +2478,18 @@ errada.
   cada arquitetura e a descrição longa. Um repositório assim costuma manter só a última versão, então a fonte responde
   «o que o `apt-get install` instala hoje» (número, tamanho, somas de verificação), não o histórico; o histórico vem
   das tags.
+- **Uma referência cujas entradas de API são diretivas Sphinx do domínio Python** (`Doc/` do CPython:
+  `.. function:: dumps(…)` sob `.. module:: json`): sem um título por entrada, a página fica com poucas seções longas, e o
+  nome `json.dumps` não aparece em lugar nenhum do texto. O campo `python_domain` de `ghdocs-history` dá a cada função,
+  classe e método um título com o nome completo e coloca a assinatura abaixo dele como código. Sem ele, uma consulta que
+  nomeia uma função devolve a longa introdução da página, e não essa função. O mesmo campo lê o cabeçalho de um PEP e os
+  arquivos de versão de `Misc/NEWS.d`.
+- **Um registro de versão presente em muitas tags posteriores** (o arquivo `Misc/NEWS.d/3.7.0.rst` também está nas tags
+  3.8–3.15): o campo `path_version` tira a versão do nome do arquivo. Sem ele, o registro de 3.7.0 contaria como documento
+  de 3.15.
+- **Baixar mais rápido em blocos:** rode um processo `refresh` por fonte independente; os arquivos caem na mesma pasta
+  `corpus/`, e `manifest` depois os reúne. Não divida uma fonte `ghdocs-history` por tags: o mesmo texto de arquivo em várias
+  tags viraria vários documentos. O Python levou 55 minutos em quatro blocos e levaria cerca de duas horas em um processo.
 - **Um site Sphinx que publica cada versão numa pasta própria** (docs.nvidia.com: `…/container-toolkit/1.20.1/`,
   `…/1.6.0/`): a lista de versões (`versions1.json`) cita só as mais novas — teste as pastas pelos números das tags do
   repositório (`index.html` responde 200 ou 404). Leitor `sphinx-html`: uma fonte com `{version}` na `url` e a lista
