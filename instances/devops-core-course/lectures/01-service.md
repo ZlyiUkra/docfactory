@@ -283,6 +283,8 @@ if __name__ == "__main__":       # виконається лише під час
 
 ## Що читати далі
 
+- Сервер `python-docs`: документація мови, стандартної бібліотеки, `pip` і `uv`. Відкривай його, коли незрозуміло, що
+  робить функція чи конструкція Python у твоєму сервісі.
 - [Розбір читання до лабораторної 1](../reading/01-reading.md): лекція й лабораторна курсу по розділах.
 - [Лекція 1 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/lectures/lec1.md) і [лабораторна
   1 курсу](https://github.com/inno-devops-labs/DevOps-Core-Course/blob/master/labs/lab01.md), англійською.

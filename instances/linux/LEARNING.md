@@ -1198,7 +1198,7 @@ systemd-networkd), Rocky — через NetworkManager (`nmcli`). Обидва �
   HTTP Messages`, `RFC 9112 HTTP/1.1: 9 Connection Management`; у примірнику `certbot` — `Certbot: User Guide`
   (розділи `Nginx` і `Renewing certificates`: так сертифікат на проксі ставлять для публічного імені — у лабораторії
   з `ubu.lab` Let's Encrypt не достукається, тож тут лишається ваш центр).
-- **Сервери MCP:** `linux-docs`, `nginx-docs`, `webstandards-docs`, `certbot-docs`.
+- **Сервери MCP:** `linux-docs`, `nginx-docs`, `webstandards-docs`, `certbot-docs`, `python-docs` (модуль `http.server`).
 - **Зробити:** 1) на `rocky` — дві «служби» на портах 8001 і 8002 (`python3 -m http.server` у різних теках);
   2) nginx на `ubu` балансує між ними по черзі; 3) TLS на nginx сертифікатом вашого центру; 4) те саме через
   HAProxy з перевіркою стану — вимкнена служба випадає з ротації.

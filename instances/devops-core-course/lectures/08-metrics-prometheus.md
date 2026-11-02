@@ -462,6 +462,8 @@ sum(rate(payments_total{result="failed"}[5m])) / sum(rate(payments_total[5m]))
 
 ## Що читати далі
 
+- Сервер `python-docs`: документація мови й стандартної бібліотеки, якщо код метрик у сервісі незрозумілий. Самої бібліотеки
+  `prometheus_client` на цьому сервері немає.
 - [Типи метрик](https://prometheus.io/docs/concepts/metric_types/) і
   [завдання та екземпляри](https://prometheus.io/docs/concepts/jobs_instances/).
 - [Функції PromQL](https://prometheus.io/docs/prometheus/latest/querying/functions/): `rate`, `irate`,

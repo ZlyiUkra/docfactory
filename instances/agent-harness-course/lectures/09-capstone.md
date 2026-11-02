@@ -424,6 +424,7 @@ LearnHarness віддає таку оцінку моделі.
 
 ## Що читати далі
 
+- Сервер `python-docs`: документація мови й стандартної бібліотеки для всього коду фінального проєкту.
 - [Фінальний проєкт у курсі](https://github.com/justxor/agent-harness-course#-финальный-проект-обучающий-агент) і
   [`examples/capstone/mini_tutor.py`](https://github.com/justxor/agent-harness-course/blob/0c90ce7bbeef858426abfeeacacbdb438921c078/examples/capstone/mini_tutor.py).
 - Розбір читання до фінального проєкту: кожна функція файла рядок за рядком.

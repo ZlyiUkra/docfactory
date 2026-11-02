@@ -538,6 +538,8 @@ def _post(url: str, headers: dict, body: dict, timeout: int = 120, attempts: int
 
 ## Що читати далі
 
+- Сервер `python-docs`: документація мови й стандартної бібліотеки. Відкривай його, коли незрозуміло, що робить функція чи
+  конструкція Python у твоєму `llm.py`.
 - [Модуль 1
   курсу](https://github.com/justxor/agent-harness-course#модуль-1-api-моделей-сообщения-токены-стриминг-неделя-1) і
   [файл

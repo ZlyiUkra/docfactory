@@ -139,7 +139,10 @@ GitHub або через сервер цього примірника. План 
 **Є примірник:**
 
 - `devops-core-course` — власний примірник цього плану: лекції, лабораторні й код сервісів курсу;
-- `python` — лабораторна 1: сама мова, стандартна бібліотека, `pip`, `uv` і віртуальні середовища;
+- `python` — сама мова, стандартна бібліотека, `pip`, `uv` і віртуальні середовища. Він потрібен там, де ти пишеш чи
+  запускаєш код на Python: сервіс і його тести (лабораторні 1–3), програма Pulumi (4), вимоги Ansible до версії Python
+  (5–6), журнали й метрики в коді сервісу (7–8), запис файла через `os.replace` (12), збірка сервісу в Nix (18). Коли питаєш
+  про поведінку функції, передавай `version` тієї лінії Python, на якій працює твій сервіс, наприклад `"3.13"`;
 - `docker` — лабораторна 2; `github-actions` — лабораторні 3, 6; `oracle-cloud` — лабораторна 4, якщо вибереш хмару;
 - `loki`, `grafana` — лабораторна 7; `prometheus`, `grafana` — лабораторні 8, 16 (чарти Helm і kube-prometheus теж
   там);
@@ -254,7 +257,7 @@ GitHub або через сервер цього примірника. План 
 
 # Лабораторна 4. Інфраструктура як код
 
-**Сервери MCP:** `devops-core-course-docs`, `oracle-cloud-docs`.
+**Сервери MCP:** `devops-core-course-docs`, `python-docs`, `oracle-cloud-docs`.
 
 **Лекція:** [Лекція 4. Інфраструктура як код: Terraform, OpenTofu, Pulumi](lectures/04-iac.md).
 
@@ -294,7 +297,7 @@ GitHub або через сервер цього примірника. План 
 
 # Лабораторні 5–6. Ansible і розгортання
 
-**Сервери MCP:** `devops-core-course-docs`, `github-actions-docs`, `docker-docs`.
+**Сервери MCP:** `devops-core-course-docs`, `python-docs`, `github-actions-docs`, `docker-docs`.
 
 **Перед цією лабораторною:** зібрати примірник Ansible. Його ще немає, тож без нього лишається тільки текст курсу.
 Поки примірника немає, параметри модулів звіряй із [документацією Ansible](https://docs.ansible.com/ansible/latest/).
@@ -360,7 +363,7 @@ GitHub або через сервер цього примірника. План 
 
 # Лабораторні 7–8. Журнали й метрики
 
-**Сервери MCP:** `devops-core-course-docs`, `loki-docs`, `prometheus-docs`, `grafana-docs`.
+**Сервери MCP:** `devops-core-course-docs`, `python-docs`, `loki-docs`, `prometheus-docs`, `grafana-docs`.
 
 **Лабораторна 7.**
 
@@ -414,7 +417,7 @@ GitHub або через сервер цього примірника. План 
 
 # Лабораторні 9–12. Кластер, чарт, секрети, дані
 
-**Сервери MCP:** `devops-core-course-docs`, `kubernetes-docs`, `sealed-secrets-docs`.
+**Сервери MCP:** `devops-core-course-docs`, `python-docs`, `kubernetes-docs`, `sealed-secrets-docs`.
 
 **Перед цією лабораторною:** зібрати примірник OpenBao та External Secrets Operator: скажи «збери примірник OpenBao й
 External Secrets Operator». Цей рядок стосується лабораторної 11. Поки примірника немає, для цих двох інструментів
@@ -645,7 +648,7 @@ External Secrets Operator». Цей рядок стосується лабора
 
 # Бонус: лабораторні 17–18
 
-**Сервери MCP:** `devops-core-course-docs`, `cloudflare-docs`.
+**Сервери MCP:** `devops-core-course-docs`, `python-docs`, `cloudflare-docs`.
 
 **Перед цією лабораторною:** перед лабораторною 18 скажи: «збери примірник Nix». Цього примірника ще немає, і без нього
 лишаються тільки текст курсу та офіційна документація Nix на сайті nix.dev. Для лабораторної 17 примірник `cloudflare` вже є.
