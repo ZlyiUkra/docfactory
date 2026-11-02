@@ -4085,6 +4085,24 @@ Willison та Hamel Husain із розділу «Ресурси» курсу. 25
 - приклад питання агентові: `./df agent-harness-course ask "Why must compaction never cut on a tool result?"`;
 - докладніше — у [instances/agent-harness-course/README.md](instances/agent-harness-course/README.md).
 
+### devops-core-course
+
+Курс DevOps Engineering: Core Practices (inno-devops-labs): один вебсервіс за шістнадцять тижнів проходить шлях від Docker і CI
+через Terraform, Pulumi, Ansible, Loki і Prometheus до Kubernetes, Helm, OpenBao, Argo CD і Argo Rollouts; бонус — Cloudflare
+Workers і Nix. 16 лекцій, 18 лабораторних і код допоміжних сервісів, гілка `master` і видання `s26`. 82 документи, 2339 фрагментів.
+План вивчення, четвертий етап лінії Linux → Docker → Kubernetes —
+[instances/devops-core-course/LEARNING.md](instances/devops-core-course/LEARNING.md).
+
+- порт `8943`; запис у клієнті MCP — `devops-core-course-docs`, адреса `http://127.0.0.1:8943/mcp`; інструменти `search_docs` і
+  `read_section`;
+- версія — `2026.7` (`master`) або `2026.4` (`s26`); без версії в результатах є обидва видання, тому промпт велить передавати
+  `2026.7`;
+- промпт вмикає режим наставника: без прохання готового розв'язку лабораторної не видає, механізм пояснює повністю;
+- корпус і індекс поза git (у репозиторії курсу немає ліцензії), корпус — в архіві;
+- не входять: документація самих інструментів, гілка `s25`;
+- приклад питання агентові: `./df devops-core-course ask "Why does pull beat push in GitOps?"`;
+- докладніше — у [instances/devops-core-course/README.md](instances/devops-core-course/README.md).
+
 ### tanstack-start
 
 Документація TanStack Start англійською: сайт tanstack.com/start на день знімка, документація з репозиторію на кожну
