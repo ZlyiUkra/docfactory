@@ -1,10 +1,10 @@
 # Карта навчання: примірники по фазах і чого ще бракує
 
-Три незалежні лінії навчання й примірники фабрики, на які вони спираються. **Примірник** — сервер документації
+Чотири незалежні лінії навчання й примірники фабрики, на які вони спираються. **Примірник** — сервер документації
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 01.11.2026. Примірники: alpine, amqp-connection-manager, amqplib, angular, anthropic-api, argocd, argon2,
+Стан на 02.11.2026. Примірники: agent-harness-course, alpine, amqp-connection-manager, amqplib, angular, anthropic-api, argocd, argon2,
 aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq, bun, cares, casl, certbot,
 class-transformer, class-validator, claude-code, clerk, cloudflare, coder-websocket, confluent-kafka-javascript,
 contentful, csharp, csrf-csrf, d3, deno, doc-tools, docker, dotnet, dotnet-testing, drizzle, ecmascript, emberjs,
@@ -135,6 +135,25 @@ webstandards, ws, zod, zustand.
 | 6. Продакшн | `docker` (3–4), `playwright` (5) |
 | 7. Межі інструмента | `nextjs` (2), `nestjs` (3–4), `webstandards` (4) |
 
+## Лінія 4. Власний агент
+
+### План Agent Harness Course — [instances/agent-harness-course/LEARNING.md](../instances/agent-harness-course/LEARNING.md)
+
+Окремий план: як влаштований агент зсередини, і власний агент на Python, що росте від модуля до модуля. Поділ — на
+модулі курсу, а не на дні; рядок «Сервери MCP» той самий.
+
+| Модуль | Примірники |
+|--------|------------|
+| 0. Навіщо харнес | — |
+| 1. API моделі | `anthropic-api`, `ollama` |
+| 2. Цикл та інструменти | `anthropic-api`, `jsonschema` |
+| 3. Контекст і компакція | `anthropic-api` |
+| 4. Стан і пам'ять | `anthropic-api` |
+| 5. Субагенти | — |
+| 6. Людина в циклі й безпека | `owasp`, `docker`, `gvisor` |
+| 7. Evals і вартість | `opentelemetry` |
+| 8. LearnHarness | — |
+
 ## Чого бракує
 
 Документація, яку ще треба зробити, щоб навчання не виходило за межі фабрики. У кожному списку порядок — за
@@ -187,3 +206,10 @@ Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy.
 2. Контент поза документацією Astro: remark і rehype (3), Shiki (1).
 3. Lighthouse (1).
 4. Лише в переліку плану, без днів: Preact (острови не на React).
+
+### Власний агент
+
+1. Специфікація Model Context Protocol і Python SDK (після курсу).
+2. Інші харнеси для модуля 8: mini-swe-agent, Codex CLI, Aider, OpenHands, Goose, opencode.
+3. OpenAI API, OpenRouter (1).
+4. Langfuse, τ-bench, SWE-bench (1).
