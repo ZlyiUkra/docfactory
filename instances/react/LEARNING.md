@@ -473,6 +473,10 @@ TypeScript та інструменти. Для кожного дня є лекц
 матеріал. Вони лежать у теках [lectures/](lectures/) і [reading/](reading/) й відкриваються на сторінці маршруту всередині
 кожного дня. Документація React знадобиться наприкінці фази, у дні про інструменти.
 
+З дня 4 кожну функцію у вправах проєктуйте за рецептом книжки How to Design Programs: опис даних, сигнатура, призначення,
+заглушка, приклади-тести, перелік вхідних даних і лише потім тіло функції. Тому в цих днях у читанні є розділи книжки, а серед
+серверів є `htdp-book`.
+
 ## Блок A. Мова — дні 1–5
 
 ### День 1. Значення й посилання
@@ -490,9 +494,9 @@ TypeScript та інструменти. Для кожного дня є лекц
   Якщо ви змінили поле наявного об'єкта й передали React цей самий об'єкт, React не побачить змін і не оновить екран.
 - **Лекція:** [Лекція. День 1. Значення й посилання](lectures/f0-d01-values-and-references.md).
 - **Розбір читання:** [Розбір читання. День 1](reading/f0-d01-reading.md).
-- **Читати:** у примірнику `mdn` сторінки `Object.is()`, `Spread syntax (...)` і `Window: structuredClone() method`; у
-  примірнику `webstandards` розділ `HTML Standard: 2.7 Safe passing of structured data`.
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`.
+- **Читати:** у примірнику `mdn` — `Object.is()`, `Spread syntax (...)`, `Window: structuredClone() method`; у
+  примірнику `webstandards` — `HTML Standard: 2.7 Safe passing of structured data`.
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `ecma-spec`, `nodejs-docs`.
 - **Зробити:** 1) напишіть функцію `addItem(list, item)`, яка повертає новий масив і не змінює масив, який їй
   передали; 2) надрукуйте через `console.log` результати порівнянь `===` до й після виклику; 3) змініть
   `user.address.city`, розгорнувши два рівні; 4) покажіть, що після `{ ...user }` поле `address` спільне з оригіналом.
@@ -515,9 +519,8 @@ TypeScript та інструменти. Для кожного дня є лекц
   змінити заморожений масив кидає `TypeError`, а `push` кидає цю помилку навіть поза суворим режимом.
 - **Лекція:** [Лекція. День 2. Масиви й об'єкти функційно](lectures/f0-d02-arrays-objects-functional.md).
 - **Розбір читання:** [Розбір читання. День 2](reading/f0-d02-reading.md).
-- **Читати:** у примірнику `mdn` сторінку `Array`, розділ про копіювальні й мутуючі методи, і сторінку
-  `Object.freeze()`.
-- **Сервери MCP:** `mdn-docs`.
+- **Читати:** у примірнику `mdn` — `Array`, розділ про копіювальні й мутуючі методи; `Object.freeze()`.
+- **Сервери MCP:** `mdn-docs`, `ecma-spec`.
 - **Зробити:** 1) створіть список із тисячі об'єктів-задач; 2) застосуйте `Object.freeze` до масиву й до кожного
   елемента; 3) напишіть набір перетворень: відфільтрувати, відсортувати за датою, перейменувати одне поле, порахувати
   суму.
@@ -542,7 +545,7 @@ TypeScript та інструменти. Для кожного дня є лекц
 - **Лекція:** [Лекція. День 3. Функції та замикання](lectures/f0-d03-closures.md).
 - **Розбір читання:** [Розбір читання. День 3](reading/f0-d03-reading.md).
 - **Читати:** у примірнику `mdn` — `Closures`, `let`.
-- **Сервери MCP:** `mdn-docs`.
+- **Сервери MCP:** `mdn-docs`, `ecma-spec`, `nodejs-docs`, `webstandards-docs`.
 - **Зробити:** 1) напишіть лічильник на замиканні; 2) зробіть кнопку, яка через три секунди показує значення змінної,
   яку ви за цей час встигли змінити тричі; 3) напишіть цикл із `setTimeout` двома способами: на `var` і на `let`.
 - **Перевірити себе:** ви пояснюєте, яке значення покаже кожен `setTimeout` і чому, ще до запуску коду.
@@ -564,8 +567,10 @@ TypeScript та інструменти. Для кожного дня є лекц
 - **Лекція:** [Лекція. День 4. Модулі й пакети](lectures/f0-d04-modules-packages.md).
 - **Розбір читання:** [Розбір читання. День 4](reading/f0-d04-reading.md).
 - **Читати:** у примірнику `mdn` — `JavaScript modules`; у примірнику `nodejs` — `package.json` (розділи dependencies,
-  devDependencies), `package-lock.json`, `npm-ci`, `npx`, посібник `About semantic versioning` (`^` і `~`).
-- **Сервери MCP:** `mdn-docs`, `nodejs-docs`.
+  devDependencies), `package-lock.json`, `npm-ci`, `npx`, посібник `About semantic versioning` (`^` і `~`); у
+  примірнику `htdp` — книжка How to Design Programs, частина I, розділ 3: `3.1 Designing Functions`, `3.3 Domain
+  Knowledge`, `3.4 From Functions to Programs`.
+- **Сервери MCP:** `mdn-docs`, `ecma-spec`, `nodejs-docs`, `htdp-book`.
 - **Зробити:** 1) розбийте код днів 1–3 на модулі; 2) підключіть одну зовнішню бібліотеку; 3) виконайте `npm ls` і
   знайдіть залежності цієї бібліотеки.
 - **Перевірити себе:** ви можете сказати, яку версію поставить `npm install` для `^19.3.0` і чим від нього
@@ -588,8 +593,10 @@ TypeScript та інструменти. Для кожного дня є лекц
 - **Лекція:** [Лекція. День 5. Асинхронність](lectures/f0-d05-async.md).
 - **Розбір читання:** [Розбір читання. День 5](reading/f0-d05-reading.md).
 - **Читати:** у примірнику `mdn` — `Using promises`, `async function`, `Promise.all()`, `Promise.allSettled()`; у
-  примірнику `webstandards` — `HTML Standard: 8 Web application APIs` (розділ 8.1.7 Event loops: задачі й мікрозадачі).
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`.
+  примірнику `webstandards` — `HTML Standard: 8 Web application APIs` (розділ 8.1.7 Event loops: задачі й
+  мікрозадачі); у примірнику `htdp` — книжка How to Design Programs, частина I, розділ 3 `3.1 Designing Functions`
+  (той самий рецепт для функцій, що повертають проміс).
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `ecma-spec`, `htdp-book`.
 - **Зробити:** 1) напишіть три вигадані запити із затримками 300, 500 і 700 мс; 2) виконайте їх послідовно через
   `await`; 3) виконайте їх разом через `Promise.all`; 4) виміряйте час кожного варіанта через `performance.now()`.
 - **Перевірити себе:** ви отримали два числа: близько 1500 мс для послідовного варіанта й близько 700 мс для варіанта
@@ -614,8 +621,10 @@ TypeScript та інструменти. Для кожного дня є лекц
 - **Лекція:** [Лекція. День 6. Мережа](lectures/f0-d06-network.md).
 - **Розбір читання:** [Розбір читання. День 6](reading/f0-d06-reading.md).
 - **Читати:** у примірнику `mdn` — `Using the Fetch API`, `Response: ok property`, `AbortController`; у примірнику
-  `webstandards` — `DOM Standard: 3 Aborting ongoing activities`, `Fetch Standard: 5 Fetch API`.
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`.
+  `webstandards` — `DOM Standard: 3 Aborting ongoing activities`, `Fetch Standard: 5 Fetch API`; у примірнику `htdp` —
+  книжка How to Design Programs, `3.1 Designing Functions` і `4.3 Enumerations` (опис даних, що є одним із кількох
+  значень).
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `nodejs-docs`, `htdp-book`.
 - **Зробити:** 1) напишіть поле пошуку, що на кожну літеру питає публічний API; 2) зробіть так, щоб кожна нова літера
   скасовувала попередній запит; 3) у вкладці «Мережа» ввімкніть повільну мережу й швидко наберіть слово.
 - **Перевірити себе:** у вкладці «Мережа» скасовані запити позначені як скасовані, а на екрані завжди стоїть результат
@@ -639,8 +648,9 @@ TypeScript та інструменти. Для кожного дня є лекц
 - **Лекція:** [Лекція. День 7. DOM і події](lectures/f0-d07-dom-events.md).
 - **Розбір читання:** [Розбір читання. День 7](reading/f0-d07-reading.md).
 - **Читати:** у примірнику `mdn` — `Introduction to events`, `Event bubbling`, `Event: preventDefault() method`; у
-  примірнику `webstandards` — `DOM Standard: 2 Events`.
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`.
+  примірнику `webstandards` — `DOM Standard: 2 Events`; у примірнику `htdp` — книжка How to Design Programs, `3.1
+  Designing Functions` (той самий рецепт для функцій, що змінюють сторінку).
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `htdp-book`.
 - **Зробити:** напишіть без React список на сто елементів з одним обробником на батьківському `<ul>`, який видаляє
   елемент, по якому клацнули.
 - **Перевірити себе:** в інструментах розробника на вкладці слухачів подій стоїть один обробник, а не сто.
@@ -664,8 +674,9 @@ TypeScript та інструменти. Для кожного дня є лекц
 - **Читати:** у примірнику `mdn` — `Populating the page: how browsers work`, `Window: requestAnimationFrame() method`;
   у примірнику `webstandards` — `HTML Standard: 8 Web application APIs` (розділ 8.1.7.3 Processing model, крок «update
   the rendering»); у примірнику `webdev` — `Avoid large, complex layouts and layout thrashing`, `Stick to
-  Compositor-Only Properties and Manage Layer Count`.
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `webdev-docs`.
+  Compositor-Only Properties and Manage Layer Count`; у примірнику `htdp` — книжка How to Design Programs, `3.1
+  Designing Functions` і `4.3 Enumerations`.
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `webdev-docs`, `htdp-book`.
 - **Зробити:** 1) напишіть сторінку, що в циклі на тисячу елементів по черзі читає `offsetHeight` і пише
   `style.height`; 2) запишіть профіль у вкладці «Продуктивність»; 3) перепишіть код так, щоб спершу йшли всі читання,
   а потім усі записи; 4) запишіть профіль знову.
@@ -690,9 +701,10 @@ TypeScript та інструменти. Для кожного дня є лекц
   перевір». Тип `any` робить навпаки: він вимикає перевірку, і помилки повертаються вже під час роботи.
 - **Лекція:** [Лекція. День 9. TypeScript: основи](lectures/f0-d09-typescript-basics.md).
 - **Розбір читання:** [Розбір читання. День 9](reading/f0-d09-reading.md).
-- **Читати:** у примірнику `typescript` розділи `The Basics (handbook-v2/Basics)`, `Everyday Types
-  (handbook-v2/Everyday Types)` і `Narrowing (handbook-v2/Narrowing)`.
-- **Сервери MCP:** `typescript-docs`.
+- **Читати:** у примірнику `typescript` — `The Basics (handbook-v2/Basics)`, `Everyday Types (handbook-v2/Everyday
+  Types)`, `Narrowing (handbook-v2/Narrowing)`; у примірнику `htdp` — книжка How to Design Programs, `3.1 Designing
+  Functions` і `4.5 Itemizations` (стан запиту як перелік варіантів).
+- **Сервери MCP:** `typescript-docs`, `ecma-spec`, `nodejs-docs`, `htdp-book`.
 - **Зробити:** 1) типізуйте код днів 1–6 без жодного `any`; 2) прочитайте відповідь `fetch` як `unknown` і звузьте її
   до свого типу; 3) опишіть стан запиту розрізнюваним об'єднанням.
 - **Перевірити себе:** команда `tsc --noEmit` із `strict: true` не друкує жодної помилки, а пошук слова `any` у коді
@@ -713,9 +725,10 @@ TypeScript та інструменти. Для кожного дня є лекц
   ключами `K` і значеннями `V`.
 - **Лекція:** [Лекція. День 10. TypeScript: дженерики](lectures/f0-d10-typescript-generics.md).
 - **Розбір читання:** [Розбір читання. День 10](reading/f0-d10-reading.md).
-- **Читати:** у примірнику `typescript` розділи `Generics (handbook-v2/Type Manipulation/Generics)`, `Keyof Type
-  Operator (handbook-v2/Type Manipulation/Keyof Type Operator)` і `Utility Types (reference/Utility Types)`.
-- **Сервери MCP:** `typescript-docs`.
+- **Читати:** у примірнику `typescript` — `Generics (handbook-v2/Type Manipulation/Generics)`, `Keyof Type Operator
+  (handbook-v2/Type Manipulation/Keyof Type Operator)`, `Utility Types (reference/Utility Types)`; у примірнику `htdp`
+  — книжка How to Design Programs, `3.1 Designing Functions` (той самий рецепт для функцій з параметром типу).
+- **Сервери MCP:** `typescript-docs`, `htdp-book`.
 - **Зробити:** 1) напишіть типізоване сховище `Store<T>` з методами `get`, `set`, `subscribe`; 2) напишіть функцію
   `pick<T, K extends keyof T>(obj: T, keys: K[])`; 3) опишіть тип форми редагування як `Partial<Omit<Task, 'id'>>`.
 - **Перевірити себе:** виклик `pick(task, ['titel'])` з опискою в назві ключа не компілюється.
@@ -741,10 +754,13 @@ TypeScript та інструменти. Для кожного дня є лекц
   `eslint-plugin-react-hooks`; у примірнику `vite` — `Getting Started`, `Features`; у примірнику `eslint` —
   `Configuration Files` (файл `eslint.config.js`, який створив шаблон) і README `` `eslint-plugin-react-hooks` ``
   (пресети `recommended` і `recommended-latest`). Якщо проєкт буде на Tailwind — у примірнику `tailwind` глава `Get
-  started with Tailwind CSS`, розділ «Installing Tailwind CSS as a Vite plugin».
-- **Сервери MCP:** `react-docs`, `vite-docs`, `eslint-docs`, `tailwind-docs`.
-- **Зробити:** 1) створити проєкт командою `npm create vite@latest my-app -- --template react-ts`; сторінка маршруту
-  дописує до неї `--eslint`, бо без цього прапорця шаблон ставить інший лінтер, Oxlint; 2) виконати `git init` і
+  started with Tailwind CSS`, розділ «Installing Tailwind CSS as a Vite plugin»; у примірнику `vitest` — `Getting
+  Started` (`test`, `expect`), `Expect` (`toBe`); у примірнику `htdp` — книжка How to Design Programs, `3.1 Designing
+  Functions` (той самий рецепт, приклади — у Vitest).
+- **Сервери MCP:** `react-docs`, `vite-docs`, `eslint-docs`, `tailwind-docs`, `typescript-docs`, `vitest-docs`,
+  `htdp-book`.
+- **Зробити:** 1) створити проєкт командою `npm create vite@latest my-app -- --template react-ts --eslint`; без прапорця `--eslint` шаблон
+  ставить інший лінтер, Oxlint; 2) виконати `git init` і
   зробити перший коміт; 3) переконатися, що лінт має пресет `recommended` з `eslint-plugin-react-hooks`; 4) свідомо
   викликати хук усередині `if` і запустити лінт; 5) змінити текст у компоненті з лічильником, не перезавантажуючи
   сторінку.
@@ -767,8 +783,9 @@ TypeScript та інструменти. Для кожного дня є лекц
 - **Лекція:** [Лекція. День 12. Інструменти браузера](lectures/f0-d12-browser-tools.md).
 - **Розбір читання:** [Розбір читання. День 12](reading/f0-d12-reading.md).
 - **Читати:** у примірнику `vite` — `Why Vite` (чому в розробці модулі вантажаться окремо); документацію Chrome
-  DevTools про вкладки «Network» і «Performance» (поза корпусом).
-- **Сервери MCP:** `vite-docs`.
+  DevTools про вкладки «Network» і «Performance» (поза корпусом); у примірнику `htdp` — книжка How to Design Programs,
+  `3.1 Designing Functions`.
+- **Сервери MCP:** `vite-docs`, `mdn-docs`, `webdev-docs`, `react-docs`, `vitest-docs`, `htdp-book`.
 - **Зробити:** 1) відкрити проєкт у `npm run dev`, записати кількість запитів і переданий обсяг; 2) те саме зробити на
   `npm run build && npx vite preview`; 3) поставити точку зупину у своєму компоненті в зібраній версії.
 - **Перевірити себе:** у вас є дві пари чисел, кількість запитів і кілобайти, для розробки й для збірки, і ви можете
