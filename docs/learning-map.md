@@ -7,7 +7,7 @@
 Стан на 02.11.2026. Примірники: agent-harness-course, alpine, amqp-connection-manager, amqplib, angular,
 anthropic-api, argocd, argon2, aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq,
 bun, cares, casl, certbot, class-transformer, class-validator, claude-code, clerk, cloudflare, coder-websocket,
-confluent-kafka-javascript, contentful, csharp, csrf-csrf, d3, deno, doc-tools, docker, dotnet, dotnet-testing,
+confluent-kafka-javascript, contentful, csharp, csrf-csrf, d3, deno, devops-core-course, doc-tools, docker, dotnet, dotnet-testing,
 drizzle, ecmascript, emberjs, entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, flux,
 foundry, frontend-architecture, github-actions, go, golang-jwt, golang-migrate, golang-x, golangci-lint,
 golevelup-nestjs-rabbitmq, goose, grafana, gvisor, helmet, htdp, i18next, icu, ioredis, iron-session, jose,
@@ -114,6 +114,15 @@ upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev
 | Docker | 6. Міст до Kubernetes | `kubernetes` (1) |
 | [Kubernetes](../instances/kubernetes/LEARNING.md) | 2. Конфігурація, ресурси й безпека застосунку | `webstandards` (6) |
 | Kubernetes | 11. Мережа кластера | `nginx` (3) |
+| [DevOps Core Course](../instances/devops-core-course/LEARNING.md) | Лабораторні 1–3 | `docker`, `github-actions` |
+| DevOps Core Course | Лабораторна 4 | `oracle-cloud` |
+| DevOps Core Course | Лабораторні 5–6 | `github-actions`, `docker` |
+| DevOps Core Course | Лабораторні 7–8 | `loki`, `prometheus`, `grafana` |
+| DevOps Core Course | Лабораторні 9–12 | `kubernetes`, `sealed-secrets` |
+| DevOps Core Course | Лабораторна 13 | `argocd`, `flux` |
+| DevOps Core Course | Лабораторна 14 | `prometheus` |
+| DevOps Core Course | Лабораторні 15–16 | `kubernetes`, `prometheus`, `grafana` |
+| DevOps Core Course | Лабораторні 17–18 | `cloudflare` |
 
 Решта фаз — лише власний примірник плану.
 
@@ -194,7 +203,15 @@ upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev
 
 ### Лінія 2
 
-Прогалин, для яких варто збирати примірник, не лишилося.
+Для планів Linux, Docker і Kubernetes прогалин, для яких варто збирати примірник, не лишилося. Плану DevOps Core Course бракує
+таких примірників; збирати їх коли дійде черга до відповідної лабораторної:
+
+1. Terraform і OpenTofu, Pulumi (лабораторна 4).
+2. Ansible (5–6).
+3. Grafana Alloy (7).
+4. OpenBao, External Secrets Operator (11).
+5. Argo Rollouts (14).
+6. Nix (18).
 
 Свідомо без примірника — план їх лише згадує або ставить однією командою: CNI (Calico, Cilium, Flannel), HAProxy,
 Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy.
