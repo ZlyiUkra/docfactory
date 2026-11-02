@@ -10,6 +10,8 @@
                `index` і `pages` (окремі дописи, де посилання ведуть на сусідні дописи).
                `heading` — вираз заголовка сторінки з групою 1 замість `<h1>`: довідники
                gtk-doc і Doxygen (API poppler) пишуть назву в `<h2>` чи `<div class="title">`.
+               `href_any_case: true` — посилання пишуть і великими літерами (`HREF=`): так зібрано
+               старі сторінки docs.python.org 1.x, і без поля змісти не дали б жодної адреси.
 
 Навіщо. Сайти tailwindcss.com усіх версій зібрано з MDX, але головного в MDX немає:
 таблиця класів сторінки («p-4 → padding: 1rem») у v1–v3 генерується з коду самого
@@ -69,10 +71,11 @@ def html_pages(source: dict, ctx) -> list[Item]:
             urls.append(url)
 
     follow = source.get("follow", True)
+    hrefs = re.compile(_HREF.pattern, re.I) if source.get("href_any_case") is True else _HREF
     for page in index:
         html = ctx.text(page)
         cache[page.rstrip("/")] = html
-        for href in [page] + (_HREF.findall(html) if follow else []):
+        for href in [page] + (hrefs.findall(html) if follow else []):
             add(urljoin(page, href))
     if follow and len(urls) <= len(index):
         raise SystemExit(f"На сторінках-змістах {', '.join(index)} не знайдено "

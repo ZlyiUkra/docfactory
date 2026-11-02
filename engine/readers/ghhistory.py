@@ -45,6 +45,8 @@
                    прикладів, номери версій із файлів шаблонів, підписи виносок і вкладок;
                    `base_ui: true` — вставки сторінок Base UI (демо, таблиці API з `types.md` чи
                    довідки JSON) стають кодом і списками (див. `_baseui`);
+                   `python_domain: true` — документація CPython і PEP (див. `_pydomain`): `.rst` і
+                   `.txt` дістають заголовок на кожен запис API; разом з `sphinx: true`;
                    `sphinx: true` — сайт Sphinx (див. `_sphinx`): `.rst` розбирається як
                    reStructuredText із ролями й директивами Sphinx, `.py` дає документ з опису
                    модуля (сторінка плагіна з `.. automodule::`) під назвою теки пакета, `.txt`
@@ -922,6 +924,7 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
     wanted = [_template_rx(t) for k in ("example", "source") for t in (sources or {}).get(k) or ()]
     base_ui = source.get("base_ui") is True
     sphinx = source.get("sphinx") is True
+    python_domain = source.get("python_domain") is True
     if base_ui:
         wanted += _baseui.WANTED
     vitepress = str(source["vitepress"]).strip("/") if source.get("vitepress") else ""
@@ -1129,7 +1132,10 @@ def ghdocs_history(source: dict, ctx) -> list[Item]:
                 # помилки, тож перевірку на HTML робить уже перетворений текст.
                 text = _nginxxml.to_markdown(text)
             _markup.refuse_html(text, raw)
-            if sphinx:
+            if python_domain and path.endswith((".rst", ".txt", "NEWS", "HISTORY")):
+                from engine.readers import _pydomain
+                text = _pydomain.to_markdown(text, path)
+            elif sphinx:
                 # Тут, а не нагорі: _sphinx тягне sitedocs, а той імпортує цей модуль.
                 from engine.readers import _sphinx
                 if path.endswith(".py"):
