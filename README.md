@@ -4066,6 +4066,25 @@ Ember 1.0–7.3 і Ember Data 1.13–5.5, гайд застарілого, га�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/emberjs/README.md](instances/emberjs/README.md).
 
+### agent-harness-course
+
+Відкритий курс Agent Harness Course (justxor) про те, як побудувати власний харнес — код навколо моделі, що робить її
+агентом: дев'ять модулів російською від API моделі до evals, фінальний проєкт, довідники, учбовий код на Python без
+залежностей (кожна функція — окремий розділ), уроки й тести. Поруч — LearnHarness v0.4.1, який курс розбирає (документація,
+промпти, релізи, код `src/agent`, `src/core`, `src/server`, `src/store`), HumanLayer 12-Factor Agents і статті Anthropic, Simon
+Willison та Hamel Husain із розділу «Ресурси» курсу. 252 документи, 2250 фрагментів. План вивчення —
+[instances/agent-harness-course/LEARNING.md](instances/agent-harness-course/LEARNING.md).
+
+- порт `8942`; запис у клієнті MCP — `agent-harness-course-docs`, адреса `http://127.0.0.1:8942/mcp`; інструменти
+  `search_docs` і `read_section`;
+- версій немає (`versions: false`); курс і 12-Factor Agents закріплені комітом, LearnHarness — тегом;
+- кирилиця в індексі слів (`cyrillic_words`): текст курсу шукати російською, решту — англійською, код — точною назвою;
+- промпт вмикає режим наставника: без прохання готового розв'язку практики не видає, механізм пояснює повністю;
+- корпус і індекс поза git (LearnHarness під AGPL-3.0, статті під чужим авторським правом), корпус — в архіві;
+- не входять: інші харнеси й фреймворки, специфікація MCP, інтерфейс і тести LearnHarness;
+- приклад питання агентові: `./df agent-harness-course ask "Why must compaction never cut on a tool result?"`;
+- докладніше — у [instances/agent-harness-course/README.md](instances/agent-harness-course/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
