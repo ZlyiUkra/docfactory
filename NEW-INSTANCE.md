@@ -760,6 +760,8 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   without `Accept` (docs.pay.sibs.com, while `curl` works) needs its field `accept: "*/*"`. A `.md` twin whose front matter has no
   `title` (ReadMe: `agentTools` only) fails `llms`; each page then goes as its own `mdfile` source.
 
+- **An API reference generated from docstrings** (pandas): a page of an attribute holds one line, so `sphinx-html` needs `min_chars`, or thousands of real pages count as empty. Rebuild with `build` from the raw store, without network. Such pages have no subsections and cannot be `quality` targets.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1814,6 +1816,8 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `title_fallback`, коли сторінка не має жодної з них (рішення Easypay: лише `<title>`). Сайт, що відповідає 403 на запит без `Accept`
   (docs.pay.sibs.com, хоча `curl` працює), потребує поля `accept: "*/*"`. Двійник `.md`, чия шапка не має `title` (ReadMe: лише
   `agentTools`), не проходить `llms`; тоді кожна сторінка стає окремим джерелом `mdfile`.
+
+- **Довідник API, створений із коду** (pandas): сторінка атрибута має один рядок, тому `sphinx-html` потребує `min_chars`, інакше тисячі справжніх сторінок вважаються порожніми. Перебудова йде через `build` зі сховища, без мережі. Такі сторінки не мають підрозділів і не можуть бути цілями `quality`.
 
 ## З чого складається примірник
 
@@ -2912,6 +2916,8 @@ errada.
   por `title_fallback` quando a página não tem nenhum dos dois (soluções Easypay: só `<title>`). Um site que responde 403 a um pedido
   sem `Accept` (docs.pay.sibs.com, embora o `curl` funcione) precisa do campo `accept: "*/*"`. Um gémeo `.md` cujo cabeçalho não tem
   `title` (ReadMe: só `agentTools`) falha no `llms`; cada página passa então a ser uma fonte `mdfile` própria.
+
+- **Uma referência de API gerada a partir do código** (pandas): a página de um atributo tem uma só linha, por isso o `sphinx-html` precisa de `min_chars`, ou milhares de páginas reais contam como vazias. Reconstrua com `build` a partir do armazenamento bruto, sem rede. Estas páginas não têm subsecções e não podem ser alvos do `quality`.
 
 ## Anatomia de uma instância
 

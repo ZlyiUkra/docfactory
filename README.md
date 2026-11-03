@@ -4189,6 +4189,19 @@ PrestaShop і плагіна WordPress. Усього 1464 документи і 
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/payments-pt/README.md](instances/payments-pt/README.md).
 
+### data-cleaning
+
+Документація трьох бібліотек Python, потрібних, щоб прочитати файли Excel, очистити таблиці й знайти дублікати: pandas, openpyxl і RapidFuzz.
+Примірник містить тексти pandas 0.4–3.1, його довідник API 1.5–3.1, openpyxl 2.4–3.1, RapidFuzz 0.12–3.14 і записи PyPI всіх трьох. Усього 18 093
+документи і 31 198 фрагментів.
+
+- порт `8949`; запис у Claude Code — `data-cleaning-docs`, адреса `http://127.0.0.1:8949/mcp`; інструменти `search_docs` і `read_section`;
+- старіші версії сайти вже не публікують, тому для них є лише те, що лишилося в репозиторіях і в PyPI;
+- не входять: інші бібліотеки Python, сама мова Python і Excel як продукт Microsoft;
+- приклад питання агентові: `./df data-cleaning ask "How do I read an Excel file and merge two tables on a key column?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/data-cleaning/README.md](instances/data-cleaning/README.md).
+
 ### wordpress
 
 Документація WordPress: REST API, WP-CLI, редактор блоків і плагіни форм. Примірник містить увесь довідник коду (12 399 функцій,
