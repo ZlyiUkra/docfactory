@@ -81,6 +81,7 @@ VARIANT_STRICT = bool(_CONF.get("variant_strict"))
 # Розділ, чию назву-ідентифікатор (Object.freeze, SameValue, [[Get]]) запит містить
 # дослівно, стає першим. Без поля — видача та сама, що й була.
 TITLE_MATCH = bool(_CONF.get("title_match"))
+TITLE_NAMES = _CONF.get("title_names") or ""
 # Розділи другого ряду — поле demote у config.json: {"pattern": вираз імені документа
 # (slug), "places": N}. Такий розділ у списку кожного способу пошуку стоїть на N місць
 # нижче, ніж його поставив пошук, і поступається розділам документації, якщо вони

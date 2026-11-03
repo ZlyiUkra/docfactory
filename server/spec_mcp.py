@@ -604,8 +604,11 @@ if profile.TITLE_MATCH:
         if _p.part != 1:
             continue
         _name = re.sub(r"^\S*\d\S*\s+", "", _p.heading).split(" (")[0].strip()
-        if (re.fullmatch(r"[\w.%@\[\]]+", _name)
-                and ("." in _name or "[[" in _name or re.search(r"[a-z][A-Z]", _name))):
+        # title_names — власний вираз імені для домену, де імена інші: у WordPress
+        # це `add_action`, `WP_Query::get_posts`, `wp post list`.
+        if (re.fullmatch(profile.TITLE_NAMES, _name) if profile.TITLE_NAMES else
+                (re.fullmatch(r"[\w.%@\[\]]+", _name)
+                 and ("." in _name or "[[" in _name or re.search(r"[a-z][A-Z]", _name)))):
             _TITLES.setdefault(_name, []).append(_p)
 
 

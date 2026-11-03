@@ -8,6 +8,9 @@
                    з групою `v`, що дістає лінію з номера версії (типово дві перші цифри: «1.4»),
                    `version_prefix` — рядок перед міткою лінії, `name_prefix` — початок імені документів.
 
+`max_pages` — скільки сторінок тегів читати: Docker Hub анонімно віддає лише перші десять
+(1000 найновіших тегів образу wordpress), а одинадцята відповідає 403.
+
 Навіщо. Образ Bun на Docker Hub має сотні тегів: кожна версія в п'яти варіантах (без суфікса,
 `-slim`, `-debian`, `-alpine`, `-distroless`) і плаваючі теги (`latest`, `1`, `1.4`, `canary`,
 `alpine`), що щоразу переїжджають на новішу збірку. Котру версію зараз дає `1.4-alpine`, з якої
@@ -46,6 +49,7 @@ def _archs(entry: dict) -> str:
 def dockerhub_tags(source: dict, ctx) -> list[Item]:
     entries: dict = {}
     url = source["url"]
+    fetched = 0
     while url:
         if not ctx.allowed(url):
             raise SystemExit(f"{url}: наступна сторінка тегів поза `within` — перелік був би неповним.")
@@ -57,6 +61,9 @@ def dockerhub_tags(source: dict, ctx) -> list[Item]:
             if isinstance(entry, dict) and entry.get("name"):
                 entries[entry["name"]] = entry
         url = data.get("next")
+        fetched += 1
+        if url and source.get("max_pages") and fetched >= source["max_pages"]:
+            url = None
     if not entries:
         raise SystemExit(f"{source['url']}: у відповіді немає тегів.")
     image = source.get("image") or ""
