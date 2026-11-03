@@ -15,7 +15,7 @@ jsonschema, kafka, kafkajs, kraken-spot, kubernetes, learning-go, libreoffice, l
 llhttp, loki, mdn, mikro-orm, mongodb, mongoose, motion, msw, nats, nats-js, nestjs, nestjs-cls, nestjs-pino,
 next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, node-mongodb, node-postgres, node-redis, nodejs,
 nodemailer, nuget, nuqs, nvidia-container-toolkit, oapi-codegen, observable-plot, ollama, openapi-typescript, openssl,
-opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload, payments-pt, pgx, platformatic-kafka,
+opentelemetry, oracle-cloud, orval, owasp, partysocket, passport, patterns, payload, payments-pt, pgx, php, platformatic-kafka,
 playwright, postgrator, postgres-image, postgresql, prisma, prometheus, rabbitmq, react, react-email, react-hook-form,
 react-native, react-router, react-three-fiber, react-window, redis, redux, resend, rgpd, river, rxjs, sanity,
 sealed-secrets, sender, sentry, shadcn, socketio, solidjs, sqlc, sqlserver, storybook, stripe, supabase, supertest, svelte,

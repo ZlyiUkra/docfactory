@@ -764,6 +764,8 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 
 - **A sitemap that points to the build machine** (MkDocs without `site_url`: `<loc>http://localhost:8000/…`, or `<loc>None`, in 32 books of docs.civicrm.org): the listing finds no page inside `within`. Declare the pages in `pages`, with the host replaced or from the page menu.
 
+- **A manual the project publishes as one archive** (`php_manual_en.tar.gz` on php.net: 11 951 rendered pages, without readers' comments): look for it before crawling; one request replaces thousands, and the raw store keeps the whole archive. **A title repeated across books** («Installation» 150 times, «Backward Incompatible Changes» in every migration guide): a query cannot tell such pages apart, so the reader adds what the page belongs to, «curl: Installation», «Migrating to PHP 8.5: …».
+
 - **The catalog of instances** (`docs/instances.md`): after a build, add the instance with its topic and the line "when to
   start it" to `docs/instance-topics.json`, then run `python3 tools/catalog.py`. The script writes nothing while a port, a
   server name or a collection repeats, or while an instance has no line. The top of the catalog names the next free port.
@@ -1826,6 +1828,8 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Довідник API, створений із коду** (pandas): сторінка атрибута має один рядок, тому `sphinx-html` потребує `min_chars`, інакше тисячі справжніх сторінок вважаються порожніми. Перебудова йде через `build` зі сховища, без мережі. Такі сторінки не мають підрозділів і не можуть бути цілями `quality`.
 
 - **Карта сайту, що вказує на машину збирання** (MkDocs без `site_url`: `<loc>http://localhost:8000/…` чи `<loc>None`, 32 книги docs.civicrm.org): перелік не знаходить жодної сторінки в межах `within`. Сторінки оголошують у `pages`, із заміненим хостом або з меню сторінки.
+
+- **Посібник, який проєкт публікує одним архівом** (`php_manual_en.tar.gz` на php.net: 11 951 готова сторінка без коментарів читачів): пошукайте його до обходу сайту, бо одне звернення замінює тисячі, а сховище сирого тримає весь архів. **Назва, що повторюється в різних книгах** («Installation» 150 разів, «Backward Incompatible Changes» у кожній главі про перехід): запит таких сторінок не розрізнить, тому читач дописує, чого сторінка стосується: «curl: Installation», «Migrating to PHP 8.5: …».
 
 - **Каталог примірників** (`docs/instances.md`): після збирання допишіть примірник із темою й рядком «коли піднімати» в
   `docs/instance-topics.json` і виконайте `python3 tools/catalog.py`. Скрипт нічого не запише, доки повторюється порт, назва
@@ -2932,6 +2936,8 @@ errada.
 - **Uma referência de API gerada a partir do código** (pandas): a página de um atributo tem uma só linha, por isso o `sphinx-html` precisa de `min_chars`, ou milhares de páginas reais contam como vazias. Reconstrua com `build` a partir do armazenamento bruto, sem rede. Estas páginas não têm subsecções e não podem ser alvos do `quality`.
 
 - **Um sitemap que aponta para a máquina de compilação** (MkDocs sem `site_url`: `<loc>http://localhost:8000/…` ou `<loc>None`, 32 livros de docs.civicrm.org): a listagem não encontra nenhuma página dentro de `within`. Declare as páginas em `pages`, com o host substituído ou a partir do menu da página.
+
+- **Um manual que o projeto publica num único arquivo** (`php_manual_en.tar.gz` em php.net: 11 951 páginas prontas, sem comentários de leitores): procure-o antes de percorrer o site, porque um pedido substitui milhares e o armazém do bruto guarda o arquivo inteiro. **Um título repetido em vários livros** («Installation» 150 vezes, «Backward Incompatible Changes» em cada guia de migração): uma consulta não distingue essas páginas, por isso o leitor acrescenta a que a página pertence: «curl: Installation», «Migrating to PHP 8.5: …».
 
 - **O catálogo de instâncias** (`docs/instances.md`): depois de construir, acrescente a instância, com o tema e a linha «quando
   a iniciar», a `docs/instance-topics.json` e execute `python3 tools/catalog.py`. O script não escreve nada enquanto se repetir

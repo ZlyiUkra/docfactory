@@ -4218,6 +4218,18 @@ PrestaShop і плагіна WordPress. Усього 1464 документи і 
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/civicrm/README.md](instances/civicrm/README.md).
 
+### php
+
+Документація мови PHP і її менеджера пакетів Composer: посібник із php.net, файли `UPGRADING` і `NEWS` кожної мінорної лінії 4.0–8.5,
+RFC із wiki.php.net, документація Composer кожної мінорної лінії 1.0–2.11, сторінки Packagist.
+
+- порт `8951`; запис у Claude Code — `php-docs`, адреса `http://127.0.0.1:8951/mcp`; інструменти `search_docs` і `read_section`;
+- посібник існує в одній чинній редакції, тому старі версії видно з таблиць `Changelog`, глав про перехід і файлів `UPGRADING`;
+- не входять: коментарі читачів посібника, фреймворки й бібліотеки на PHP;
+- приклад питання агентові: `./df php ask "What changed in array_map in PHP 8?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/php/README.md](instances/php/README.md).
+
 ### wordpress
 
 Документація WordPress: REST API, WP-CLI, редактор блоків і плагіни форм. Примірник містить увесь довідник коду (12 399 функцій,
