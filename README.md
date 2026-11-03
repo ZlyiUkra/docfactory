@@ -4175,6 +4175,20 @@ PrestaShop і плагіна WordPress. Усього 1464 документи і 
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/sender/README.md](instances/sender/README.md).
 
+### payments-pt
+
+Документація чотирьох португальських постачальників онлайн-платежів: ifthenpay, Easypay, Eupago і SIBS. Один сервер шукає в
+їхніх API, посібниках, центрі допомоги, сайтах із цінами, блогах, новинах, README плагінів і пакетах SDK. Це альтернативи
+примірнику `stripe` для клієнтів, яким Stripe не підходить. Усього 1330 документів і 11 182 фрагменти; новий читач `html-query`.
+
+- порт `8948`; запис у Claude Code — `payments-pt-docs`, адреса `http://127.0.0.1:8948/mcp`; інструменти `search_docs` і
+  `read_section`;
+- сторінки сайтів версії не мають, бо це живі сервіси; версію мають лише пакети SDK; ціни такі, як у день завантаження;
+- не входять: Stripe, портал SIBS API Market для сторонніх постачальників, іспанські й французькі редакції сайтів;
+- приклад питання агентові: `./df payments-pt ask "Quanto custa um pagamento MB WAY na ifthenpay e na Eupago?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/payments-pt/README.md](instances/payments-pt/README.md).
+
 ### wordpress
 
 Документація WordPress: REST API, WP-CLI, редактор блоків і плагіни форм. Примірник містить увесь довідник коду (12 399 функцій,

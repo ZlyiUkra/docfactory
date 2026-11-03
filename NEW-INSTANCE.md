@@ -754,6 +754,12 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Learning materials are written for a newcomer.** When an instance has a learning plan, each module gets a lecture and a
   guide to its reading list, in plain language. The rules are in `docs/learning-materials.md`.
 
+- **Pages that differ only by a query string or keep their title outside `<h1>`** (ifthenpay `blog/post/?lang=en&p=14`; a title
+  in `<p class="text-xl …">`): reader `html-query` names the document from path and query and takes the title from `title_re`,
+  or from `title_fallback` when the page has none of those (Easypay solutions: only `<title>`). A site that answers 403 to a request
+  without `Accept` (docs.pay.sibs.com, while `curl` works) needs its field `accept: "*/*"`. A `.md` twin whose front matter has no
+  `title` (ReadMe: `agentTools` only) fails `llms`; each page then goes as its own `mdfile` source.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1802,6 +1808,12 @@ and what a taken port and a failed connection look like. A domain list in the ro
   випуски», прочитати блог і сторінки міграції та сказати в промптах те, що каже сам проєкт.
 - **Навчальні матеріали пишуться для новачка.** Якщо примірник має план вивчення, кожен модуль отримує лекцію й розбір читання
   людською мовою. Правила — у `docs/learning-materials.md`.
+
+- **Сторінки, що різняться лише рядком запиту або тримають назву поза `<h1>`** (ifthenpay `blog/post/?lang=en&p=14`, назва в
+  `<p class="text-xl …">`): читач `html-query` будує ім'я документа зі шляху й запиту, а назву бере за `title_re` або за
+  `title_fallback`, коли сторінка не має жодної з них (рішення Easypay: лише `<title>`). Сайт, що відповідає 403 на запит без `Accept`
+  (docs.pay.sibs.com, хоча `curl` працює), потребує поля `accept: "*/*"`. Двійник `.md`, чия шапка не має `title` (ReadMe: лише
+  `agentTools`), не проходить `llms`; тоді кожна сторінка стає окремим джерелом `mdfile`.
 
 ## З чого складається примірник
 
@@ -2894,6 +2906,12 @@ errada.
   páginas de migração antes de escrever «apenas lançamentos estáveis» nos prompts, e diga neles o que o próprio projeto diz.
 - **Os materiais de estudo são escritos para quem começa.** Quando a instância tem um plano de estudo, cada módulo recebe uma
   aula e um guia da leitura, em linguagem simples. As regras estão em `docs/learning-materials.md`.
+
+- **Páginas que diferem apenas na query string ou guardam o título fora de `<h1>`** (ifthenpay `blog/post/?lang=en&p=14`, título em
+  `<p class="text-xl …">`): o leitor `html-query` forma o nome do documento com caminho e query e obtém o título por `title_re`, ou
+  por `title_fallback` quando a página não tem nenhum dos dois (soluções Easypay: só `<title>`). Um site que responde 403 a um pedido
+  sem `Accept` (docs.pay.sibs.com, embora o `curl` funcione) precisa do campo `accept: "*/*"`. Um gémeo `.md` cujo cabeçalho não tem
+  `title` (ReadMe: só `agentTools`) falha no `llms`; cada página passa então a ser uma fonte `mdfile` própria.
 
 ## Anatomia de uma instância
 
