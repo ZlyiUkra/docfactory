@@ -4144,6 +4144,21 @@ Python Packaging User Guide і документація PyPI. 16 852 докум�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/python/README.md](instances/python/README.md).
 
+### rgpd
+
+Закони про захист персональних даних, що діють у Португалії: RGPD (англійською GDPR, Регламент ЄС 2016/679) обома мовами,
+Lei 58/2019, Lei 41/2004 у чинній редакції, Директива 2002/58, настанови, регламенти й рішення CNPD від 2018 року, її старі
+настанови й сторінки сайту, настанови EDPB 05/2020, 7/2020 і 1/2024. Усього 125 документів і 3200 фрагментів; нові читачі
+`eu-act`, `pgdl-law`, `cnpd-decisions`, `pdf-list`, нові поле `fold_accents` і модель `minilm-multi`.
+
+- порт `8947`; запис у Claude Code — `rgpd-docs`, адреса `http://127.0.0.1:8947/mcp`; інструменти `search_docs` і
+  `read_section`;
+- не входять: висновки CNPD, її рішення до 2018 року, Decreto-Lei 7/2004, податкові правила; тексти не є юридичною
+  консультацією;
+- приклад питання агентові: `./df rgpd ask "Pode uma associação enviar email a antigos alunos sem consentimento?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/rgpd/README.md](instances/rgpd/README.md).
+
 ### sender
 
 Документація Sender.net — сервісу email- і SMS-розсилок із REST API `v2`. Примірник містить довідку api.sender.net, увесь
