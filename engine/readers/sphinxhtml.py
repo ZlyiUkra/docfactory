@@ -8,7 +8,8 @@
                 беруться (пошук, покажчики й службові теки `_static`, `_sources`, `_images`
                 не беруться й так); `end` — вирази, на яких текст сторінки закінчується
                 (найближчий), типово `</article>`, `<footer`, `rst-footer-buttons`;
-                `version_prefix` — рядок перед номером у мітці версії.
+                `version_prefix` — рядок перед номером у мітці версії. `min_chars` — найкоротше
+                тіло без підзаголовка: сторінка атрибута в довіднику pandas має один рядок опису.
 
 Навіщо. Документація NVIDIA Container Toolkit на docs.nvidia.com — сайт Sphinx, і кожна версія
 лежить своєю текою (`…/1.20.1/`, `…/1.6.0/`), а перелік версій (`versions1.json`) називає лише
@@ -169,7 +170,8 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
     for key, revisions in pages.items():
         for digest, (title, body, url, vers) in revisions.items():
             def make(title=title, body=body, url=url, vers=vers):
-                _markup.require(title, body, url)
+                _markup.require(title, body, url,
+                                int(source.get("min_chars", _markup.MIN_BODY)))
                 return _markup.document(title, url, ctx.stamp, body,
                                         ", ".join(vprefix + v for v in vers))
 
