@@ -60,6 +60,7 @@ import os
 import pathlib
 import re
 import sys
+import unicodedata
 
 from . import instance
 
@@ -111,6 +112,11 @@ SPLIT_LONG_TABLES = instance.config().get("split_long_tables") is True
 # російський заголовок довідника ставав «x»: «С чего начать» і «Из чего собрана обвязка»
 # мали один ключ і займали у видачі одне місце. Без поля ключ той самий, що й до його появи.
 CYRILLIC_WORDS = instance.config().get("cyrillic_words") is True
+# Поле fold_accents: латинські літери з діакритикою зводяться до базових і в індексі по словах
+# (common/lexical.py), і в ключі розділу. Без нього «comunicações» розпадається на «comunica» й
+# «es», а розпізнаний скан, що пише «comunicacoes», не збігається з набраним текстом. Без поля
+# слова й ключі ті самі, що й до його появи.
+FOLD_ACCENTS = instance.config().get("fold_accents") is True
 _TRANSLIT = str.maketrans({
     "а": "a", "б": "b", "в": "v", "г": "g", "ґ": "g", "д": "d", "е": "e", "ё": "e",
     "є": "ye", "ж": "zh", "з": "z", "и": "i", "і": "i", "ї": "yi", "й": "y", "к": "k",
@@ -167,8 +173,15 @@ def version_line(version: str, depth: int = 1) -> str:
     return ".".join(parts[:depth])
 
 
+def fold(text: str) -> str:
+    """Латинська літера з діакритикою стає базовою: ç → c, ã → a, º → o."""
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
+
+
 def _slug(title: str) -> str:
     title = title.lower()
+    if FOLD_ACCENTS:
+        title = fold(title)
     if CYRILLIC_WORDS:
         title = title.translate(_TRANSLIT)
     return "-".join(re.findall(r"[a-z0-9]+", title)) or "x"

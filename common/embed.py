@@ -38,6 +38,8 @@ from . import instance
 MODELS = {
     "bge-small": ("BAAI/bge-small-en-v1.5", 384),
     "bge-base": ("BAAI/bge-base-en-v1.5", 768),
+    # Для корпусу не англійською: моделі bge вище навчені лише на англійській.
+    "minilm-multi": ("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2", 384),
 }
 # Модель обирає config.json примірника (поле embed_model); змінна оточення —
 # явне перекриття для дослідів. Раніше значення з config.json потрапляло сюди

@@ -31,13 +31,17 @@
 Claude Code російською (примірник claude-code) інакше лишався б невидимим для пошуку:
 латинський вираз відкидав кожне його слово, а англійська модель векторів кирилиці не
 розуміє. Без поля слова ті самі, що й до його появи.
+
+Поле `fold_accents: true` зводить латинські літери з діакритикою до базових перед поділом на
+слова: і текст, і запит. Португальські закони (примірник rgpd) інакше втрачали б кожне слово з
+«ç» чи «ã», а скани, розпізнані без наголосів, не збігалися б із набраним текстом.
 """
 
 import math
 import re
 from collections import Counter
 
-from .corpus import CYRILLIC_WORDS, PASSAGE_CONTEXT, Passage, context_text, load_passages
+from .corpus import CYRILLIC_WORDS, FOLD_ACCENTS, PASSAGE_CONTEXT, Passage, context_text, fold, load_passages
 
 # BM25, класичні значення з літератури: k1 — наскільки швидко насичується
 # повторення слова, b — наскільки сильно карається довжина фрагмента.
@@ -50,6 +54,8 @@ _TOKEN_CYRILLIC = re.compile(r"[a-z0-9_а-џґ]+")
 
 
 def tokenize(text: str) -> list[str]:
+    if FOLD_ACCENTS:
+        text = fold(text)
     return (_TOKEN_CYRILLIC if CYRILLIC_WORDS else _TOKEN).findall(text.lower())
 
 
