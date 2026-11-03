@@ -21,7 +21,7 @@ react-native, react-router, react-three-fiber, react-window, redis, redux, resen
 sealed-secrets, sender, sentry, shadcn, socketio, solidjs, sqlc, sqlserver, storybook, stripe, supabase, supertest, svelte,
 sveltekit, swr, tailwind, tanstack-query, tanstack-router, tanstack-start, tanstack-virtual, tesseract,
 testcontainers-dotnet, testcontainers-go, testing-library, threejs, trpc, turborepo, typeorm, typescript, uploadthing,
-upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev, webstandards, ws, zod, zustand.
+upstash, v8, vercel-ai-sdk, viem, vite, vitest, vue, vueuse, wagmi, wasm, webdev, webstandards, ws, wordpress, zod, zustand.
 
 ## Як читати таблиці
 

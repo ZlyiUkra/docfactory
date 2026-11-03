@@ -4160,6 +4160,23 @@ PrestaShop і плагіна WordPress. Усього 1464 документи і 
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/sender/README.md](instances/sender/README.md).
 
+### wordpress
+
+Документація WordPress: REST API, WP-CLI, редактор блоків і плагіни форм. Примірник містить увесь довідник коду (12 399 функцій,
+класів, методів і хуків), посібники для розробників, документацію wordpress.org зі сторінкою кожної версії, нотатки для
+розробників, Learn WordPress, `docs/` Gutenberg кожної мінорної, пакети `@wordpress/*`, WP-CLI кожного тегу, Packagist, Docker, вимоги
+кожної лінії 1.5–7.1, плагін WordPress Importer і документацію WPForms, Gravity Forms і Ninja Forms. Усього 29 106 документів і
+177 730 фрагментів; новий читач `wprest`.
+
+- порт `8946`; запис у Claude Code — `wordpress-docs`, адреса `http://127.0.0.1:8946/mcp`; інструменти `search_docs` і
+  `read_section`;
+- звичайне число у `version` — сам WordPress (`"6.8"`), а префікс позначає інший проєкт (`"gutenberg-22.0"`, `"cli-2.7"`);
+- не входять: вихідний код ядра кожної лінії, `codex.wordpress.org` (закритий перевіркою браузера), PHP, MySQL і React як окремі
+  проєкти;
+- приклад питання агентові: `./df wordpress ask "How do I export all posts with WP-CLI and import them over the REST API?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/wordpress/README.md](instances/wordpress/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
