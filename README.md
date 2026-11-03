@@ -4165,8 +4165,8 @@ PrestaShop і плагіна WordPress. Усього 1464 документи і 
 Документація WordPress: REST API, WP-CLI, редактор блоків і плагіни форм. Примірник містить увесь довідник коду (12 399 функцій,
 класів, методів і хуків), посібники для розробників, документацію wordpress.org зі сторінкою кожної версії, нотатки для
 розробників, Learn WordPress, `docs/` Gutenberg кожної мінорної, пакети `@wordpress/*`, WP-CLI кожного тегу, Packagist, Docker, вимоги
-кожної лінії 1.5–7.1, плагін WordPress Importer і документацію WPForms, Gravity Forms і Ninja Forms. Усього 29 106 документів і
-177 730 фрагментів; новий читач `wprest`.
+кожної лінії 1.5–7.1, плагін WordPress Importer і документацію плагінів форм (Gravity Forms, WPForms, Fluent Forms, Formidable, SureForms, Ninja Forms, Contact Form 7 та
+інших). Усього 31 404 документи і 204 522 фрагменти; новий читач `wprest`.
 
 - порт `8946`; запис у Claude Code — `wordpress-docs`, адреса `http://127.0.0.1:8946/mcp`; інструменти `search_docs` і
   `read_section`;

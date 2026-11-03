@@ -15,32 +15,49 @@ REST API.
 
 ## Скільки цього
 
-Усього 29 106 документів і 177 730 фрагментів. Фрагмент — це шматок документа, який пошук повертає як окрему відповідь.
+Усього 31 404 документи і 204 522 фрагменти. Фрагмент — це шматок документа, який пошук повертає як окрему відповідь.
 
 | Що | Документів |
 |----|-----------|
 | довідник коду: функції, класи, методи, хуки | 12 399 |
 | `docs/` Gutenberg, останній випуск кожної зі 244 мінорних версій | 3 600 |
 | посібник WP-CLI і всі команди, 12 тегів і гілка `main` | 3 503 |
-| документація Gravity Forms | 2 063 |
+| плагіни форм (перелік нижче), разом із кодом Contact Form 7 | 4 744 |
 | Learn WordPress: уроки, курси, посібники, плани уроків | 1 526 |
 | документація wordpress.org і сторінка кожної версії | 1 283 |
 | посібники для розробників: плагіни, теми, блоки, REST API та інші | 1 233 |
 | реєстр npm 117 пакетів `@wordpress/*` | 869 |
 | нотатки для розробників, make.wordpress.org/core | 647 |
 | релізи Gutenberg | 409 |
-| документація WPForms | 298 |
 | код плагіна WordPress Importer | 279 |
 | README і журнали змін пакетів `@wordpress/*` | 248 |
 | блог розробників | 167 |
 | посібник WP-CLI на make.wordpress.org | 152 |
 | посібник для учасників розробки ядра | 113 |
-| документація Ninja Forms | 98 |
 | `readme.html` і вимоги до PHP та MySQL кожної лінії 1.5–7.1 | 104 |
 | релізи WP-CLI і WordPress Coding Standards | 86 |
-| записи 15 плагінів у каталозі wordpress.org | 15 |
+| записи 28 плагінів у каталозі wordpress.org | 28 |
 | Packagist, 9 пакетів | 9 |
 | образ Docker | 5 |
+
+Плагіни форм зібрано всі поширені, бо наперед невідомо, який стоятиме на сайті:
+
+| Плагін | Документів | Звідки |
+|--------|-----------|--------|
+| Gravity Forms | 2 063 | власний сайт |
+| Форми Elementor | 520 | центр допомоги, статті про форми |
+| Fluent Forms | 457 | власний сайт |
+| Formidable Forms | 417 | власний сайт, статті й сторінки |
+| SureForms | 358 | власний сайт |
+| WPForms | 298 | власний сайт |
+| JetFormBuilder | 277 | власний сайт |
+| Contact Form 7 | 145 | 57 знімків веб-архіву 2025–2026 років і 88 файлів коду |
+| Kali Forms | 109 | власний сайт |
+| Ninja Forms | 98 | власний сайт |
+| Forminator | 2 | дві великі сторінки: документація й API |
+
+Everest Forms, MetForm, HappyForms, weForms, WS Form, Gutena Forms і Calculated Fields Form мають лише запис у каталозі
+wordpress.org. У каталозі є й два плагіни, що зберігають заявки Contact Form 7: `contact-form-cfdb7` і `contact-form-entries`.
 
 Замір `quality` на 03.11.2026 дав такі числа. Запити точними назвами з документації знаходять потрібне 10 із 10, бо модель
 зазвичай питає саме так. Запити звичайними словами знаходять потрібне 4 із 10: пошук по словах дає 4, пошук за змістом дає 3.
@@ -69,9 +86,11 @@ REST API.
 |----|---------|-------|
 | довідник коду, Learn WordPress | сторінки сайту, перелік адрес із REST API | `wp-rest-html` |
 | посібники, документація, нотатки, блог, сайти плагінів форм | REST API сайтів | `wp-rest` |
+| Formidable, Forminator, Contact Form 7 | сторінки сайту або знімки веб-архіву, перелік в оголошенні | `html-list` |
+| SureForms | карта сайту | `sitemap-html` |
 | каталог плагінів | api.wordpress.org | `wp-plugin-info` |
 | Gutenberg, WP-CLI | теги на GitHub | `ghdocs-history`, `ghdocs`, `ghreleases` |
-| вимоги кожної лінії, код Importer | `WordPress/WordPress`, `WordPress/wordpress-importer` | `ghcode` |
+| вимоги кожної лінії, код Importer і Contact Form 7 | `WordPress/WordPress`, `WordPress/wordpress-importer`, `takayukister/contact-form-7` | `ghcode` |
 | `readme.html` кожної лінії | `WordPress/WordPress` | `html-list` |
 | npm, Packagist, Docker Hub | реєстри | `npm-versions`, `pkg-registry`, `dockerhub-tags` |
 
@@ -87,7 +106,11 @@ REST API.
 
 - `codex.wordpress.org`, стара документація, закрита перевіркою браузера й відповідає кодом 403.
 - Docker Hub анонімно віддає лише 1000 найновіших із 5962 тегів образу `wordpress`.
-- `contactform7.com`, `formidableforms.com` і сайт Forminator не віддають REST API. Про ці плагіни є лише запис у каталозі.
+- `contactform7.com` закриває прямі запити перевіркою браузера, тому його документацію взято зі знімків веб-архіву. Частина знімків
+  зберегла лише цю перевірку, тож для 57 із 63 сторінок знайдено справжній текст, а 6 сторінок немає. Новіші зміни треба звіряти із
+  журналом у каталозі плагінів.
+- Документації Everest Forms немає, бо її сайт не віддає ні REST API, ні карти сайту.
+- 20 сторінок Formidable немає: вони без заголовка або переходять на чужий сайт.
 - 62 сторінки відкинуто як закороткі, здебільшого службові сторінки Gravity Forms.
 
 ## Версії
@@ -112,9 +135,9 @@ REST API.
 Корпус примірника в архіві від самого початку: у `corpus/` лежить лише паспорт. Серверу вистачає кешу фрагментів
 (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символу, бо адреса й дата лежать у кеші кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/wordpress-corpus-2026-11-03.tar.gz` (29 106 текстів, паспорт і сховище сирого
+**Де тексти.** В архіві `~/archives/docfactory/wordpress-corpus-2026-11-03-forms.tar.gz` (31 404 тексти, паспорт і сховище сирого
 `raw/`; перед видаленням текстів розпакований окремо й звірений із диском) і в копії на диску Windows
-`C:\Distr\wordpress-corpus-2026-11-03.tar.gz` (звірено за SHA-256). В історії git текстів немає.
+`C:\Distr\wordpress-corpus-2026-11-03-forms.tar.gz` (звірено за SHA-256). В історії git текстів немає.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
@@ -132,7 +155,7 @@ gzip -9 -c instances/wordpress/index/passages.json > instances/wordpress/index/p
 **Як повернути тексти** — перед будь-яким оновленням корпусу; разом із ними повертається й `raw/`:
 
 ```
-tar -xzf ~/archives/docfactory/wordpress-corpus-2026-11-03.tar.gz -C instances/wordpress
+tar -xzf ~/archives/docfactory/wordpress-corpus-2026-11-03-forms.tar.gz -C instances/wordpress
 ./df wordpress smoke
 ```
 
