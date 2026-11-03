@@ -6,7 +6,7 @@
 
 Стан на 02.11.2026. Примірники: agent-harness-course, alpine, amqp-connection-manager, amqplib, angular,
 anthropic-api, argocd, argon2, aspnetcore, astro, astro-markdown-pipeline, auth, bcrypt, binance-spot, biome, bullmq,
-bun, cares, casl, certbot, class-transformer, class-validator, claude-code, clerk, cloudflare, coder-websocket,
+bun, cares, casl, certbot, civicrm, class-transformer, class-validator, claude-code, clerk, cloudflare, coder-websocket,
 confluent-kafka-javascript, contentful, csharp, csrf-csrf, d3, data-cleaning, deno, devops-core-course, doc-tools, docker, dotnet, dotnet-testing,
 drizzle, ecmascript, emberjs, entityframework, eslint, expo, express, express-rate-limit, fastify, ffmpeg, flux,
 foundry, frontend-architecture, github-actions, go, golang-jwt, golang-migrate, golang-x, golangci-lint,

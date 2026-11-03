@@ -762,6 +762,8 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 
 - **An API reference generated from docstrings** (pandas): a page of an attribute holds one line, so `sphinx-html` needs `min_chars`, or thousands of real pages count as empty. Rebuild with `build` from the raw store, without network. Such pages have no subsections and cannot be `quality` targets.
 
+- **A sitemap that points to the build machine** (MkDocs without `site_url`: `<loc>http://localhost:8000/…`, or `<loc>None`, in 32 books of docs.civicrm.org): the listing finds no page inside `within`. Declare the pages in `pages`, with the host replaced or from the page menu.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1818,6 +1820,8 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `agentTools`), не проходить `llms`; тоді кожна сторінка стає окремим джерелом `mdfile`.
 
 - **Довідник API, створений із коду** (pandas): сторінка атрибута має один рядок, тому `sphinx-html` потребує `min_chars`, інакше тисячі справжніх сторінок вважаються порожніми. Перебудова йде через `build` зі сховища, без мережі. Такі сторінки не мають підрозділів і не можуть бути цілями `quality`.
+
+- **Карта сайту, що вказує на машину збирання** (MkDocs без `site_url`: `<loc>http://localhost:8000/…` чи `<loc>None`, 32 книги docs.civicrm.org): перелік не знаходить жодної сторінки в межах `within`. Сторінки оголошують у `pages`, із заміненим хостом або з меню сторінки.
 
 ## З чого складається примірник
 
@@ -2918,6 +2922,8 @@ errada.
   `title` (ReadMe: só `agentTools`) falha no `llms`; cada página passa então a ser uma fonte `mdfile` própria.
 
 - **Uma referência de API gerada a partir do código** (pandas): a página de um atributo tem uma só linha, por isso o `sphinx-html` precisa de `min_chars`, ou milhares de páginas reais contam como vazias. Reconstrua com `build` a partir do armazenamento bruto, sem rede. Estas páginas não têm subsecções e não podem ser alvos do `quality`.
+
+- **Um sitemap que aponta para a máquina de compilação** (MkDocs sem `site_url`: `<loc>http://localhost:8000/…` ou `<loc>None`, 32 livros de docs.civicrm.org): a listagem não encontra nenhuma página dentro de `within`. Declare as páginas em `pages`, com o host substituído ou a partir do menu da página.
 
 ## Anatomia de uma instância
 
