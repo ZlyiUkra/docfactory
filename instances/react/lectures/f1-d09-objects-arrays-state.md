@@ -84,7 +84,35 @@ function Playlist({ variant }: { variant: Variant }) {
 }
 ```
 
-Для кожного варіанта тест клацає «додати», записує, що на екрані, а потім клацає «гучніше»:
+Для кожного варіанта тест клацає «додати», записує, що на екрані, а потім клацає «гучніше». Компонент `Playlist` і
+цей тест лежать в одному файлі, ім'я якого закінчується на `.test.tsx`. Команда `npx vitest run` запускає такий файл:
+
+```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { useState } from 'react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { test } from 'vitest'
+
+test('чотири варіанти', () => {
+  const variants: Variant[] = ['без set', 'той самий масив', 'копія після push', 'новий масив']
+  for (const variant of variants) {
+    seen.length = 0 // кожен варіант рахує виклики компонента з нуля
+    render(<Playlist variant={variant} />)
+    fireEvent.click(screen.getByText('додати'))
+    const calls = seen.length // скільки разів React викликав компонент
+    const shown = screen.getByText(/Пісень/).textContent // що стоїть у документі зараз
+    const oldSize = seen[0].length // скільки пісень у масиві з першого виклику компонента
+    fireEvent.click(screen.getByText('гучніше'))
+    const later = screen.getByText(/Пісень/).textContent
+    console.log(`${variant} | викликів: ${calls} | ${shown} | старий масив: ${oldSize} | після «гучніше»: ${later}`)
+    cleanup() // прибирає компонент із документа перед наступним варіантом
+  }
+})
+```
+
+Решта прикладів із React у цій лекції починаються з тих самих рядків імпорту й запускаються так само, тому далі ми їх
+не повторюємо. Ось що надрукував цей тест:
 
 ```text
 без set | викликів: 1 | Пісень: 2 | старий масив: 3 | після «гучніше»: Пісень: 3
@@ -170,6 +198,27 @@ function Now() {
 }
 ```
 
+Тест показує компонент, клацає кнопки в такому порядку й після кожної дії друкує один рядок:
+
+```tsx
+function report(step: string) {
+  const shown = screen.getByText(/Грає/).textContent // що реально стоїть у документі
+  const body = `викликів тіла: ${bodies.length} | останній виклик прочитав: ${bodies.at(-1)}`
+  console.log(`${step} | ${body} | на екрані: ${shown}`)
+}
+
+render(<Now />)
+report('перший показ')
+fireEvent.click(screen.getByText('мутація'))
+report('мутація 1')
+fireEvent.click(screen.getByText('нова'))
+report('новий об’єкт')
+fireEvent.click(screen.getByText('мутація'))
+report('мутація 2')
+fireEvent.click(screen.getByText('мутація'))
+report('мутація 3')
+```
+
 ```text
 перший показ | викликів тіла: 1 | останній виклик прочитав: Щедрик | на екрані: Грає: Щедрик
 мутація 1 | викликів тіла: 1 | останній виклик прочитав: Щедрик | на екрані: Грає: Щедрик
@@ -209,6 +258,9 @@ function P() {
   console.log(player)
   return <button onClick={() => setPlayer({ volume: 60 })}>гучніше</button>
 }
+
+render(<P />) // перший виклик компонента друкує перший рядок
+fireEvent.click(screen.getByText('гучніше')) // другий виклик друкує другий рядок
 ```
 
 ```text
@@ -371,6 +423,9 @@ console.log(splice.splice(1, 2), splice)
 ```ts
 const letters = ['a', 'b', 'c']
 const at = (i: number) => [...letters.slice(0, i), 'x', ...letters.slice(i)]
+
+const show = (i: number) => `at(${i}): ${at(i).join('')}`
+console.log([1, 0, 3, 99, -1].map(show).join(' | '))
 ```
 
 ```text
@@ -382,12 +437,41 @@ at(1): axbc | at(0): xabc | at(3): abcx | at(99): abcx | at(-1): abxc
 
 **Метод `filter` завжди повертає новий масив.** Якщо нічого не видалено, вміст той самий, але посилання нове:
 
+```ts
+const list = ['a', 'b']
+const result = list.filter((song) => song !== 'такої пісні немає') // умова не прибирає жодного елемента
+const sameContent = result.join() === list.join()
+console.log('filter без збігу: той самий масив?', result === list, '| той самий вміст?', sameContent)
+```
+
 ```text
 filter без збігу: той самий масив? false | той самий вміст? true
 ```
 
-Отже, такий `set` викличе рендер, хоча нічого не змінилося. У нашому запуску лічильник викликів зріс із 1 до 2. Це не
-помилка, а один зайвий виклик компонента, який зазвичай непомітний. Те саме стосується `map`.
+Отже, такий `set` викличе рендер, хоча нічого не змінилося. Перевіримо це лічильником викликів компонента:
+
+```tsx
+let renders = 0
+
+function Nothing() {
+  const [songs, setSongs] = useState(['a', 'b'])
+  renders++ // кожен виклик компонента додає одиницю
+  return <button onClick={() => setSongs(songs.filter((song) => song !== 'такої пісні немає'))}>прибрати</button>
+}
+
+render(<Nothing />)
+console.log('викликів до клацання:', renders)
+fireEvent.click(screen.getByText('прибрати'))
+console.log('викликів після клацання:', renders)
+```
+
+```text
+викликів до клацання: 1
+викликів після клацання: 2
+```
+
+Лічильник зріс із 1 до 2, бо `filter` дав новий масив, і `Object.is` відповів `false`. Це не помилка, а один зайвий
+виклик компонента, який зазвичай непомітний. Те саме стосується `map`.
 
 **Метод `sort` повертає той самий масив.** Запис `setSongs(songs.sort())` виглядає як передача результату, але
 результатом є `songs`. Тому React не бачить зміни, а масив у стані вже переставлено. Функцію порівняння розбирала
@@ -397,6 +481,7 @@ filter без збігу: той самий масив? false | той сами�
 наступного рендеру. Тому копії, зроблені з неї двічі, обидві починаються з того самого стану:
 
 ```tsx
+// До клацання в стані лежить ['a', 'b']. Кожна пара рядків стоїть у власному обробнику.
 setSongs([...songs, 'x'])
 setSongs([...songs, 'y'])
 // на екрані: a,b,y
@@ -413,7 +498,31 @@ setSongs((prev) => [...prev, 'y'])
 мутує, ефект подвоюється:
 
 ```tsx
-setSongs((prev) => { runs++; prev.push('x'); return [...prev] })
+import { StrictMode, useState, type ReactElement } from 'react'
+
+let runs = 0 // скільки разів React викликав оновлювач
+
+function Doubled() {
+  const [songs, setSongs] = useState(['a'])
+  function add() {
+    setSongs((prev) => { runs++; prev.push('x'); return [...prev] }) // push мутує попередній стан
+  }
+  return <><p>{songs.join()}</p><button onClick={add}>додати</button></>
+}
+
+function clickThreeTimes(mode: string, tree: ReactElement) {
+  runs = 0
+  render(tree)
+  for (let click = 1; click <= 3; click++) {
+    fireEvent.click(screen.getByText('додати'))
+    const shown = screen.getByRole('paragraph').textContent
+    console.log(`${mode} клацання ${click} | викликів оновлювача ${runs} | ${shown}`)
+  }
+  cleanup()
+}
+
+clickThreeTimes('без StrictMode', <Doubled />)
+clickThreeTimes('StrictMode', <StrictMode><Doubled /></StrictMode>)
 ```
 
 ```text
@@ -425,8 +534,11 @@ StrictMode клацання 2 | викликів оновлювача 4 | a,x,x,
 StrictMode клацання 3 | викликів оновлювача 6 | a,x,x,x,x,x
 ```
 
-Під `<StrictMode>` друге клацання додало не один елемент, а два. Якщо у вашому списку елементи подвоюються лише в
-режимі розробки, шукайте мутацію в оновлювачі.
+Без `<StrictMode>` кожне клацання викликає оновлювач один раз і додає один елемент. Під `<StrictMode>` React викликає
+оновлювач двічі на кожне клацання, тому лічильник іде 2, 4, 6. На першому клацанні елемент на екрані все одно один,
+бо в нашому запуску React показав результат першого з двох викликів. Тому перше клацання виглядає правильно. На
+наступних клацаннях React показав результат другого виклику, і друге клацання додало не один елемент, а два. Якщо у
+вашому списку елементи подвоюються лише в режимі розробки, шукайте мутацію в оновлювачі.
 
 ## Об'єкти всередині масиву
 
@@ -440,6 +552,8 @@ const start = (): Song[] => [
   { id: 1, title: 'Щедрик', liked: false },
   { id: 2, title: 'Ой у лузі', liked: false },
 ]
+// Рядок для друку: ♥ означає лайк, а крапка означає, що лайка немає.
+const line = (list: Song[]) => list.map((s) => (s.liked ? '♥' : '·') + s.title).join(', ')
 
 function Bad() {
   const [initial] = useState(start)
@@ -451,8 +565,17 @@ function Bad() {
     song.liked = true
     setMine(next)
   }
-  // показує обидва плейлисти й кнопку, яка викликає like(1)
+  return (
+    <>
+      <p>мій: {line(mine)} | подруги: {line(friend)}</p>
+      <button onClick={() => like(1)}>лайк</button>
+    </>
+  )
 }
+
+render(<Bad />)
+fireEvent.click(screen.getByText('лайк'))
+console.log('find і присвоєння', screen.getByRole('paragraph').textContent)
 ```
 
 ```text
@@ -469,6 +592,8 @@ function like(id: number) {
 }
 ```
 
+У компоненті змінилася лише ця функція, а тест той самий, тільки рядок друку починається з інших слів:
+
 ```text
 map із новим об'єктом мій: ♥Щедрик, ·Ой у лузі | подруги: ·Щедрик, ·Ой у лузі
 ```
@@ -482,6 +607,10 @@ map із новим об'єктом мій: ♥Щедрик, ·Ой у лузі 
 лайком). Назвемо версії стану `S0`, `S1`, `S2` і `S3`:
 
 ```ts
+const A: Song = { id: 1, title: 'Щедрик', liked: false }
+const B: Song = { id: 2, title: 'Ой у лузі', liked: false }
+const C: Song = { id: 3, title: 'Верховино', liked: true }
+
 const S0 = [A, B, C]
 const S1 = S0.map((s) => (s.id === 2 ? { ...s, liked: true } : s))
 const S2 = [...S1].sort((x, y) => x.title.localeCompare(y.title, 'uk'))
@@ -495,6 +624,17 @@ const S3 = S2.filter((s) => s.id !== 1)
 | видалення `A` | `filter` | новий масив `S3`, елементи `C, B'` | об'єкти `C` і `B'` |
 
 Запуск підтверджує кожен рядок таблиці й показує, що всі попередні версії лишилися цілими:
+
+```ts
+const show = (list: Song[]) => list.map((s) => s.title + (s.liked ? ' ♥' : '')).join(', ')
+
+console.log('S1:', show(S1), '|', S1[0] === A, S1[1] === B, S1[2] === C) // чи ті самі це об'єкти
+console.log('S2:', show(S2), '| S2[0]===C', S2[0] === C, 'S2[2]===A', S2[2] === A, 'S2[1]===S1[1]', S2[1] === S1[1])
+console.log('S3:', show(S3))
+console.log('S0 далі:', show(S0)) // старі версії друкуємо ще раз після всіх кроків
+console.log('S1 далі:', show(S1))
+console.log('S2 далі:', show(S2))
+```
 
 ```text
 S1: Щедрик, Ой у лузі ♥, Верховино ♥ | true false true
@@ -514,7 +654,20 @@ S2 далі: Верховино ♥, Ой у лузі ♥, Щедрик
 Найгірша властивість мутації в тому, що вона не дає жодного повідомлення. Лекція «Масиви й об'єкти функційно» показала
 інструмент, який це змінює: `Object.freeze` забороняє змінювати об'єкт. Сьогодні ви застосовуєте його до стану.
 
-React сам стан не заморожує:
+React сам стан не заморожує. Перевірити це можна функцією `Object.isFrozen`, яка відповідає, чи заморожено об'єкт:
+
+```tsx
+let state: string[] = []
+
+function Songs() {
+  const [songs] = useState(['Щедрик'])
+  state = songs // запам'ятовуємо масив, який компонент отримав від React
+  return null
+}
+
+render(<Songs />)
+console.log('React заморозив стан?', Object.isFrozen(state))
+```
 
 ```text
 React заморозив стан? false
@@ -537,6 +690,23 @@ function F() {
 ```
 
 Тут `freeze` є звичайною обгорткою над `Object.freeze`. Тест слухає подію `error` на `window` і друкує її текст:
+
+```tsx
+function freeze<T>(value: T): T {
+  return Object.freeze(value)
+}
+
+const errors: string[] = []
+window.addEventListener('error', (event) => {
+  errors.push(event.message) // запам'ятовуємо текст помилки
+  event.preventDefault() // прибирає довгий друк цієї помилки, який jsdom робить сам
+})
+
+render(<F />)
+fireEvent.click(screen.getByText('додати'))
+console.log('помилки:', errors)
+console.log(screen.getByRole('paragraph').textContent)
+```
 
 ```text
 обробник почався
@@ -581,14 +751,59 @@ Cannot add property 1, object is not extensible
 **Запис `useState(() => ...)`.** Такий аргумент називають **ініціалізатором**: React викликає цю функцію лише на
 першому рендері. Без обгортки вираз обчислюється на кожному рендері, а його результат React відкидає:
 
+```tsx
+const calls = { plain: 0, lazy: 0 }
+
+function make(kind: 'plain' | 'lazy') {
+  calls[kind]++
+  return ['Щедрик']
+}
+
+function Plain() {
+  const [n, setN] = useState(0)
+  useState(make('plain')) // без обгортки: make працює на кожному рендері
+  return <button onClick={() => setN(n + 1)}>звичайний</button>
+}
+
+function Lazy() {
+  const [n, setN] = useState(0)
+  useState(() => make('lazy')) // з обгорткою: цю функцію викликає сам React
+  return <button onClick={() => setN(n + 1)}>з обгорткою</button>
+}
+
+render(<><Plain /><Lazy /></>)
+// Показ і два клацання дають кожному компоненту три рендери.
+fireEvent.click(screen.getByText('звичайний'))
+fireEvent.click(screen.getByText('звичайний'))
+fireEvent.click(screen.getByText('з обгорткою'))
+fireEvent.click(screen.getByText('з обгорткою'))
+console.log(`рендерів 3: useState(make()) викликів ${calls.plain} | useState(() => make()) викликів ${calls.lazy}`)
+```
+
 ```text
 рендерів 3: useState(make()) викликів 3 | useState(() => make()) викликів 1
 ```
 
+Перше число дорівнює кількості рендерів, а друге лишилося одиницею. Тому початкове значення, яке дорого обчислювати
+або заморожувати, передавайте в обгортці.
+
 **Копія не заморожена.** Кожне нове значення треба заморожувати окремо, бо заморожування не передається:
 
+```ts
+const frozen = Object.freeze([Object.freeze({ title: 'Щедрик' })])
+const copy = [...frozen] // новий масив із тим самим об'єктом усередині
+
+console.log('копія масиву заморожена?', Object.isFrozen(copy))
+console.log('елемент копії заморожений?', Object.isFrozen(copy[0]))
+console.log("копія об'єкта заморожена?", Object.isFrozen({ ...frozen[0] }))
+console.log('результат toSorted заморожений?', Object.isFrozen(frozen.toSorted()))
+```
+
 ```text
-копія масиву заморожена? false | елемент копії заморожений? true | новий об'єкт? false | toSorted false
+копія масиву заморожена? false
+елемент копії заморожений? true
+копія об'єкта заморожена? false
+результат toSorted заморожений? false
 ```
 
 З цього виводу випливають два наслідки. Перший наслідок: заморожений масив можна скопіювати й відсортувати копію, бо
@@ -605,17 +820,64 @@ function guard<T>(value: T): T {
 }
 ```
 
+Функція `guard` лежить у файлі `src/guard.ts`, а файл `src/main.tsx` для цієї перевірки містить лише її виклик, щоб у
+збірці не було нічого іншого. Перша перевірка друкує значення полів у тесті Vitest. Друга запитує файл у сервера
+розробки так, як його запитав би браузер. Третя шукає функцію в зібраному файлі:
+
+```ts
+// src/main.tsx
+import { guard } from './guard.ts'
+console.log(guard(['Щедрик']))
+
+// тест Vitest
+console.log('DEV', import.meta.env.DEV, 'PROD', import.meta.env.PROD, 'MODE', import.meta.env.MODE)
+```
+
+```bash
+# Сервер розробки запущено в іншому терміналі командою npx vite.
+curl -s http://localhost:5173/src/guard.ts | head -1
+
+npx vite build
+grep -o 'function e(e){return e}' dist/assets/*.js
+grep -c 'Object.freeze' dist/assets/*.js
+```
+
 | Де | Що ми побачили |
 |----|----------------|
 | Vitest | `DEV true PROD false MODE test` |
-| `vite`, запит `curl` до модуля | Vite дописав на початок модуля `import.meta.env = {..., "DEV": true, ...}` |
-| `vite build`, зібраний файл | `function e(e){return e}`, тобто виклику `Object.freeze` у збірці немає взагалі |
+| `vite`, запит `curl` до модуля | Vite дописав на початок модуля `import.meta.env = {"BASE_URL": "/", "DEV": true, "MODE": "development", "PROD": false, "SSR": false}` |
+| `vite build`, зібраний файл | `function e(e){return e}` і кількість рядків з `Object.freeze`, яка дорівнює `0`, тобто виклику `Object.freeze` у збірці немає взагалі |
 
 Браузер ми тут не відкривали: ми перевірили те, що сервер розробки й збірка віддають браузеру. Отже, у збірці немає
 витрат на заморожування. Але з цього випливає й інше: та сама мутація в збірці вже не кине помилку, а знову
-промовчить. Заморожування показує помилки вам під час розробки й не захищає користувачів. Сам обхід коштує небагато:
-на нашій машині глибоке заморожування списку зі 100 записів, у кожному з яких лежить ще й масив, зайняло 0,2 мс, з 10
-000 записів 8 мс, а зі 100 000 записів 35 мс.
+промовчить. Заморожування показує помилки вам під час розробки й не захищає користувачів.
+
+Сам обхід коштує небагато. Заміряймо це на списку, у кожному записі якого лежить ще й масив. Цикл нижче знає будову
+цих записів, тому заморожує обидва рівні без рекурсії:
+
+```ts
+for (const size of [100, 10_000, 100_000]) {
+  const rows = Array.from({ length: size }, (_, id) => ({ id, tags: ['a', 'b'] }))
+  const startedAt = performance.now()
+  for (const row of rows) {
+    Object.freeze(row.tags)
+    Object.freeze(row)
+  }
+  Object.freeze(rows)
+  console.log(size, 'записів:', (performance.now() - startedAt).toFixed(1), 'мс')
+}
+```
+
+```text
+100 записів: 0.1 мс
+10000 записів: 1.3 мс
+100000 записів: 9.2 мс
+```
+
+Кожен рядок виводу показує час для одного розміру списку, а на вашій машині числа будуть іншими. Навіть сто тисяч
+записів зайняли близько десяти мілісекунд, тому в режимі розробки ці витрати можна не враховувати. Рекурсивна функція
+робить ті самі заморожування й ще викликає сама себе для кожного значення, тому працює в кілька разів довше. Коли
+напишете `deepFreeze`, підставте її замість внутрішнього циклу й заміряйте самі.
 
 **Обхід повторюється при кожному оновленні.** Заманливо перевіряти на вході `Object.isFrozen` і не заходити всередину
 вже замороженого об'єкта. Так робити не можна: об'єкт, заморожений звичайним `Object.freeze`, відповідає `true`, а
@@ -704,6 +966,10 @@ Map після set: 2 true
 результат повертає правильний:
 
 ```ts
+import { expect, test } from 'vitest'
+
+type Song = { id: number; title: string }
+
 const A: Song = { id: 1, title: 'Щедрик' }
 const B: Song = { id: 2, title: 'Ой у лузі' }
 const TWO: Song[] = [A, B]
@@ -724,6 +990,8 @@ test('сусідній приклад, у якому немає помилки',
   expect(TWO.map((song) => song.title)).toEqual(['Щедрик', 'Ой у лузі'])
 })
 ```
+
+Цей код лежить у файлі `lec/w11.test.ts`, а запускає його команда `npx vitest run lec/w11.test.ts`:
 
 ```text
  FAIL  lec/w11.test.ts > withoutSong: вхідний масив не змінився
@@ -782,9 +1050,19 @@ AssertionError: expected [ 'Ой у лузі' ] to deeply equal [ 'Щедрик'
 ```js
 import { produce } from 'immer'
 
+// before: той самий слухач, що й у розділі про вкладений об'єкт
 const after = produce(before, (draft) => {
   draft.player.device.name = 'Колонка'
 })
+
+console.log(before.player.device.name, after.player.device.name)
+console.log(
+  'listener', after === before,
+  '| plan', after.plan === before.plan,
+  '| player', after.player === before.player,
+  '| device', after.player.device === before.player.device,
+)
+console.log('результат заморожено?', Object.isFrozen(after), Object.isFrozen(after.player.device))
 ```
 
 ```text
