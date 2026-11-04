@@ -61,7 +61,35 @@ function WithLet() {
 
 Запис `ReturnType<typeof setTimeout>` бере тип результату функції `setTimeout`, тому вам не треба знати, що саме вона
 повертає. `ReturnType` є вбудованим у TypeScript дженериком, який з типу функції дістає тип її результату. Тест клацає
-кнопки, а час перемотує штучними таймерами Vitest, які показала лекція «Рендер, коміт і знімок стану»:
+кнопки, а час перемотує штучними таймерами Vitest, які показала лекція «Рендер, коміт і знімок стану». Тест лежить в
+одному файлі з компонентом:
+
+```tsx
+// @vitest-environment jsdom
+import { useRef, useState } from 'react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { test, vi } from 'vitest'
+
+// status читає текст єдиного абзацу зі статусом, а statuses читає тексти всіх таких абзаців.
+const status = () => screen.getByRole('status').textContent
+const statuses = () => screen.getAllByRole('status').map((p) => p.textContent).join(' | ')
+
+// Тут стоїть компонент WithLet.
+
+test('let', () => {
+  vi.useFakeTimers() // Відтепер час іде лише тоді, коли тест його перемотує.
+  render(<WithLet />)
+  fireEvent.click(screen.getByText('надіслати'))
+  console.log('let | після «надіслати»:', status())
+  fireEvent.click(screen.getByText('скасувати'))
+  console.log('let | після «скасувати»:', status())
+  act(() => { vi.advanceTimersByTime(3000) }) // Перемотуємо три секунди, і таймер спрацьовує.
+  console.log('let | через 3 секунди:', status())
+})
+```
+
+Команда `npx vitest run src/let.test.tsx --disable-console-intercept` запускає цей файл, а прапорець у кінці прибирає
+службові рядки навколо друку. Вона друкує:
 
 ```text
 let | після «надіслати»: надсилається
@@ -93,15 +121,99 @@ let | через 3 секунди: надіслано
 | ref | так | ні | так |
 
 Стан теж дає правильний результат, але просить зайвого рендеру. Заміряємо це на кнопці «нагадати», де стан лежить лише
-для ідентифікатора, а кожне клацання перезапускає таймер:
+для ідентифікатора, а кожне клацання перезапускає таймер. Кожен наступний дослід лекції лежить у власному файлі тесту з
+такими самими першими рядками, тому далі лекція показує лише компоненти й рядки, які стоять усередині `test`.
+
+```tsx
+let calls = 0 // Рахує виклики компонента лише для цього заміру.
+
+function RemindInState() {
+  calls++
+  const [timerId, setTimerId] = useState<ReturnType<typeof setTimeout> | null>(null)
+  function remind() {
+    if (timerId !== null) clearTimeout(timerId)
+    setTimerId(setTimeout(() => console.log('нагадування'), 3000)) // Цей виклик просить рендер.
+  }
+  return <button onClick={remind}>нагадати</button>
+}
+
+function RemindInRef() {
+  calls++
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function remind() {
+    if (timerRef.current !== null) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => console.log('нагадування'), 3000) // Цей запис рендеру не просить.
+  }
+  return <button onClick={remind}>нагадати</button>
+}
+```
+
+Тест показує кожен компонент окремо й тричі клацає його кнопку:
+
+```tsx
+vi.useFakeTimers()
+
+const first = render(<RemindInState />)
+for (let i = 0; i < 3; i++) fireEvent.click(first.getByText('нагадати'))
+console.log('ідентифікатор у стані | викликів компонента після трьох клацань:', calls)
+first.unmount()
+
+calls = 0
+const second = render(<RemindInRef />)
+for (let i = 0; i < 3; i++) fireEvent.click(second.getByText('нагадати'))
+console.log('ідентифікатор у ref | викликів компонента після трьох клацань:', calls)
+```
 
 ```text
 ідентифікатор у стані | викликів компонента після трьох клацань: 4
 ідентифікатор у ref | викликів компонента після трьох клацань: 1
 ```
 
+Чотири виклики зі станом складаються з першого показу й трьох рендерів після трьох клацань. Один виклик із ref є лише
+першим показом, бо запис у `current` рендеру не просить. Отже, якщо екран не показує ідентифікатора, кладіть його в ref,
+і компонент не виконуватиме зайвої роботи.
+
 Змінна модуля не загубиться між рендерами, але вона одна на всі копії компонента. Поставимо поруч два листи, надішлемо
 обидва й скасуємо перший:
+
+```tsx
+let moduleTimer: ReturnType<typeof setTimeout> | null = null // Ця змінна одна на всі копії компонента.
+
+function WithModuleVariable() {
+  const [status, setStatus] = useState('чернетка')
+
+  function send() {
+    setStatus('надсилається')
+    moduleTimer = setTimeout(() => setStatus('надіслано'), 3000)
+  }
+
+  function undo() {
+    if (moduleTimer !== null) clearTimeout(moduleTimer)
+    setStatus('скасовано')
+  }
+
+  return (
+    <>
+      <p role="status">{status}</p>
+      <button onClick={send}>надіслати</button>
+      <button onClick={undo}>скасувати</button>
+    </>
+  )
+}
+```
+
+```tsx
+vi.useFakeTimers()
+render(<><WithModuleVariable /><WithModuleVariable /></>)
+// getAllByText знаходить кнопки обох копій у такому порядку, у якому вони стоять на сторінці.
+const sendButtons = screen.getAllByText('надіслати')
+fireEvent.click(sendButtons[0])
+fireEvent.click(sendButtons[1])
+fireEvent.click(screen.getAllByText('скасувати')[0])
+console.log('змінна модуля | перший скасовано:', statuses())
+act(() => { vi.advanceTimersByTime(3000) })
+console.log('змінна модуля | через 3 секунди:', statuses())
+```
 
 ```text
 змінна модуля | перший скасовано: скасовано | надсилається
@@ -119,6 +231,8 @@ let | через 3 секунди: надіслано
 React» уже коротко показала його типи. Заміна в прикладі мінімальна:
 
 ```tsx
+let bodies = 0
+
 function WithRef() {
   bodies++
   const [status, setStatus] = useState('чернетка')
@@ -144,6 +258,26 @@ function WithRef() {
 }
 ```
 
+Тест спершу робить ті самі клацання, що й перший дослід, а потім ставить поруч два листи:
+
+```tsx
+vi.useFakeTimers()
+const view = render(<WithRef />)
+fireEvent.click(screen.getByText('надіслати'))
+fireEvent.click(screen.getByText('скасувати'))
+act(() => { vi.advanceTimersByTime(3000) })
+console.log('ref | через 3 секунди:', status(), '| викликів компонента:', bodies)
+view.unmount()
+
+render(<><WithRef /><WithRef /></>)
+const sendButtons = screen.getAllByText('надіслати')
+fireEvent.click(sendButtons[0])
+fireEvent.click(sendButtons[1])
+fireEvent.click(screen.getAllByText('скасувати')[0])
+act(() => { vi.advanceTimersByTime(3000) })
+console.log('ref | два листи, через 3 секунди:', statuses())
+```
+
 ```text
 ref | через 3 секунди: скасовано | викликів компонента: 3
 ref | два листи, через 3 секунди: скасовано | надіслано
@@ -160,12 +294,34 @@ ref | два листи, через 3 секунди: скасовано | на�
 якому лежить об'єкт, а функції `set` ніхто ніколи не викликає. Запуск це підтверджує:
 
 ```tsx
+const seen: { current: { number: number } }[] = [] // Кожен рендер кладе сюди об'єкт, який дав useRef.
+let made = 0 // Рахує виклики makeLog.
+
+function makeLog() {
+  made++
+  return { number: made }
+}
+
 function Identity() {
   const [n, setN] = useState(0)
   const log = useRef(makeLog())
   seen.push(log)
   return <button onClick={() => setN(n + 1)}>ще</button>
 }
+```
+
+Тест двічі клацає кнопку, тобто разом із першим показом дає три рендери:
+
+```tsx
+render(<Identity />)
+fireEvent.click(screen.getByText('ще'))
+fireEvent.click(screen.getByText('ще'))
+console.log(
+  'рендерів:', seen.length,
+  '| той самий об’єкт:', new Set(seen).size === 1, // Set лишає лише різні об'єкти.
+  '| викликів makeLog:', made,
+  '| у current лежить запис №', seen[0].current.number,
+)
 ```
 
 ```text
@@ -194,11 +350,24 @@ function Immediate() {
 }
 ```
 
+Тест двічі клацає кнопку й наприкінці читає екран:
+
+```tsx
+render(<Immediate />)
+fireEvent.click(screen.getByText('плюс'))
+fireEvent.click(screen.getByText('плюс'))
+console.log('на екрані:', status())
+```
+
 ```text
 в обробнику | стан: 0 | ref: 1
 в обробнику | стан: 1 | ref: 2
 на екрані: 2
 ```
+
+Перші два рядки друкує обробник. Значення стану в кожному з них на одиницю менше за значення ref, бо обробник бачить
+стан свого рендеру, а поле ref читає вже після запису. Останній рядок друкує тест після двох клацань, тому екран показує
+нове значення стану.
 
 Звідси випливає корисний наслідок для коду, який спрацьовує пізніше. Лекція «Рендер, коміт і знімок стану» показала,
 що таймер бачить змінну стану того рендеру, який його створив. Значення з ref таймер читає в момент спрацювання.
@@ -226,9 +395,22 @@ function Chat() {
 }
 ```
 
+```tsx
+vi.useFakeTimers()
+render(<Chat />)
+const field = screen.getByLabelText('чат')
+fireEvent.change(field, { target: { value: 'при' } })
+fireEvent.click(screen.getByText('надіслати пізніше')) // Таймер стартує, коли в полі написано «при».
+fireEvent.change(field, { target: { value: 'привіт' } })
+act(() => { vi.advanceTimersByTime(3000) })
+```
+
 ```text
 зі стану: при | з ref: привіт
 ```
+
+Таймер запам'ятав змінну `draft` того рендеру, у якому користувач клацнув кнопку, тому він надрукував «при». Поле
+`latest.current` таймер прочитав через три секунди, тому він надрукував «привіт».
 
 Зазвичай потрібна саме поведінка стану: лист іде таким, яким він був у момент клацання. Сторінка React показує цей
 прийом як рідкісний випадок, коли код, який спрацьовує пізніше, справді має прочитати найновіше значення.
@@ -267,6 +449,17 @@ function BadDraft() {
 }
 ```
 
+Тест тричі змінює значення поля, а потім клацає «зберегти»:
+
+```tsx
+render(<BadDraft />)
+const field = screen.getByLabelText('лист')
+for (const value of ['а', 'аб', 'абв']) fireEvent.change(field, { target: { value } })
+console.log('три натискання, на екрані:', status())
+fireEvent.click(screen.getByText('зберегти'))
+console.log('після «зберегти», на екрані:', status())
+```
+
 ```text
 три натискання, на екрані: Натискань: 0, збережень: 0
 після «зберегти», на екрані: Натискань: 3, збережень: 1
@@ -274,7 +467,8 @@ function BadDraft() {
 
 Екран показує неправильне число: користувач натиснув три клавіші, а бачить нуль. Потім він клацає іншу кнопку, і число
 раптом стрибає. React не знає, коли змінюється `ref.current`, тому на екрані лежить значення з тієї миті, коли хтось
-випадково викликав компонент. Лінт не пропустить такий запис:
+випадково викликав компонент. Лінт не пропустить такий запис. Команда `npx eslint` для файла з цим компонентом друкує
+довге повідомлення, а тут показано лише назву правила й перший рядок повідомлення:
 
 ```text
 react-hooks/refs Error: Cannot access refs during render
@@ -301,6 +495,17 @@ function Draft() {
 }
 ```
 
+```tsx
+render(<Draft />)
+const field = screen.getByLabelText('лист')
+for (const value of ['а', 'аб', 'абв']) {
+  fireEvent.change(field, { target: { value } })
+  console.log('на екрані:', status())
+}
+fireEvent.click(screen.getByText('зберегти'))
+console.log('після «зберегти», на екрані:', status())
+```
+
 ```text
 натискань: 1
 на екрані: Збережень: 0
@@ -325,6 +530,24 @@ function RenderCounter() {
 }
 ```
 
+Тест показує компонент, викликає `rerender`, щоб React виконав ще один рендер, а потім робить те саме в обгортці
+`<StrictMode>`:
+
+```tsx
+import { StrictMode } from 'react'
+
+const plain = render(<RenderCounter />)
+console.log('без StrictMode | показ:', status())
+plain.rerender(<RenderCounter />)
+console.log('без StrictMode | ще:', status())
+plain.unmount()
+
+const strict = render(<StrictMode><RenderCounter /></StrictMode>)
+console.log('StrictMode | показ:', status())
+strict.rerender(<StrictMode><RenderCounter /></StrictMode>)
+console.log('StrictMode | ще:', status())
+```
+
 ```text
 без StrictMode | показ: Рендерів: 1
 без StrictMode | ще: Рендерів: 2
@@ -341,6 +564,10 @@ StrictMode | ще: Рендерів: 4
 дорогого початкового значення, про яку йшлося вище:
 
 ```tsx
+class Player {
+  play() {} // Тут стоїть справжня дорога робота. Для прикладу клас порожній.
+}
+
 export function LazyInit() {
   const player = useRef<Player | null>(null)
   if (player.current === null) {
@@ -377,16 +604,33 @@ function CouponCopy() {
 }
 ```
 
+Функція `report` друкує, який елемент має фокус і які символи поля виділено:
+
+```tsx
+render(<CouponCopy />)
+const input = screen.getByLabelText<HTMLInputElement>('код')
+const report = (label: string) =>
+  console.log(label, 'у фокусі:', document.activeElement?.tagName, '| виділено:', input.selectionStart, input.selectionEnd)
+
+report('до клацання,')
+fireEvent.click(screen.getByText('виділити код'))
+report('після клацання,')
+input.blur() // Забирає фокус із поля, щоб перевірити select() окремо.
+input.select()
+report('після blur() і select(),')
+```
+
 ```text
 до клацання, у фокусі: BODY | виділено: 9 9
 після клацання, у фокусі: INPUT | виділено: 0 9
+після blur() і select(), у фокусі: BODY | виділено: 0 9
 ```
 
-Рядок виводу означає, що до клацання фокус стояв на всій сторінці, а після клацання він стоїть у полі й виділено
-символи від 0 до 9, тобто весь код. Це поведінка jsdom. Метод `select()` окремо не переводить фокус ні в jsdom, ні
-обов'язково в браузері: сторінка MDN каже, що `select()` не завжди дає фокус, тому поруч викликають `focus()`. У
-браузері ми цього не запускали, але очікуйте побачити той самий результат: текст у полі виділено, а курсор стоїть у
-полі.
+Перші два рядки виводу означають, що до клацання фокус стояв на всій сторінці, а після клацання він стоїть у полі й
+виділено символи від 0 до 9, тобто весь код. Це поведінка jsdom. Останній рядок показує, що метод `select()` окремо
+фокуса в jsdom не переводить. У браузері фокус теж не гарантовано: сторінка MDN каже, що `select()` не завжди дає фокус,
+тому поруч викликають `focus()`. У браузері ми цього не запускали, але очікуйте побачити той самий результат: текст у
+полі виділено, а курсор стоїть у полі.
 
 Знак `?.` і тип `useRef<HTMLInputElement>(null)` пояснила лекція «TypeScript у React»: у `current` лежить `null`, поки
 вузла немає. Тепер подивімося, коли саме він там з'являється.
@@ -399,6 +643,9 @@ function CouponCopy() {
 писати не можна, а тут це потрібно лише заради цього досліду:
 
 ```tsx
+const stages: string[] = [] // Журнал досліду.
+const tag = (node: HTMLElement | null) => node?.tagName ?? 'null' // Назва тега або слово null.
+
 function Coupon() {
   const [shown, setShown] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -415,6 +662,16 @@ function Coupon() {
     </>
   )
 }
+```
+
+Тест показує компонент, клацає «глянути», потім «сховати», потім знову «глянути» й друкує журнал:
+
+```tsx
+render(<Coupon />)
+fireEvent.click(screen.getByText('глянути'))
+fireEvent.click(screen.getByText('сховати'))
+fireEvent.click(screen.getByText('глянути'))
+console.log(stages.join('\n'))
 ```
 
 ```text
@@ -444,6 +701,8 @@ function Coupon() {
 практиці ви застосуєте те саме міркування до своїх дій:
 
 ```tsx
+import { flushSync } from 'react-dom'
+
 function Faq({ mode }: { mode: 'звичайно' | 'flushSync' }) {
   const [open, setOpen] = useState(false)
   const answerRef = useRef<HTMLParagraphElement>(null)
@@ -462,6 +721,15 @@ function Faq({ mode }: { mode: 'звичайно' | 'flushSync' }) {
     </>
   )
 }
+```
+
+```tsx
+const first = render(<Faq mode="звичайно" />)
+fireEvent.click(first.getByText('відкрити'))
+first.unmount()
+
+const second = render(<Faq mode="flushSync" />)
+fireEvent.click(second.getByText('відкрити'))
 ```
 
 ```text
@@ -490,6 +758,12 @@ flushSync | вузол відповіді: Так, повертаємо за 14 
 його дозволено:
 
 ```tsx
+const SECTIONS = [
+  { id: 'intro', title: 'Вступ' },
+  { id: 'recipe', title: 'Рецепт' },
+  { id: 'tips', title: 'Поради' },
+]
+
 function Article() {
   const nodes = useRef(new Map<string, HTMLElement>())
   return (
@@ -517,6 +791,21 @@ function Article() {
 }
 ```
 
+```tsx
+console.log('у jsdom scrollIntoView:', Element.prototype.scrollIntoView)
+
+// jsdom не має цього методу, тому тест ставить власну функцію, яка лише записує текст вузла.
+const scrolled: (string | null)[] = []
+Element.prototype.scrollIntoView = function () {
+  scrolled.push(this.textContent)
+}
+
+render(<Article />)
+fireEvent.click(screen.getByRole('button', { name: 'Рецепт' }))
+fireEvent.click(screen.getByRole('button', { name: 'Поради' }))
+console.log('прокручено до:', scrolled.join(', '))
+```
+
 ```text
 у jsdom scrollIntoView: undefined
 прокручено до: Рецепт, Поради
@@ -535,8 +824,69 @@ function Article() {
 ### Колбек, створений на кожному рендері
 
 Запис `ref={(node) => ...}` прямо в розмітці створює нову функцію при кожному виклику компонента. Побачивши іншу
-функцію, React відв'язує стару й прив'язує нову. Ось журнал для показу, двох клацань, які запускають рендер, і
-вилучення компонента:
+функцію, React відв'язує стару й прив'язує нову. Перевіримо це на трьох компонентах. Перший пише колбек прямо в
+розмітці, другий додає до нього функцію прибирання, а третій бере функцію, оголошену поза компонентом:
+
+```tsx
+const log: string[] = []
+
+function Inline() {
+  const [n, setN] = useState(0)
+  return (
+    <aside ref={(node) => { log.push(node ? 'прив’язано' : 'null') }}>
+      <button onClick={() => setN(n + 1)}>ще</button>
+    </aside>
+  )
+}
+
+function WithCleanup() {
+  const [n, setN] = useState(0)
+  return (
+    <aside
+      ref={(node) => {
+        log.push('прив’язано ' + node?.tagName)
+        return () => { log.push('прибирання') }
+      }}
+    >
+      <button onClick={() => setN(n + 1)}>ще</button>
+    </aside>
+  )
+}
+
+function stable(node: HTMLElement | null) {
+  log.push('stable: ' + (node?.tagName ?? 'null'))
+}
+
+function Stable() {
+  const [n, setN] = useState(0)
+  return (
+    <aside ref={stable}>
+      <button onClick={() => setN(n + 1)}>ще</button>
+    </aside>
+  )
+}
+```
+
+Тест робить з кожним компонентом те саме: показує його, двічі клацає кнопку, щоб запустити рендер, і вилучає компонент.
+Останній запуск повторює `Stable` в обгортці `<StrictMode>`:
+
+```tsx
+import { StrictMode, type ReactElement } from 'react'
+
+function run(name: string, ui: ReactElement) {
+  log.length = 0 // Кожен запуск починає журнал спочатку.
+  const view = render(ui)
+  fireEvent.click(view.getByText('ще'))
+  fireEvent.click(view.getByText('ще'))
+  view.unmount()
+  console.log(name, '|', log.join(', '))
+}
+
+run('inline', <Inline />)
+run('cleanup', <WithCleanup />)
+run('stable', <Stable />)
+run('stable у StrictMode', <StrictMode><Stable /></StrictMode>)
+```
 
 ```text
 inline | прив’язано, null, прив’язано, null, прив’язано, null
@@ -558,13 +908,47 @@ stable у StrictMode | stable: ASIDE, stable: null, stable: ASIDE, stable: null
 звичайним пропсом, і компонент сам вирішує, куди його передати:
 
 ```tsx
+import type { ComponentType, Ref } from 'react'
+
 function CityField({ label, ref }: { label: string; ref?: Ref<HTMLInputElement> }) {
   return <label>{label}<input ref={ref} /></label>
 }
 ```
 
-Тест клацає кнопку батьківського компонента, який читає `fieldRef.current` і викликає `focus()`. Спершу показано
-компонент `Ignoring`, який приймає `ref`, але нікуди його не передає, а потім `CityField`:
+Батьківський компонент `Form` читає `fieldRef.current` і викликає `focus()`. Він отримує поле пропсом `Field`, тому той
+самий батько може перевірити різні поля. Компонент `Ignoring` приймає `ref`, але нікуди його не передає:
+
+```tsx
+function Ignoring({ label }: { label: string; ref?: Ref<HTMLInputElement> }) {
+  return <label>{label}<input /></label>
+}
+
+function Form({ Field }: { Field: ComponentType<{ label: string; ref?: Ref<HTMLInputElement> }> }) {
+  const fieldRef = useRef<HTMLInputElement>(null)
+  function goToField() {
+    console.log('вузол у батька:', fieldRef.current?.tagName ?? null)
+    fieldRef.current?.focus()
+    console.log('у фокусі:', document.activeElement?.tagName)
+  }
+  return (
+    <>
+      <Field label="Місто" ref={fieldRef} />
+      <button onClick={goToField}>до поля</button>
+    </>
+  )
+}
+```
+
+Тест показує батька спершу з `Ignoring`, а потім із `CityField`:
+
+```tsx
+const first = render(<Form Field={Ignoring} />)
+fireEvent.click(first.getByText('до поля'))
+first.unmount()
+
+const second = render(<Form Field={CityField} />)
+fireEvent.click(second.getByText('до поля'))
+```
 
 ```text
 вузол у батька: null
@@ -580,15 +964,36 @@ function CityField({ label, ref }: { label: string; ref?: Ref<HTMLInputElement> 
 об'єкт ref, і функцію. Якщо компонент просто загортає `input`, зручно взяти всі його пропси записом
 `ComponentProps<'input'>`, і `ref` прийде разом з ними.
 
-У старому коді ви побачите обгортку `forwardRef`, бо до React 19 `ref` не приходив як пропс. Ми перевірили: вона досі
-працює й дала той самий результат, але довідник каже, що вона вже не потрібна й буде позначена застарілою в одній із
-майбутніх версій.
+У старому коді ви побачите обгортку `forwardRef`, бо до React 19 `ref` не приходив як пропс. Передамо батькові `Form`
+таке старе поле:
+
+```tsx
+import { forwardRef } from 'react'
+
+const OldCityField = forwardRef<HTMLInputElement, { label: string }>(({ label }, ref) => (
+  <label>{label}<input ref={ref} /></label>
+))
+
+// Далі рядки тесту.
+render(<Form Field={OldCityField} />)
+fireEvent.click(screen.getByText('до поля'))
+```
+
+```text
+вузол у батька: INPUT
+у фокусі: INPUT
+```
+
+Обгортка досі працює й дає той самий результат, що й `CityField`, але довідник каже, що вона вже не потрібна й буде
+позначена застарілою в одній із майбутніх версій. У новому коді передавайте `ref` звичайним пропсом.
 
 Сторінка `Manipulating the DOM with Refs` радить обережність: чужі вузли змінювати небезпечно, тому компонент може
 віддати лише частину можливостей. Для цього є хук `useImperativeHandle`, де ви самі описуєте об'єкт, який отримає
 батько:
 
 ```tsx
+import { useImperativeHandle, type Ref } from 'react'
+
 type FieldHandle = { focus: () => void }
 
 function GuardedField({ ref }: { ref?: Ref<FieldHandle> }) {
@@ -600,6 +1005,26 @@ function GuardedField({ ref }: { ref?: Ref<FieldHandle> }) {
   }))
   return <input ref={inputRef} />
 }
+
+function Page() {
+  const fieldRef = useRef<FieldHandle>(null)
+  function goToField() {
+    fieldRef.current?.focus()
+    // Object.keys показує, які поля має об'єкт, що лежить у ref батька.
+    console.log('у фокусі:', document.activeElement?.tagName, '| що бачить батько:', Object.keys(fieldRef.current ?? {}))
+  }
+  return (
+    <>
+      <GuardedField ref={fieldRef} />
+      <button onClick={goToField}>до поля</button>
+    </>
+  )
+}
+```
+
+```tsx
+render(<Page />)
+fireEvent.click(screen.getByText('до поля'))
 ```
 
 ```text
@@ -628,6 +1053,23 @@ function Banner() {
 }
 ```
 
+Тест клацає «вилучити вручну», а потім «перемкнути». Помилку другого клацання він ловить, щоб надрукувати її текст:
+
+```tsx
+const { container } = render(<Banner />)
+fireEvent.click(screen.getByText('вилучити вручну'))
+console.log('після вилучення вручну, абзац у документі:', screen.queryByText('Знижка до неділі') !== null)
+
+const errors: string[] = []
+try {
+  fireEvent.click(screen.getByText('перемкнути'))
+} catch (error) {
+  errors.push('кинуто: ' + error)
+}
+console.log('помилки:', JSON.stringify(errors))
+console.log('вміст контейнера після збою:', JSON.stringify(container.innerHTML))
+```
+
 ```text
 після вилучення вручну, абзац у документі: false
 помилки: ["кинуто: NotFoundError: The node to be removed is not a child of this node."]
@@ -645,7 +1087,18 @@ function Banner() {
 Практика дня має секундомір, тому знайте дві пастки таймерів. Покажемо їх на нашому листі й на окремому таймері.
 
 **Повторний запуск.** Якщо клацнути «надіслати» двічі, то стартують два таймери, а в ref лишиться лише другий
-ідентифікатор:
+ідентифікатор. Тест бере компонент `WithRef`:
+
+```tsx
+vi.useFakeTimers()
+render(<WithRef />)
+fireEvent.click(screen.getByText('надіслати'))
+fireEvent.click(screen.getByText('надіслати'))
+fireEvent.click(screen.getByText('скасувати'))
+console.log('двічі «надіслати», потім «скасувати»:', status())
+act(() => { vi.advanceTimersByTime(3000) })
+console.log('через 3 секунди:', status())
+```
 
 ```text
 двічі «надіслати», потім «скасувати»: скасовано
@@ -657,6 +1110,29 @@ function Banner() {
 
 **Зникнення компонента.** Таймером керує браузер, а не React. Ось компонент, який запускає `setInterval`, а тест
 вилучає компонент через три секунди:
+
+```tsx
+let ticks = 0 // Рахує спрацювання таймера.
+
+function Ticker() {
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  function start() {
+    timerRef.current = setInterval(() => { ticks++ }, 1000)
+  }
+  return <button onClick={start}>запустити</button>
+}
+```
+
+```tsx
+vi.useFakeTimers()
+const view = render(<Ticker />)
+fireEvent.click(screen.getByText('запустити'))
+vi.advanceTimersByTime(3000)
+console.log('за 3 секунди спрацювань:', ticks)
+view.unmount() // Компонент зникає зі сторінки.
+vi.advanceTimersByTime(3000)
+console.log('компонент прибрано, ще за 3 секунди:', ticks)
+```
 
 ```text
 за 3 секунди спрацювань: 3

@@ -41,8 +41,17 @@ function Forecast({ unit }: { unit: Unit }) {
 }
 ```
 
-Тут `Unit` є типом `'C' | 'F'`, а `formatTemperature` є звичайною функцією, яка перетворює число на рядок. Компонент
-`Forecast` читає `unit` лише для того, щоб передати його в `DayCard`. Компонент `DayCard` робить те саме. Такий запис
+Тут `Unit` є типом `'C' | 'F'`, а `formatTemperature` є звичайною функцією, яка перетворює число на рядок:
+
+```ts
+type Unit = 'C' | 'F'
+
+function formatTemperature(celsius: number, unit: Unit): string {
+  return unit === 'C' ? `${celsius}°C` : `${Math.round((celsius * 9) / 5 + 32)}°F`
+}
+```
+
+Компонент `Forecast` читає `unit` лише для того, щоб передати його в `DayCard`. Компонент `DayCard` робить те саме. Такий запис
 працює, і він навіть має перевагу: з коду видно, хто які дані отримує. Незручність з'являється тоді, коли таких рівнів
 стає багато або коли одне значення потрібне багатьом компонентам у різних гілках. Документація називає цю ситуацію
 **prop drilling**, українською «прокидання пропсів»: значення проходить крізь компоненти, які ним не користуються.
@@ -74,11 +83,29 @@ function Forecast() {
 }
 ```
 
+Щоб побачити результат, покладіть цей код у файл, ім'я якого закінчується на `.test.tsx`, наприклад
+`src/unit.test.tsx`. Туди ж скопіюйте тип `Unit` і функцію `formatTemperature`, а нижче допишіть тест. Тест показує
+дерево компонентів і друкує весь текст, який це дерево поставило в документ:
+
 ```tsx
-<UnitContext value="F">
-  <Forecast />
-</UnitContext>
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент нікуди показати.
+import { createContext, useContext } from 'react'
+import { render } from '@testing-library/react'
+import { test } from 'vitest'
+
+test('прогноз у Фаренгейтах', () => {
+  const { container } = render(
+    <UnitContext value="F">
+      <Forecast />
+    </UnitContext>,
+  )
+  console.log(container.textContent) // container є елементом документа, у який render поставив дерево
+})
 ```
+
+Команда `npx vitest run src/unit.test.tsx --disable-console-intercept` запускає цей файл, а прапорець у кінці просить
+Vitest одразу друкувати те, що передано в `console.log`. Вона надрукувала:
 
 ```text
 Пн: 68°FВт: 50°F
@@ -86,6 +113,10 @@ function Forecast() {
 
 Два дні надруковано разом, бо тест читає весь текст контейнера, а елементи `li` не додають проміжків. Перетворення на
 Фаренгейти спрацювало на обох.
+
+Кожен наступний приклад лекції запускайте так само: в окремому файлі, з тими самими першими рядками й із визначеннями,
+показаними вище в лекції. Потрібні функції React додавайте до імпорту, а рядки з `render` і `console.log` пишіть
+усередині функції `test`.
 
 Прочитаємо це рядок за рядком.
 
@@ -119,16 +150,20 @@ function Label({ name }: { name: string }) {
 ```
 
 ```tsx
-<>
-  <Label name="без провайдера" />
-  <UnitContext value="F">
-    <Label name="у провайдері F" />
-    <UnitContext value="C">
-      <Label name="у вкладеному C" />
+const { container } = render(
+  <>
+    <Label name="без провайдера" />
+    <UnitContext value="F">
+      <Label name="у провайдері F" />
+      <UnitContext value="C">
+        <Label name="у вкладеному C" />
+      </UnitContext>
+      <Label name="знову в F" />
     </UnitContext>
-    <Label name="знову в F" />
-  </UnitContext>
-</>
+  </>,
+)
+// Кожен Label поставив один абзац, а цей рядок друкує текст кожного абзацу окремо.
+container.querySelectorAll('p').forEach((p) => console.log(p.textContent))
 ```
 
 ```text
@@ -158,6 +193,10 @@ function Station() {
     </UnitContext>
   )
 }
+
+// Над Station немає жодного провайдера, тому сам Station отримує значення за замовчуванням.
+const { container } = render(<Station />)
+container.querySelectorAll('p').forEach((p) => console.log(p.textContent))
 ```
 
 ```text
@@ -171,7 +210,26 @@ Station сам прочитав: C
 ### Коли спрацьовує значення за замовчуванням
 
 Значення з `createContext` React бере лише тоді, коли над компонентом немає жодного провайдера цього контексту.
-Провайдер без значення вже є провайдером, і запуск це показує:
+Провайдер без значення вже є провайдером. Запуск нижче ставить компонент `Label` у три провайдери без правильного
+значення. Рядок `@ts-expect-error` каже компілятору, що помилка в наступному рядку навмисна. Функцію `vi` імпортуйте
+з пакета `vitest`, а `vi.spyOn` тут перехоплює `console.error`, куди React пише свої попередження:
+
+```tsx
+const spy = vi.spyOn(console, 'error').mockImplementation(() => {}) // запам'ятовує кожне попередження
+
+const { container } = render(
+  <>
+    {/* @ts-expect-error навмисно передаємо undefined */}
+    <UnitContext value={undefined}><Label name="value={undefined}" /></UnitContext>
+    {/* @ts-expect-error навмисно не передаємо value */}
+    <UnitContext><Label name="без value" /></UnitContext>
+    {/* @ts-expect-error навмисно називаємо проп неправильно */}
+    <UnitContext theme="F"><Label name="проп названо theme" /></UnitContext>
+  </>,
+)
+container.querySelectorAll('p').forEach((p) => console.log(p.textContent?.trim()))
+console.log('попереджень React:', spy.mock.calls.length, spy.mock.calls.map((call) => call[0]))
+```
 
 ```text
 value={undefined}:
@@ -182,8 +240,8 @@ value={undefined}:
 ]
 ```
 
-У всіх трьох випадках компонент отримав `undefined`, а не `C`. Попередження React надрукував один раз на три випадки,
-тому покладатися на нього не варто. Компілятор ловить відсутній `value` і ловить неправильну назву пропса.
+Після двокрапки в усіх трьох рядках порожньо: компонент отримав `undefined`, а не `C`, і React такого значення на
+екрані не показує. Попередження React надрукував один раз на три випадки, тому покладатися на нього не варто. Компілятор ловить відсутній `value` і ловить неправильну назву пропса.
 
 Лекція «TypeScript у React» уже показала прийом для випадку, коли розумного значення за замовчуванням немає: контекст
 створюють із `null`, а читають через власний хук, який кидає помилку, якщо провайдера немає. Значення `'C'` у нашому
@@ -210,6 +268,16 @@ function Thread({ note }: { note: Note }) {
     </>
   )
 }
+
+const question: Note = {
+  text: 'Дощ буде?',
+  replies: [
+    { text: 'Вранці так', replies: [{ text: 'Звідки дані?', replies: [] }] },
+    { text: 'Парасолю візьму', replies: [] },
+  ],
+}
+const { container } = render(<Thread note={question} />)
+container.querySelectorAll('p').forEach((p) => console.log(p.textContent))
 ```
 
 ```text
@@ -243,7 +311,7 @@ function AppInline() {
 }
 ```
 
-Виклик `hit` дописує одиницю до лічильника викликів. У справжньому компоненті так не пишуть, бо це порушує чистоту,
+Виклик `hit` дописує одиницю до лічильника викликів, а код лічильника стоїть у наступному розділі. У справжньому компоненті так не пишуть, бо це порушує чистоту,
 про яку йшлося в темі «Чистота й дерево», але для заміру нам потрібне саме число.
 
 Тепер видно, чому контекст не є **менеджером стану**, тобто інструментом, який сам зберігає дані й керує їхніми
@@ -278,7 +346,49 @@ AppInline (стан unit)
    └─ Footer
 ```
 
-Лише `Temperature` читає контекст. Тест клацає кнопку й рахує виклики після клацання:
+Лише `Temperature` читає контекст. Ось лічильник, компоненти цього дерева й помічна функція `clickOnce`. Вона показує
+застосунок, друкує лічильники, очищає їх, клацає кнопку й друкує лічильники знову:
+
+```tsx
+const calls = new Map<string, number>() // ім'я компонента й кількість його викликів
+
+function hit(name: string) {
+  calls.set(name, (calls.get(name) ?? 0) + 1)
+}
+function report() {
+  return [...calls].map(([name, count]) => `${name} ${count}`).join(' | ')
+}
+
+function Temperature() {
+  hit('Temperature')
+  const unit = useContext(UnitContext)
+  return <b>{formatTemperature(20, unit)}</b>
+}
+function Day() {
+  hit('Day')
+  return <li>Пн: <Temperature /></li>
+}
+function Forecast() {
+  hit('Forecast')
+  return <ul><Day /></ul>
+}
+function Footer() {
+  hit('Footer')
+  return <footer>Дані на сьогодні</footer>
+}
+
+function clickOnce(label: string, tree: ReactElement) {
+  calls.clear()
+  render(tree)
+  console.log(`${label} до клацання:`, report())
+  calls.clear() // далі рахуємо лише виклики, які спричинило клацання
+  fireEvent.click(screen.getByText('одиниця'))
+  console.log(`${label} після клацання:`, report(), '| на екрані:', screen.getByText(/°/).textContent)
+  cleanup() // прибирає застосунок із документа, щоб наступний показ почався з порожньої сторінки
+}
+
+clickOnce('A', <AppInline />)
+```
 
 ```text
 A до клацання: App 1 | Forecast 1 | Day 1 | Temperature 1 | Footer 1
@@ -323,6 +433,8 @@ function AppWrapped() {
     </UnitProvider>
   )
 }
+
+clickOnce('Б', <AppWrapped />)
 ```
 
 ```text
@@ -350,7 +462,25 @@ function AppWrapped() {
 зупиняючись на тих, кого React пропустив. Ось ще один замір, де `Forecast` обгорнуто в `memo`, тобто в функцію React,
 яка пропускає виклик компонента, коли пропси не змінилися. Докладно її вивчає тема «Мемоізація і React Compiler»:
 
+```tsx
+const MemoForecast = memo(Forecast) // MemoForecast не має пропсів, тому вони ніколи не змінюються
+
+function AppMemo() {
+  hit('App')
+  const [unit, setUnit] = useState<Unit>('C')
+  return (
+    <UnitContext value={unit}>
+      <button onClick={() => setUnit(unit === 'C' ? 'F' : 'C')}>одиниця</button>
+      <MemoForecast />
+    </UnitContext>
+  )
+}
+
+clickOnce('memo', <AppMemo />)
+```
+
 ```text
+memo до клацання: App 1 | Forecast 1 | Day 1 | Temperature 1
 memo після клацання: App 1 | Temperature 1 | на екрані: 68°F
 ```
 
@@ -363,8 +493,13 @@ memo після клацання: App 1 | Temperature 1 | на екрані: 68�
 
 Під `<StrictMode>`, який стоїть у файлі `spa/src/main.tsx` вашого проєкту, усі числа в режимі розробки подвоюються:
 
+```tsx
+clickOnce('Б у StrictMode,', <StrictMode><AppWrapped /></StrictMode>)
+```
+
 ```text
-Б у StrictMode, після клацання: UnitProvider 2 | Temperature 2
+Б у StrictMode, до клацання: App 2 | UnitProvider 2 | UnitSwitch 2 | Forecast 2 | Day 2 | Temperature 2 | Footer 2
+Б у StrictMode, після клацання: UnitProvider 2 | Temperature 2 | на екрані: 68°F
 ```
 
 Склад компонентів той самий. Тому, коли рахуєте виклики у своїй практиці, дивіться насамперед на те, хто взагалі
@@ -400,7 +535,30 @@ function NewObjectProvider({ children }: { children: ReactNode }) {
 варіанта, у якому об'єкт загорнуто в хук `useMemo`:
 
 ```tsx
-const value = useMemo(() => ({ unit, setUnit }), [unit])
+function MemoProvider({ children }: { children: ReactNode }) {
+  const [unit, setUnit] = useState<Unit>('C')
+  const [checks, setChecks] = useState(0)
+  const value = useMemo(() => ({ unit, setUnit }), [unit]) // той самий об'єкт, поки unit не змінився
+  return (
+    <UnitValueContext value={value}>
+      <button onClick={() => setChecks(checks + 1)}>перевірок: {checks}</button>
+      {children}
+    </UnitValueContext>
+  )
+}
+
+function clickTwice(label: string, tree: ReactElement) {
+  calls.clear()
+  render(tree)
+  const afterShow = calls.get('Reader')
+  fireEvent.click(screen.getByText(/перевірок/))
+  fireEvent.click(screen.getByText(/перевірок/))
+  console.log(`${label} | Reader після показу: ${afterShow} | після двох клацань: ${calls.get('Reader')}`)
+  cleanup()
+}
+
+clickTwice('новий об’єкт', <NewObjectProvider><Reader /></NewObjectProvider>)
+clickTwice('useMemo', <MemoProvider><Reader /></MemoProvider>)
 ```
 
 ```text
@@ -420,6 +578,7 @@ Compiler», а сьогодні досить знати, навіщо він т�
 Тепер про пастку дня. Покладемо в один контекст одиницю й мову інтерфейсу:
 
 ```tsx
+type Lang = 'uk' | 'en'
 type Settings = { unit: Unit; lang: Lang }
 const SettingsContext = createContext<Settings>({ unit: 'C', lang: 'uk' })
 
@@ -439,6 +598,53 @@ function Greeting() {
 Компонент `Greeting` бере лише мову, і запис із деструктуризацією виглядає так, ніби він підписаний лише на неї. Але
 кнопка міняє одиницю, а не мову, і заміри кажуть інше. Другий рядок виводу отримано з двома окремими контекстами,
 `UnitContext` і `LangContext`:
+
+```tsx
+function SettingsProvider({ children }: { children: ReactNode }) {
+  const [unit, setUnit] = useState<Unit>('C')
+  return (
+    <SettingsContext value={{ unit, lang: 'uk' }}>
+      <button onClick={() => setUnit('F')}>одиниця</button>
+      {children}
+    </SettingsContext>
+  )
+}
+
+const LangContext = createContext<Lang>('uk')
+
+function SplitTemperature() {
+  hit('Temperature')
+  const unit = useContext(UnitContext)
+  return <b>{formatTemperature(20, unit)}</b>
+}
+function SplitGreeting() {
+  hit('Greeting')
+  const lang = useContext(LangContext)
+  return <p>{lang === 'uk' ? 'Вітаємо' : 'Hello'}</p>
+}
+function SplitProvider({ children }: { children: ReactNode }) {
+  const [unit, setUnit] = useState<Unit>('C')
+  return (
+    <UnitContext value={unit}>
+      <LangContext value="uk">
+        <button onClick={() => setUnit('F')}>одиниця</button>
+        {children}
+      </LangContext>
+    </UnitContext>
+  )
+}
+
+function changeUnit(label: string, tree: ReactElement) {
+  render(tree)
+  calls.clear() // рахуємо лише виклики, які спричинила зміна одиниці
+  fireEvent.click(screen.getByText('одиниця'))
+  console.log(`${label} | після зміни одиниці:`, report(), '| на екрані:', screen.getByText(/°/).textContent)
+  cleanup()
+}
+
+changeUnit('один контекст', <SettingsProvider><Temperature /><Greeting /></SettingsProvider>)
+changeUnit('два контексти', <SplitProvider><SplitTemperature /><SplitGreeting /></SplitProvider>)
+```
 
 ```text
 один контекст | після зміни одиниці: Temperature 1 | Greeting 1 | на екрані: 68°F
@@ -579,11 +785,19 @@ function Header() {
 ```
 
 ```tsx
-<CartProvider>
-  <Header />
-  <AddButton />
-  <CartList />
-</CartProvider>
+render(
+  <CartProvider>
+    <Header />
+    <AddButton />
+    <CartList />
+  </CartProvider>,
+)
+console.log('показ:', report())
+fireEvent.click(screen.getByText('додати'))
+console.log('після «додати»:', report(), '|', screen.getByRole('list').textContent)
+fireEvent.click(screen.getByText('ще'))
+const badge = screen.getByText(/Позицій/).textContent
+console.log('після «ще»:', report(), '|', screen.getByRole('list').textContent, '|', badge)
 ```
 
 Лічильники тут ростуть від самого показу, без скидання, а слово «ще» в кінці тексту є написом кнопки:
@@ -607,6 +821,15 @@ function Header() {
 
 Перевірка в хуку теж працює. Компонент `Badge`, показаний без провайдера, кидає помилку з готовою підказкою:
 
+```tsx
+vi.spyOn(console, 'error').mockImplementation(() => {}) // React теж повідомляє про помилку, тут це зайве
+try {
+  render(<Badge />)
+} catch (error) {
+  console.log((error as Error).message)
+}
+```
+
 ```text
 useCart: компонент має бути всередині CartProvider
 ```
@@ -615,16 +838,63 @@ useCart: компонент має бути всередині CartProvider
 
 Сторінка `Scaling Up with Reducer and Context` наприкінці збирає контексти, редюсер, провайдер і хуки в один файл. У
 вашому проєкті такий файл не пройде лінт, якщо в ньому стоїть компонент. Лекція «Проєкт: Vite, лінт, TypeScript»
-пояснила, що файл із компонентами має експортувати лише компоненти, бо так працює гаряча заміна. Ось що сказав лінт на
-файлі, який експортує контекст, компонент-провайдер і хук:
+пояснила, що файл із компонентами має експортувати лише компоненти, бо так працює гаряча заміна. Ось файл
+`src/unit-all.tsx`, який експортує контекст, компонент-провайдер і хук:
+
+```tsx
+import { createContext, useContext, useState, type ReactNode } from 'react'
+
+export type Unit = 'C' | 'F'
+export const UnitContext = createContext<Unit>('C')
+
+export function UnitProvider({ children }: { children: ReactNode }) {
+  const [unit] = useState<Unit>('C')
+  return <UnitContext value={unit}>{children}</UnitContext>
+}
+
+export function useUnit() {
+  return useContext(UnitContext)
+}
+```
+
+Команда `npx eslint src/unit-all.tsx` друкує для нього дві помилки. На початку кожної стоїть номер рядка й номер
+символу, тому перша вказує на `UnitContext`, а друга вказує на `useUnit`. Над цими рядками лінт ще друкує повний шлях
+до файлу, тут його не показано:
 
 ```text
-4:14  error  Fast refresh only works when a file only exports components. Move your React context(s) to a separate file
-11:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components
+   4:14  error  Fast refresh only works when a file only exports components. Move your React context(s) to a separate file                      react-refresh/only-export-components
+  11:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+✖ 2 problems (2 errors, 0 warnings)
 ```
 
 Обидві помилки належать правилу `react-refresh/only-export-components`. Лінт перестає скаржитися, коли контекст і хук
-лежать у файлі `.ts`, а провайдер лежить в окремому файлі `.tsx`. На поведінку застосунку це не впливає, а гаряча
+лежать у файлі `.ts`, а провайдер лежить в окремому файлі `.tsx`:
+
+```ts
+// src/unit.ts: контекст і хук, компонентів тут немає
+import { createContext, useContext } from 'react'
+
+export type Unit = 'C' | 'F'
+export const UnitContext = createContext<Unit>('C')
+
+export function useUnit() {
+  return useContext(UnitContext)
+}
+```
+
+```tsx
+// src/UnitProvider.tsx: тут лежить лише компонент
+import { useState, type ReactNode } from 'react'
+import { UnitContext, type Unit } from './unit'
+
+export function UnitProvider({ children }: { children: ReactNode }) {
+  const [unit] = useState<Unit>('C')
+  return <UnitContext value={unit}>{children}</UnitContext>
+}
+```
+
+Команда `npx eslint src/unit.ts src/UnitProvider.tsx` на цих двох файлах не друкує нічого. На поведінку застосунку це не впливає, а гаряча
 заміна працює так, як вона має працювати.
 
 ## Спершу пропси
@@ -652,6 +922,9 @@ function CompositionApp({ unit }: { unit: Unit }) {
     </Page>
   )
 }
+
+const { container } = render(<CompositionApp unit="F" />)
+console.log(container.textContent) // заголовок і абзац стоять поруч, тому друкуються разом
 ```
 
 ```text
