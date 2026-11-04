@@ -4230,6 +4230,30 @@ RFC із wiki.php.net, документація Composer кожної мінор
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/php/README.md](instances/php/README.md).
 
+### mysql
+
+Документація сервера MySQL і драйверів для нього: довідник ліній 26.10, 9.7, 8.4, 8.0 і 5.7, Connector/J, Connector/NET,
+Connector/Python і Connector/ODBC, пакети npm `mysql2`, `mysql` і `@mysql/xdevapi`, документація `mysql2`, образ Docker.
+
+- порт `8952`; запис у Claude Code — `mysql-docs`, адреса `http://127.0.0.1:8952/mcp`; інструменти `search_docs` і `read_section`;
+- сайти MySQL не відповідають завантажувачу, тому посібники людина завантажує браузером, а примірник читає їх із локальних файлів;
+- умови Oracle забороняють поширювати цю документацію, тому корпус та індекс лишаються поза git, і сервер працює лише на цій машині;
+- не входять: окремі примітки до випусків, лінія 26.7, лінії старші за 5.7, довідник помилок, C API, Connector/C++;
+- приклад питання агентові: `./df mysql ask "What does SELECT ... FOR UPDATE lock in MySQL 8.4?"`;
+- докладніше — у [instances/mysql/README.md](instances/mysql/README.md).
+
+### mariadb
+
+Документація сервера MariaDB і драйверів для нього: сервер, примітки до випусків, конектори, Galera Cluster, MaxScale, ColumnStore
+й інструменти з репозиторію `mariadb-docs`, випуски `MariaDB/server`, пакет npm `mariadb`, образ Docker.
+
+- порт `8953`; запис у Claude Code — `mariadb-docs`, адреса `http://127.0.0.1:8953/mcp`; інструменти `search_docs` і `read_section`;
+- сайт існує одним поточним виданням, тому відмінності між версіями видно лише з приміток у тексті й приміток до випусків;
+- не входять: GridGain, MariaDB Cloud, Exa;
+- приклад питання агентові: `./df mariadb ask "What does wsrep_sync_wait do?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/mariadb/README.md](instances/mariadb/README.md).
+
 ### wordpress
 
 Документація WordPress: REST API, WP-CLI, редактор блоків і плагіни форм. Примірник містить увесь довідник коду (12 399 функцій,

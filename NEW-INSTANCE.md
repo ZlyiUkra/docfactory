@@ -770,6 +770,12 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   start it" to `docs/instance-topics.json`, then run `python3 tools/catalog.py`. The script writes nothing while a port, a
   server name or a collection repeats, or while an instance has no line. The top of the catalog names the next free port.
 
+- A site that answers 403 to the fetcher's client name is not worked around by changing the name. MySQL's sites do that, so a person
+  downloads the official offline files with a browser and the readers `mysql-info` and `mysql-pdf` read them from disk without network.
+  Info node names match the site's pages, so documents keep real addresses. When the terms forbid distribution, keep corpus and index
+  out of git. A heading parsed from a folded `description: >-` becomes the title `>-`: `title_from: "h1"` on `ghdocs` takes the first
+  heading instead. SQL statement names are recognised by `title_match` with a `title_names` of capital words.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1834,6 +1840,12 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Каталог примірників** (`docs/instances.md`): після збирання допишіть примірник із темою й рядком «коли піднімати» в
   `docs/instance-topics.json` і виконайте `python3 tools/catalog.py`. Скрипт нічого не запише, доки повторюється порт, назва
   сервера чи колекція або доки примірник не має рядка. Нагорі каталогу названо наступний вільний порт.
+
+- Сайт, що відповідає 403 на назву клієнта завантажувача, не обходять зміною назви. Так роблять сайти MySQL, тому людина завантажує
+  офіційні файли для читання без мережі браузером, а читачі `mysql-info` і `mysql-pdf` читають їх із диска. Імена вузлів Info збігаються
+  зі сторінками сайту, тож документи зберігають справжні адреси. Якщо умови забороняють поширення, корпус та індекс лишаються поза git.
+  Шапка зі згорнутим `description: >-` дає назву «>-»: поле `title_from: "h1"` у `ghdocs` бере перший заголовок. Назви інструкцій SQL
+  розпізнає `title_match`, якщо `title_names` описує їх великими літерами.
 
 ## З чого складається примірник
 
@@ -2942,6 +2954,13 @@ errada.
 - **O catálogo de instâncias** (`docs/instances.md`): depois de construir, acrescente a instância, com o tema e a linha «quando
   a iniciar», a `docs/instance-topics.json` e execute `python3 tools/catalog.py`. O script não escreve nada enquanto se repetir
   uma porta, um nome de servidor ou uma coleção, ou enquanto uma instância não tiver linha. O topo do catálogo indica a porta livre seguinte.
+
+- Um site que responde 403 ao nome do cliente do descarregador não se contorna mudando o nome. Os sites do MySQL fazem isso, por isso uma
+  pessoa descarrega no navegador os ficheiros oficiais para leitura offline, e os leitores `mysql-info` e `mysql-pdf` lêem-nos do disco, sem
+  rede. Os nomes dos nós Info coincidem com as páginas do site, e os documentos mantêm os endereços reais. Quando os termos proíbem a
+  distribuição, o corpus e o índice ficam fora do git. Um cabeçalho com `description: >-` dobrado dá o título «>-»: o campo
+  `title_from: "h1"` do `ghdocs` usa o primeiro título. Os nomes de instruções SQL são reconhecidos por `title_match` com um `title_names`
+  de palavras em maiúsculas.
 
 ## Anatomia de uma instância
 
