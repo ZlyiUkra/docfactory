@@ -57,7 +57,35 @@ function SplitShop() {
 }
 ```
 
-Тест клацає кнопку тричі й друкує обидва тексти:
+Перевірить цей код тест, тобто маленька програма, яка сама показує компонент, клацає й друкує результат. Компоненти й
+тест лежать в одному файлі `src/shop.test.tsx`. Команда `npx vitest run src/shop.test.tsx --disable-console-intercept`
+запускає цей файл, а прапорець у кінці просить Vitest одразу друкувати кожен рядок `console.log`. Тест клацає кнопку
+тричі й друкує обидва тексти:
+
+```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { useEffect, useState, type ReactNode } from 'react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { test } from 'vitest'
+
+// Функція показує магазин, тричі клацає кнопку й друкує текст значка й текст кнопки.
+function report(label: string, shop: ReactNode) {
+  render(shop)
+  const button = screen.getByRole('button')
+  for (let i = 0; i < 3; i++) fireEvent.click(button)
+  console.log(`${label} | ${screen.getByRole('paragraph').textContent} | ${button.textContent}`)
+  cleanup() // прибирає компонент із документа перед наступним дослідом
+}
+
+test('окремий стан', () => {
+  report('окремий стан', <SplitShop />)
+})
+```
+
+Кожен наступний дослід лежить у власному файлі. Файл починається з тих самих рядків імпорту й містить компоненти,
+оголошені раніше в лекції, а виклики стоять усередині `test(...)`, тому далі ми цих рядків не повторюємо. Ось що
+надрукував цей тест:
 
 ```text
 окремий стан | У кошику: 0 | Купити (взято 3)
@@ -97,6 +125,8 @@ function LiftedShop() {
   )
 }
 ```
+
+Тепер той самий тест показує новий компонент. Виклик `report('піднятий стан', <LiftedShop />)` друкує:
 
 ```text
 піднятий стан | У кошику: 3 | Купити (взято 3)
@@ -158,6 +188,14 @@ function CopyBadge({ count }: { count: number }) {
   const [shown] = useState(count)
   return <p>У кошику: {shown}</p>
 }
+
+// Батько такий самий, як LiftedShop, але значок тепер робить копію пропса.
+function CopyShop() {
+  const [count, setCount] = useState(0)
+  return <><CopyBadge count={count} /><LiftedCard count={count} onBuy={() => setCount(count + 1)} /></>
+}
+
+report('копія пропса у стані', <CopyShop />)
 ```
 
 ```text
@@ -178,6 +216,10 @@ function CopyBadge({ count }: { count: number }) {
 Чому не підняти одразу на самий верх? Додамо на сторінку підвал, якому кошик не потрібен, і порівняємо два варіанти:
 
 ```tsx
+function Shop({ count, onBuy }: { count: number; onBuy: () => void }) {
+  return <><LiftedBadge count={count} /><LiftedCard count={count} onBuy={onBuy} /></>
+}
+
 let footer = 0
 function Footer() { footer++; return <footer>Контакти</footer> }
 
@@ -191,6 +233,21 @@ function OwnShop() {
   return <Shop count={count} onBuy={() => setCount(count + 1)} />
 }
 function LowApp() { return <><OwnShop /><Footer /></> }
+```
+
+Тест показує кожен варіант, тричі клацає кнопку й друкує лічильник викликів `Footer`:
+
+```tsx
+function clickThrice(label: string, app: ReactNode) {
+  footer = 0 // кожен варіант рахує виклики з нуля
+  render(app)
+  for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button'))
+  console.log(`${label} | викликів Footer: ${footer} | ${screen.getByRole('paragraph').textContent}`)
+  cleanup()
+}
+
+clickThrice('стан у App', <HighApp />)
+clickThrice('стан у спільному батькові', <LowApp />)
 ```
 
 Після трьох клацань:
@@ -261,8 +318,26 @@ function Search() {
 ```
 
 Кожен варіант нижче вміє показувати щось різне за прапорцем `on`. Тест при `on={false}` набирає у поле «Шевченко»,
-перемикає на `on={true}`, повертає `on={false}` і друкує значення поля. Кожен рядок таблиці є справжнім виводом
-запуску.
+перемикає на `on={true}`, повертає `on={false}` і друкує значення поля. Ось цей тест для першого запису таблиці:
+
+```tsx
+function Banner() { return <p>Знижка</p> }
+
+// Лише тіло цієї функції змінюється від рядка до рядка таблиці.
+function Variant({ on }: { on: boolean }) {
+  return <div>{on ? <Search /> : <Search />}</div>
+}
+
+const { rerender } = render(<Variant on={false} />)
+fireEvent.change(screen.getByLabelText('Пошук'), { target: { value: 'Шевченко' } }) // людина набирає текст
+rerender(<Variant on={true} />)
+rerender(<Variant on={false} />)
+console.log(JSON.stringify((screen.getByLabelText('Пошук') as HTMLInputElement).value))
+cleanup()
+```
+
+Для кожного наступного рядка ми замінювали лише тіло `Variant` на запис із першої колонки. Тест друкує значення в лапках,
+і кожен рядок таблиці є справжнім виводом запуску.
 
 | Запис | Поле після двох перемикань |
 |-------|----------------------------|
@@ -319,6 +394,14 @@ function Page() {
   }
   return <><Search /><button onClick={() => setLikes(likes + 1)}>Вподобати: {likes}</button></>
 }
+
+render(<Page />)
+const shown = () => JSON.stringify((screen.getByLabelText('Пошук') as HTMLInputElement).value)
+fireEvent.change(screen.getByLabelText('Пошук'), { target: { value: 'Шевченко' } })
+console.log('після набору:', shown())
+fireEvent.click(screen.getByRole('button')) // клацання викликає Page, а не лише Search
+console.log('після «Вподобати»:', shown())
+cleanup()
 ```
 
 ```text
@@ -328,13 +411,19 @@ function Page() {
 
 Набір тексту працював, бо він викликав лише `Search`. Клацання викликало `Page`, а кожен виклик `Page` створює нову
 функцію `Search`. Функції порівнюються за посиланням, тому для React це інший тип на тій самій адресі. Такі помилки
-виглядають дуже дивно, бо поле губить текст через клацання по зовсім іншому елементу. Лінт проєкту тут допомагає:
+виглядають дуже дивно, бо поле губить текст через клацання по зовсім іншому елементу. Лінт проєкту тут допомагає. Файл
+`src/page.tsx` містить рядок `import { useState } from 'react'`, порожній рядок і компонент `Page`. Команда
+`npx eslint src/page.tsx` серед інших рядків друкує такі:
 
 ```text
-12:13  error  Error: Cannot create components during render
+  9:13  error  Error: Cannot create components during render
+
 Components created during render will reset their state each time they are created. Declare components outside of render.
-react-hooks/static-components
 ```
+
+Запис `9:13` означає рядок 9 і символ 13 файла, тобто місце, де стоїть `<Search />`. У кінці цього повідомлення ESLint
+називає правило `react-hooks/static-components`. Для вашого коду це означає просте: оголошуйте компонент на верхньому
+рівні файла.
 
 ## `key`: назвати екземпляр самому
 
@@ -344,6 +433,8 @@ react-hooks/static-components
 
 ```tsx
 type Book = { id: number; title: string }
+
+const BOOKS: Book[] = [{ id: 1, title: 'Кобзар' }, { id: 2, title: 'Лісова пісня' }]
 
 function ReviewForm({ book }: { book: Book }) {
   const [text, setText] = useState('')
@@ -365,6 +456,25 @@ function Shelf() {
 Тест запускає цей код двічі. Другого разу останній рядок розмітки має вигляд `<ReviewForm key={book.id} book={book}
 />`. Він набирає «Сильно» для «Кобзаря», клацає ту саму книжку, а потім іншу. У виводі `вузол` означає елемент
 `<textarea>` у документі:
+
+```tsx
+function run(label: string, shelf: ReactNode) {
+  render(shelf)
+  const node = screen.getByRole('textbox') // запам'ятовуємо вузол, щоб потім порівняти
+  fireEvent.change(node, { target: { value: 'Сильно' } })
+  for (const [what, title] of [['та сама книжка', 'Кобзар'], ['інша книжка', 'Лісова пісня']]) {
+    fireEvent.click(screen.getByText(title))
+    const now = screen.getByRole('textbox') as HTMLTextAreaElement
+    console.log(`${label} | ${what}: текст ${JSON.stringify(now.value)} | вузол той самий? ${now === node}`)
+  }
+  cleanup()
+}
+
+run('без key', <Shelf />)
+run('з key  ', <KeyedShelf />) // KeyedShelf є копією Shelf, де на ReviewForm стоїть key={book.id}
+```
+
+Запуск друкує:
 
 ```text
 без key | та сама книжка: текст "Сильно" | вузол той самий? true
@@ -403,8 +513,33 @@ function Plain({ rev }: { rev: boolean }) {
 }
 ```
 
-Тест набирає «Леся» в полі «Ім'я» і перемикає порядок. Варіант із ключами відрізняється записом `key="f"` на полі
-імені й `key="l"` на полі прізвища:
+Компонент `Field` є полем із власним станом. Тест набирає «Леся» в полі «Ім'я» і перемикає порядок. Варіант із ключами
+відрізняється записом `key="f"` на полі імені й `key="l"` на полі прізвища:
+
+```tsx
+function Field({ label }: { label: string }) {
+  const [value, setValue] = useState('')
+  return <label>{label}<input value={value} onChange={(e) => setValue(e.target.value)} /></label>
+}
+
+function Keyed({ rev }: { rev: boolean }) {
+  return rev
+    ? <div><Field key="l" label="Прізвище" /><Field key="f" label="Ім'я" /></div>
+    : <div><Field key="f" label="Ім'я" /><Field key="l" label="Прізвище" /></div>
+}
+
+function swap(label: string, View: (props: { rev: boolean }) => ReactNode) {
+  const { rerender } = render(<View rev={false} />)
+  fireEvent.change(screen.getByLabelText("Ім'я"), { target: { value: 'Леся' } })
+  rerender(<View rev={true} />) // поля міняються місцями
+  const read = (name: string) => JSON.stringify((screen.getByLabelText(name) as HTMLInputElement).value)
+  console.log(`${label} | Ім'я = ${read("Ім'я")} | Прізвище = ${read('Прізвище')}`)
+  cleanup()
+}
+
+swap('без ключів', Plain)
+swap('з ключами', Keyed)
+```
 
 ```text
 без ключів | Ім'я = "" | Прізвище = "Леся"
@@ -424,12 +559,51 @@ function Plain({ rev }: { rev: boolean }) {
 додали до форми компонент `Stars`, який у власному стані рахує зірочки оцінки. Тест набрав текст, двічі клацнув
 зірочки й перейшов до іншої книжки:
 
+```tsx
+function Stars() {
+  const [count, setCount] = useState(0)
+  return <button onClick={() => setCount(count + 1)}>Зірок: {count}</button>
+}
+
+function StarForm({ book }: { book: Book }) {
+  const [text, setText] = useState('')
+  return <label>Відгук на «{book.title}»<textarea value={text} onChange={(e) => setText(e.target.value)} /><Stars /></label>
+}
+
+// Параметр show каже, як саме показати форму для вказаної книжки.
+function rate(label: string, show: (book: Book) => ReactNode) {
+  const { rerender } = render(show(BOOKS[0]))
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Сильно' } })
+  fireEvent.click(screen.getByRole('button'))
+  fireEvent.click(screen.getByRole('button'))
+  rerender(show(BOOKS[1])) // перехід до іншої книжки
+  const text = (screen.getByRole('textbox') as HTMLTextAreaElement).value
+  console.log(`${label} | текст ${JSON.stringify(text)} | ${screen.getByRole('button').textContent}`)
+  cleanup()
+}
+
+rate('key на формі', (book) => <StarForm key={book.id} book={book} />)
+```
+
 ```text
 key на формі | текст "" | Зірок: 0
 ```
 
+Поле порожнє, а лічильник зірок знову дорівнює нулю, бо ключ знищив форму разом із вкладеним компонентом `Stars`. Отже,
+ключ на формі скидає й усі компоненти всередині неї, і вам не треба скидати їх окремо.
+
 **Вузли документа.** Елемент видалено, тому зникає все, що лежало в ньому самому: фокус клавіатури, виділений текст,
-позиція прокрутки, текст некерованого поля. Перевіримо фокус:
+позиція прокрутки, текст некерованого поля. Перевіримо фокус на формі `ReviewForm`:
+
+```tsx
+const { rerender } = render(<ReviewForm key={BOOKS[0].id} book={BOOKS[0]} />)
+const old = screen.getByRole('textbox')
+old.focus() // людина поставила курсор у поле
+console.log('до зміни ключа у фокусі:', document.activeElement!.tagName)
+rerender(<ReviewForm key={BOOKS[1].id} book={BOOKS[1]} />)
+console.log('після зміни ключа у фокусі:', document.activeElement!.tagName, '| старий вузол у документі?', document.contains(old))
+cleanup()
+```
 
 ```text
 до зміни ключа у фокусі: TEXTAREA
@@ -458,6 +632,20 @@ function EditTitle({ book }: { book: Book }) {
 
 Тест показує форму для «Кобзаря», а потім передає «Лісову пісню»:
 
+```tsx
+const title = () => (screen.getByLabelText('Назва') as HTMLInputElement).value
+
+const plain = render(<EditTitle book={BOOKS[0]} />)
+plain.rerender(<EditTitle book={BOOKS[1]} />)
+console.log('без key:', title())
+cleanup()
+
+const keyed = render(<EditTitle key={BOOKS[0].id} book={BOOKS[0]} />)
+keyed.rerender(<EditTitle key={BOOKS[1].id} book={BOOKS[1]} />)
+console.log('з key:', title())
+cleanup()
+```
+
 ```text
 без key: Кобзар
 з key: Лісова пісня
@@ -470,7 +658,24 @@ function EditTitle({ book }: { book: Book }) {
 
 ### Що вибрати ключем
 
-Ключем має бути те, що однозначно називає сутність. Це майже завжди її `id`. Дві книжки можуть мати однакову назву:
+Ключем має бути те, що однозначно називає сутність. Це майже завжди її `id`. Дві книжки можуть мати однакову назву.
+Тест показує форму `EditTitle` для двох таких книжок:
+
+```tsx
+const TWINS: Book[] = [{ id: 7, title: 'Кобзар' }, { id: 8, title: 'Кобзар' }]
+const title = () => (screen.getByLabelText('Назва') as HTMLInputElement).value
+
+function edit(label: string, keyOf: (book: Book) => string | number) {
+  const { rerender } = render(<EditTitle key={keyOf(TWINS[0])} book={TWINS[0]} />)
+  fireEvent.change(screen.getByLabelText('Назва'), { target: { value: 'Кобзар!!!' } })
+  rerender(<EditTitle key={keyOf(TWINS[1])} book={TWINS[1]} />) // перехід до другої книжки
+  console.log(`${label}: ${title()}`)
+  cleanup()
+}
+
+edit('key={book.title}, інша книжка з тією самою назвою', (book) => book.title)
+edit('key={book.id}, та сама інша книжка', (book) => book.id)
+```
 
 ```text
 key={book.title}, інша книжка з тією самою назвою: Кобзар!!!
@@ -481,7 +686,27 @@ key={book.id}, та сама інша книжка: Кобзар
 той самий, а з ключем-ідентифікатором поле почало спочатку.
 
 Ключ також має бути **сталим**, тобто однаковим для тієї самої сутності між рендерами. Випадковий ключ дає нову адресу
-при кожному рендері батька:
+при кожному рендері батька. У цьому досліді батько має окрему кнопку, яка лише викликає його рендер:
+
+```tsx
+function RandomKey() {
+  const [, setTick] = useState(0)
+  return (
+    <>
+      <button onClick={() => setTick((tick) => tick + 1)}>рендер батька</button>
+      <EditTitle key={Math.random()} book={BOOKS[0]} />
+    </>
+  )
+}
+
+render(<RandomKey />)
+const title = () => (screen.getByLabelText('Назва') as HTMLInputElement).value
+fireEvent.change(screen.getByLabelText('Назва'), { target: { value: 'Кобзар!' } })
+console.log('Math.random, набрали:', title())
+fireEvent.click(screen.getByRole('button'))
+console.log('Math.random, після рендеру батька:', title())
+cleanup()
+```
 
 ```text
 Math.random, набрали: Кобзар!
@@ -500,6 +725,14 @@ function EditTitle({ book }: { book: Book }) {
   const [title, setTitle] = useState(book.title)
   return <input key={book.id} aria-label="Назва" value={title} onChange={(e) => setTitle(e.target.value)} />
 }
+
+const { rerender } = render(<EditTitle book={BOOKS[0]} />)
+const before = screen.getByLabelText('Назва')
+fireEvent.change(before, { target: { value: 'Кобзар!!!' } })
+rerender(<EditTitle book={BOOKS[1]} />) // ключ на input змінюється, а EditTitle лишається тим самим екземпляром
+const after = screen.getByLabelText('Назва') as HTMLInputElement
+console.log(`key на input усередині: ${after.value} | вузол той самий? ${after === before}`)
+cleanup()
 ```
 
 ```text
@@ -538,6 +771,29 @@ function ByEffect({ book }: { book: Book }) {
 
 Набираємо «Так» і переходимо до іншої книжки. Поруч той самий компонент без ефекту, але з ключем:
 
+```tsx
+const log: string[] = []
+
+function ByKey({ book }: { book: Book }) {
+  const [text, setText] = useState('')
+  log.push(`рендер: «${book.title}», текст ${JSON.stringify(text)}`)
+  return <textarea value={text} onChange={(e) => setText(e.target.value)} />
+}
+
+function trace(label: string, show: (book: Book) => ReactNode) {
+  const { rerender } = render(show(BOOKS[0]))
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Так' } })
+  log.length = 0 // журнал збирає лише сам перехід до іншої книжки
+  rerender(show(BOOKS[1]))
+  console.log(label)
+  console.log(log.join('\n'))
+  cleanup()
+}
+
+trace('ефект', (book) => <ByEffect book={book} />)
+trace('key', (book) => <ByKey key={book.id} book={book} />)
+```
+
 ```text
 ефект
 рендер: «Лісова пісня», текст "Так"
@@ -556,6 +812,17 @@ key
 | скільки коду | ефект у кожному компоненті зі станом | один атрибут у батька |
 
 Різницю в тому, що саме скидається, варто побачити. Форма з тим самим компонентом `Stars`, але скинута ефектом, дає:
+
+```tsx
+function EffectForm({ book }: { book: Book }) {
+  const [text, setText] = useState('')
+  useEffect(() => { setText('') }, [book.id]) // ефект скидає лише text
+  return <label>Відгук на «{book.title}»<textarea value={text} onChange={(e) => setText(e.target.value)} /><Stars /></label>
+}
+
+rate('ефект у формі', (book) => <EffectForm book={book} />)
+rate('key на формі', (book) => <StarForm key={book.id} book={book} />)
+```
 
 ```text
 ефект у формі | текст "" | Зірок: 2
@@ -578,18 +845,85 @@ React зазвичай дає браузеру спершу намалювати
 виконати ефект до малювання. Є й третє речення: навіть тоді браузер може встигнути перемалювати екран, перш ніж React
 обробить оновлення стану з ефекту.
 
-jsdom нічого не малює, тому ми запустили збірку цього прикладу в Chrome 156 без вікна. Перед кожним кадром функція
+jsdom нічого не малює, тому ми запустили збірку цього прикладу в Chrome 157 без вікна. Перед кожним кадром функція
 `requestAnimationFrame` читала текст у документі. Ми шукали кадр, у якому книжка вже нова, а текст ще старий. Перехід
-ми запускали 60 разів клацанням, викликаним кодом через метод `click()`, і 60 разів викликом `set` із таймера.
+ми запускали 60 разів клацанням, викликаним кодом через метод `click()`, і 60 разів викликом `set` із таймера. Цей код
+стоїть у файлі `src/main.tsx` замість звичайного вмісту. Команда `npx vite build` збирає його, команда `npx vite preview`
+віддає збірку браузеру, а рядки `console.log` видно в консолі браузера:
 
-| Що викликало перехід | Спроб | Спроб, де знайшовся кадр зі старим текстом |
-|----------------------|-------|--------------------------------------------|
-| клацання | 60 | 0 |
-| таймер | 60 | 3 |
+```tsx
+import { useEffect, useState } from 'react'
+import { createRoot } from 'react-dom/client'
 
-Отже, після клацання старого тексту в цьому запуску на кадрах не було, а після таймера він іноді був. За документацією
-відповідь мережі потрапляє до тієї самої групи, що й таймер, бо її теж не викликала взаємодія людини, але її ми не
-запускали. Це один запуск на одній машині, а документація вживає слово «може», тому покладатися на відсутність кадру
+const TITLES = ['Кобзар', 'Лісова пісня']
+let typeText: (text: string) => void = () => {}
+let setBook: (index: number) => void = () => {}
+
+function ByEffect({ index }: { index: number }) {
+  const [text, setText] = useState('')
+  typeText = setText // дослід «набирає» текст напряму, бо людини тут немає
+  useEffect(() => { setText('') }, [index]) // скидання ефектом
+  return <textarea value={text} onChange={(e) => setText(e.target.value)} />
+}
+
+function Page() {
+  const [index, setIndex] = useState(0)
+  setBook = setIndex
+  return (
+    <>
+      <button onClick={() => setIndex(1 - index)}>інша книжка</button>
+      <h2>{TITLES[index]}</h2>
+      <ByEffect index={index} />
+    </>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(<Page />)
+
+const wait = (ms: number) => new Promise((done) => setTimeout(done, ms))
+
+async function attempt(cause: string) {
+  typeText('Так')
+  await wait(50)
+  const title = document.querySelector('h2')!
+  const box = document.querySelector('textarea')!
+  const oldTitle = title.textContent!
+  let found = false
+  let watching = true
+  function watch() { // ця функція виконується перед кожним кадром
+    if (title.textContent !== oldTitle && box.value === 'Так') found = true // книжка нова, а текст старий
+    if (watching) requestAnimationFrame(watch)
+  }
+  requestAnimationFrame(watch)
+  await wait(Math.random() * 16) // перехід стається у випадкову мить кадру
+  if (cause === 'клацання') document.querySelector('button')!.click()
+  else setBook(1 - TITLES.indexOf(oldTitle))
+  await wait(100)
+  watching = false
+  return found
+}
+
+await wait(100) // React встигає показати сторінку
+for (const cause of ['клацання', 'таймер']) {
+  let hits = 0
+  for (let i = 0; i < 60; i++) if (await attempt(cause)) hits++
+  console.log(`${cause} | спроб 60 | зі старим текстом ${hits}`)
+}
+```
+
+Ми запустили цей код тричі. Кожен запуск друкує по одному рядку на кожну причину, наприклад
+`таймер | спроб 60 | зі старим текстом 2`. Таблиця зводить ці рядки: у клітинках стоїть кількість спроб із 60, де
+знайшовся кадр зі старим текстом.
+
+| Що викликало перехід | Перший запуск | Другий запуск | Третій запуск |
+|----------------------|---------------|---------------|---------------|
+| клацання | 0 | 0 | 2 |
+| таймер | 2 | 3 | 4 |
+
+Отже, після таймера кадр зі старим текстом траплявся в кожному запуску, а після клацання лише в одному з трьох: це 9
+спроб зі 180 проти 2 зі 180. Клацання не гарантує відсутності кадру, і саме про це каже третє речення довідника. За
+документацією відповідь мережі потрапляє до тієї самої групи, що й таймер, бо її теж не викликала взаємодія людини, але її ми не
+запускали. Це три запуски на одній машині, а документація вживає слово «може», тому покладатися на відсутність кадру
 не можна. Незалежно від кадру лишаються зайвий рендер, рендер із чужими даними, запис старого тексту в документ і
 вкладений стан, який ефект не скинув.
 
@@ -602,6 +936,13 @@ jsdom нічого не малює, тому ми запустили збірк�
 переживає зникнення дитини:
 
 ```tsx
+const [A, B] = BOOKS
+
+// Форма без власного стану: текст і функцію його зміни дає батько.
+function Review({ book, draft, onDraft }: { book: Book; draft: string; onDraft: (text: string) => void }) {
+  return <label>Відгук на «{book.title}»<textarea value={draft} onChange={(e) => onDraft(e.target.value)} /></label>
+}
+
 function Shelf() {
   const [id, setId] = useState(A.id)
   const [drafts, setDrafts] = useState<Record<number, string>>({})
@@ -620,11 +961,28 @@ function Shelf() {
 Тут `Review` є керованим компонентом без власного стану. Людина набрала «Сильно» для першої книжки й «Ніжно» для
 другої, а потім перемикалася:
 
+```tsx
+render(<Shelf />)
+const box = () => screen.getByRole('textbox') as HTMLTextAreaElement
+fireEvent.change(box(), { target: { value: 'Сильно' } })
+fireEvent.click(screen.getByText('друга'))
+console.log('друга книжка:', JSON.stringify(box().value))
+fireEvent.change(box(), { target: { value: 'Ніжно' } })
+fireEvent.click(screen.getByText('перша'))
+console.log('знову перша:', JSON.stringify(box().value))
+fireEvent.click(screen.getByText('друга'))
+console.log('знову друга:', JSON.stringify(box().value))
+cleanup()
+```
+
 ```text
 друга книжка: ""
 знову перша: "Сильно"
 знову друга: "Ніжно"
 ```
+
+Друга книжка спершу показує порожнє поле, бо чернетки для неї ще немає. Обидва повернення показують набраний текст, бо
+чернетки лежать у батька, а ключ знищив лише форму. Отже, якщо чернетка має пережити перехід, тримайте її в батька.
 
 Запис `{ ...drafts, [book.id]: t }` замінює об'єкт новим, як пояснила лекція «Об'єкти й масиви в стані», а квадратні
 дужки дають назву поля з виразу.
@@ -743,8 +1101,8 @@ none`. Сторінка попереджає, що за великих прих�
 <details><summary>Відповідь</summary>
 
 Перша: рендерів два, і перший поєднує новий пропс зі старим станом та записує старий текст у документ. Друга: ефект
-скидає лише перелічене, а стан вкладених компонентів лишається. Третя: після переходу, викликаного не людиною,
-наприклад таймером, браузер може показати кадр зі старим текстом.
+скидає лише перелічене, а стан вкладених компонентів лишається. Третя: після переходу браузер може показати кадр зі
+старим текстом, і після таймера це траплялося частіше, ніж після клацання.
 
 </details>
 

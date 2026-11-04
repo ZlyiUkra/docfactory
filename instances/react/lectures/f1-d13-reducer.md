@@ -56,11 +56,41 @@ function Panel() {
     setWarning(null)
     // setMinutes(0) тут забуто
   }
-  // показує всі п'ять значень і три кнопки
+  return (
+    <>
+      <p>{program || 'немає'}, {degrees}°, {minutes} хв, {running ? 'пере' : 'стоїть'}{warning && `, ${warning}`}</p>
+      <button onClick={chooseCotton}>Бавовна</button>
+      <button onClick={start}>Старт</button>
+      <button onClick={stop}>Стоп</button>
+    </>
+  )
 }
 ```
 
-Тест клацає кнопки в такому порядку й друкує панель після кожного клацання:
+Тест клацає кнопки в такому порядку й друкує панель після кожного клацання. Компонент `Panel` і цей тест лежать в
+одному файлі, ім'я якого закінчується на `.test.tsx`. Команда `npx vitest run` запускає такий файл:
+
+```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { useState } from 'react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { test } from 'vitest'
+
+test('панель', () => {
+  const { container } = render(<Panel />)
+  const panel = () => container.querySelector('p')?.textContent // текст панелі, який зараз стоїть у документі
+  console.log('спочатку', panel())
+  for (const name of ['Старт', 'Бавовна', 'Старт', 'Стоп']) {
+    fireEvent.click(screen.getByText(name)) // клацання по кнопці з таким написом
+    console.log(name.padEnd(8), panel())
+  }
+  cleanup() // прибирає компонент із документа
+})
+```
+
+Решта прикладів із React у цій лекції лежать у таких самих файлах і починаються з тих самих рядків, тільки з `react`
+вони імпортують потрібний хук. Тому далі ми показуємо лише компонент і дії теста. Ось що надрукував цей тест:
 
 ```text
 спочатку немає, 0°, 0 хв, стоїть
@@ -184,7 +214,8 @@ function Panel() {
 }
 ```
 
-Той самий тест:
+Ми замінили в тому самому файлі старий компонент `Panel` новим і додали два імпорти: `import { useReducer } from
+'react'` та `import { IDLE, washerReducer } from './washer.ts'`. Сам тест не змінився, а надрукував він таке:
 
 ```text
 спочатку немає, 0°, 0 хв, стоїть
@@ -205,6 +236,8 @@ function Panel() {
 кожну подію в масив `steps`, а обробник надсилає дві дії:
 
 ```tsx
+const steps: string[] = [] // журнал, у який кожен учасник дописує рядок
+
 function reducer(n: number, action: { type: 'plus'; by: number }): number {
   steps.push(`редюсер: стан ${n}, дія ${action.by}`)
   return n + action.by
@@ -225,7 +258,15 @@ function Load() {
 }
 ```
 
-Після одного клацання:
+Тест показує компонент, очищує журнал і клацає кнопку один раз:
+
+```tsx
+render(<Load />)
+steps.length = 0 // перший показ теж дописав рядки, а нас цікавить лише клацання
+fireEvent.click(screen.getByRole('button'))
+console.log(steps.join('\n'))
+console.log(screen.getByRole('button').textContent) // напис на кнопці після клацання
+```
 
 ```text
 обробник: початок
@@ -261,13 +302,30 @@ function Load() {
 наступне значення потрібне просто в обробнику, довідник `useReducer` радить обчислити його самому: викликати
 `reducer(state, action)`. Це можливо лише тому, що редюсер є звичайною чистою функцією.
 
-**Функція `dispatch` одна на весь час життя компонента.** За три рендери ми отримали одну й ту саму функцію:
+**Функція `dispatch` одна на весь час життя компонента.** Перевіримо це на окремому компоненті. Він складає кожну
+отриману функцію в `Set`, тобто в колекцію, яка зберігає лише різні значення:
+
+```tsx
+const seen = new Set<unknown>()
+
+function Same() {
+  const [n, dispatch] = useReducer((x: number) => x + 1, 0)
+  seen.add(dispatch) // кожен рендер додає функцію, яку цього разу повернув useReducer
+  return <button onClick={() => dispatch()}>{n}</button>
+}
+
+render(<Same />) // перший рендер
+fireEvent.click(screen.getByRole('button')) // другий рендер
+fireEvent.click(screen.getByRole('button')) // третій рендер
+console.log('різних функцій dispatch за три рендери:', seen.size)
+```
 
 ```text
 різних функцій dispatch за три рендери: 1
 ```
 
-Довідник називає це сталою тотожністю. Це знадобиться в темах про ефекти й контекст, бо таку функцію можна передавати
+У колекції лежить одна функція, тому всі три рендери отримали те саме посилання. Довідник називає це сталою
+тотожністю. Це знадобиться в темах про ефекти й контекст, бо таку функцію можна передавати
 далі, і посилання не зміниться.
 
 Довідник каже, що дію передають у `dispatch` єдиним аргументом, тому всі дані кладуть у саму дію.
@@ -279,13 +337,34 @@ function Load() {
 лічить виклики на такому прикладі.
 
 Але те саме правило робить мутацію небезпечною. Редюсер нижче змінює наявний об'єкт і повертає його, а інша дія
-повертає копію. Тип `W` тут є об'єктом із полями `minutes` і `running`, а тип `A` містить дії `more` і `noop`:
+повертає копію. Компонент показує хвилини, яких спочатку 30, а тест клацає дві кнопки й після кожної друкує екран:
 
 ```tsx
+type W = { minutes: number; running: boolean }
+type A = { type: 'more' } | { type: 'noop' }
+
 function mutating(w: W, a: A): W {
   if (a.type === 'more') { w.minutes += 10; return w }
   return { ...w }
 }
+
+function Timer() {
+  const [w, dispatch] = useReducer(mutating, { minutes: 30, running: false })
+  return (
+    <>
+      <p>{w.minutes} хв</p>
+      <button onClick={() => dispatch({ type: 'more' })}>ще</button>
+      <button onClick={() => dispatch({ type: 'noop' })}>інше</button>
+    </>
+  )
+}
+
+render(<Timer />)
+const shown = () => screen.getByText(/хв/).textContent // що стоїть у документі
+fireEvent.click(screen.getByText('ще'))
+console.log('після «ще»:', shown())
+fireEvent.click(screen.getByText('інше'))
+console.log('після «інше»:', shown())
 ```
 
 ```text
@@ -293,8 +372,9 @@ function mutating(w: W, a: A): W {
 після «інше»: 40 хв
 ```
 
-Клацання «ще» не оновило екран, бо посилання те саме. Зміна стала видною лише після дії, яка створила копію. Це той
-самий ефект, що й у лекції «Об'єкти й масиви в стані», лише тепер помилка сидить у редюсері.
+Перший рядок показує 30, хоча в об'єкті вже лежить 40: клацання «ще» не оновило екран, бо посилання те саме. Другий
+рядок показує 40, бо дія `noop` створила копію. Це той самий ефект, що й у лекції «Об'єкти й масиви в стані», лише
+тепер помилка сидить у редюсері. Тому, коли дані змінилися, редюсер завжди має повертати новий об'єкт.
 
 ## Чому редюсер мусить бути чистим
 
@@ -307,18 +387,52 @@ function mutating(w: W, a: A): W {
 
 ### Лічильник усередині редюсера
 
-Припустимо, запису прання треба дати номер, і ви берете звичайну змінну-лічильник. Тип `S` тут є об'єктом зі списком
-записів `items`:
+Припустимо, запису прання треба дати номер, і ви берете звичайну змінну-лічильник. У коді нижче є два варіанти. У
+першому лічильник стоїть у редюсері, а в другому він стоїть в обробнику, і номер приїжджає в дії. Кожне клацання додає
+один запис, а кнопка показує номери всіх записів. Тест клацає тричі кожен варіант без `<StrictMode>` і з ним:
 
 ```tsx
-let nextId = 1
-function impure(s: S, a: A): S {
-  return { items: [...s.items, { id: nextId++, name: a.name }] }
-}
-```
+import { StrictMode, useReducer, type ReactNode } from 'react'
 
-Кожне клацання додає один запис. Ось номери після трьох клацань, а поруч та сама логіка, де лічильник стоїть в
-обробнику, а номер приїжджає в дії: `dispatch({ type: 'added', id: nextId++, name: 'x' })`.
+type Item = { id: number; name: string }
+type S = { items: Item[] }
+type A = { type: 'added'; name: string }
+
+let nextId = 1
+
+function impure(s: S, a: A): S {
+  return { items: [...s.items, { id: nextId++, name: a.name }] } // редюсер змінює змінну поза собою
+}
+
+function pure(s: S, a: A & { id: number }): S {
+  return { items: [...s.items, { id: a.id, name: a.name }] } // редюсер лише записує номер із дії
+}
+
+const numbers = (s: S) => s.items.map((item) => item.id).join()
+
+function InReducer() {
+  const [s, dispatch] = useReducer(impure, { items: [] })
+  return <button onClick={() => dispatch({ type: 'added', name: 'x' })}>{numbers(s)}</button>
+}
+
+function InHandler() {
+  const [s, dispatch] = useReducer(pure, { items: [] })
+  return <button onClick={() => dispatch({ type: 'added', id: nextId++, name: 'x' })}>{numbers(s)}</button>
+}
+
+function run(label: string, tree: ReactNode) {
+  nextId = 1 // кожен варіант починає лічити з одиниці
+  render(tree)
+  for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button'))
+  console.log(label, screen.getByRole('button').textContent)
+  cleanup()
+}
+
+run('лічильник у редюсері, без StrictMode:', <InReducer />)
+run('лічильник у редюсері, StrictMode:   ', <StrictMode><InReducer /></StrictMode>)
+run('лічильник в обробнику, без StrictMode:', <InHandler />)
+run('лічильник в обробнику, StrictMode:   ', <StrictMode><InHandler /></StrictMode>)
+```
 
 ```text
 лічильник у редюсері, без StrictMode: 1,2,3
@@ -342,22 +456,27 @@ function impure(s: S, a: A): S {
 | запит у мережу | в обробнику чи ефекті | лише його відповідь, коли вона прийшла |
 | запис у `localStorage` | в ефекті чи обробнику | нічого, бо запис не є частиною стану |
 
-Те, що час не можна читати в редюсері, легко перевірити. Функція `reduce` проганяє той самий журнал дій двічі:
+Те, що час не можна читати в редюсері, легко перевірити. Функція `reduce` проганяє той самий журнал дій двічі. Цей
+приклад не потребує React, тому його виконує сам Node командою `node clock.ts`. Як Node читає файл `.ts`, пояснено
+нижче:
 
 ```ts
+// файл clock.ts
 type T = { at: number }
 const r = (_state: T, _action: { type: 'pressed' }): T => ({ at: Date.now() })
 const log = [{ type: 'pressed' as const }]
 const first = log.reduce(r, { at: 0 })
-// минуло кілька мілісекунд
+await new Promise((done) => setTimeout(done, 5)) // чекаємо п'ять мілісекунд
 const second = log.reduce(r, { at: 0 })
+console.log('Date.now у редюсері, той самий журнал дав той самий стан?', first.at === second.at)
 ```
 
 ```text
 Date.now у редюсері, той самий журнал дав той самий стан? false
 ```
 
-Цей запис умисно використовує `reduce`, і зараз стане ясно чому.
+Журнал той самий, а час у стані різний, тому такий редюсер не є чистим. Отже, час читайте в обробнику й передавайте
+його в дії. Цей запис умисно використовує `reduce`, і зараз стане ясно чому.
 
 ### Звідки назва
 
@@ -375,27 +494,150 @@ Date.now у редюсері, той самий журнал дав той са�
 налаштуваннями шаблону Vite. Він, зокрема, вмикає `noFallthroughCasesInSwitch`, тобто заборону переходу між гілками
 `switch` без `return`.
 
+Перші чотири помилки лежать в одному файлі. Команда `node mistakes.ts` виконує його, не дивлячись на типи, тому ми
+бачимо, що редюсер робить під час роботи:
+
+```ts
+// файл src/mistakes.ts
+type W = { minutes: number; running: boolean }
+type A = { type: 'more' } | { type: 'start_pressed' }
+
+const START: W = { minutes: 30, running: false }
+const MORE: A = { type: 'more' }
+const PRESSED: A = { type: 'start_pressed' }
+
+// У return забуто ...w, тому поле running зникає.
+function noSpread(w: W, _a: A): W {
+  return { minutes: w.minutes + 10 }
+}
+
+// Гілка 'more' не має return, тому виконання переходить у наступну гілку.
+function noReturn(w: W, a: A): W {
+  switch (a.type) {
+    case 'more':
+      w = { ...w, minutes: w.minutes + 10 }
+    case 'start_pressed':
+      return { ...w, running: true }
+  }
+}
+
+// Немає default і немає гілки для дії 'start_pressed'.
+function noBranch(w: W, a: A): W {
+  switch (a.type) {
+    case 'more':
+      return { ...w, minutes: w.minutes + 10 }
+  }
+}
+
+// У назві дії пропущено літеру s.
+function typo(w: W, a: A): W {
+  switch (a.type) {
+    case 'start_presed':
+      return { ...w, running: true }
+    default:
+      return w
+  }
+}
+
+console.log('забуто ...w:', noSpread(START, MORE))
+console.log('case без return:', noReturn(START, MORE))
+console.log('немає гілки:', noBranch(START, PRESSED))
+console.log('помилка в назві:', typo(START, PRESSED))
+```
+
+```text
+забуто ...w: { minutes: 40 }
+case без return: { minutes: 40, running: true }
+немає гілки: undefined
+помилка в назві: { minutes: 30, running: false }
+```
+
+П'ята помилка не дає файлу навіть запуститися, тому вона лежить окремо, а команда цього разу `node redeclare.ts`:
+
+```ts
+// файл src/redeclare.ts
+function twice(n: number, a: { type: 'one' | 'two' }): number {
+  switch (a.type) {
+    case 'one':
+      const next = n + 1
+      return next
+    case 'two':
+      const next = n + 2
+      return next
+  }
+}
+
+console.log(twice(1, { type: 'one' }))
+```
+
+Node показує місце помилки, а під ним друкує такий рядок:
+
+```text
+SyntaxError: Identifier 'next' has already been declared
+```
+
+Тепер передамо обидва файли компілятору. Вони лежать у теці `src`, тому команда `npx tsc --noEmit -p
+tsconfig.app.json` їх перевіряє:
+
+```text
+src/mistakes.ts(11,3): error TS2741: Property 'running' is missing in type '{ minutes: number; }' but required in type 'W'.
+src/mistakes.ts(17,5): error TS7029: Fallthrough case in switch.
+src/mistakes.ts(25,32): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+src/mistakes.ts(35,10): error TS2678: Type '"start_presed"' is not comparable to type '"more" | "start_pressed"'.
+src/redeclare.ts(5,13): error TS2451: Cannot redeclare block-scoped variable 'next'.
+src/redeclare.ts(8,13): error TS2451: Cannot redeclare block-scoped variable 'next'.
+src/redeclare.ts(9,14): error TS2454: Variable 'next' is used before being assigned.
+```
+
+Рядок `TS2451` стоїть двічі, по разу на кожне з двох оголошень, а рядок `TS2454` є наслідком тієї самої помилки.
+Зведемо обидва запуски в таблицю:
+
 | Помилка в коді | Що під час роботи | Що каже `tsc` |
 |----------------|-------------------|----------------|
-| у `return` забуто `...w` | поле зникло: `40 хв, running = undefined` | `TS2741: Property 'running' is missing` |
+| у `return` забуто `...w` | поле зникло: `{ minutes: 40 }` | `TS2741: Property 'running' is missing` |
 | `case` без `return` | виконується код наступної гілки | `TS7029: Fallthrough case in switch` |
 | немає `default` і не всі дії мають гілку | редюсер повертає `undefined` | `TS2366: Function lacks ending return statement` |
 | помилка в назві `'start_presed'` | гілка ніколи не спрацює | `TS2678`: тип не можна порівняти |
 | дві `const next` у `case` без дужок | `SyntaxError`, файл не виконується | `TS2451: Cannot redeclare block-scoped variable` |
 
-Останній рядок пояснює фігурні дужки в кожному `case`. Без дужок усі гілки `switch` ділять один блок, тому однакове
-ім'я конфліктує. Сторінка радить ставити дужки в кожному `case`.
+Перші чотири помилки під час роботи не кажуть нічого, а лише дають хибний стан, тому `tsc` треба запускати, а не
+чекати на повідомлення в консолі. Останній рядок пояснює фігурні дужки в кожному `case`. Без дужок усі гілки `switch`
+ділять один блок, тому однакове ім'я конфліктує. Сторінка радить ставити дужки в кожному `case`.
 
-Коли редюсер без типів отримує дію, якої не знає, він повертає `undefined`, і стан зникає цілком. Ось компонент читає
-поле з такого стану:
+Коли редюсер без типів отримує дію, якої не знає, він повертає `undefined`, і стан зникає цілком. Цей приклад навмисно
+написано на JavaScript у файлі `.test.jsx`, бо TypeScript такий редюсер не пропустив би. Компонент читає поле зі
+стану:
+
+```js
+function untyped(w, a) {
+  switch (a.type) {
+    case 'more':
+      return { minutes: w.minutes + 10 }
+  } // для будь-якої іншої дії функція нічого не повертає, тобто повертає undefined
+}
+
+function Odd() {
+  const [w, dispatch] = useReducer(untyped, { minutes: 30 })
+  return <button onClick={() => dispatch({ type: 'less' })}>{w.minutes} хв</button>
+}
+
+render(<Odd />)
+try {
+  fireEvent.click(screen.getByRole('button'))
+} catch (error) {
+  console.log('невідомий type:', error.message) // у тесті помилка рендеру долітає сюди
+}
+```
 
 ```text
 невідомий type: Cannot read properties of undefined (reading 'minutes')
 ```
 
-Довідник `useReducer` для такого випадку радить кидати помилку наприкінці функції: тоді повідомлення назве дію, а не
-поле, яке випадково виявилось першим. У TypeScript цю роботу виконує перевірка повноти, а для даних, які типи не
-контролюють, наприклад дії з мережі, кинути помилку все одно корисно.
+Рендер після дії отримав стан `undefined`, а вираз `w.minutes` спробував прочитати з нього поле. Повідомлення називає
+поле, хоча справжня причина лежить у редюсері. Довідник `useReducer` для такого випадку радить кидати помилку
+наприкінці функції: тоді повідомлення назве дію, а не поле, яке випадково виявилось першим. У TypeScript цю роботу
+виконує перевірка повноти, а для даних, які типи не контролюють, наприклад дії з мережі, кинути помилку все одно
+корисно.
 
 Такий самий перелік чекає в обробнику. Лекція «TypeScript у React» показала, які помилки дає виклик `dispatch` із
 неіснуючою дією чи без потрібного поля. Перевірку `@ts-expect-error` у вашій заготовці вона теж пояснює: коментар
@@ -409,6 +651,12 @@ Date.now у редюсері, той самий журнал дав той са�
 function Loop() {
   const [n, dispatch] = useReducer((x: number) => x + 1, 0)
   return <button onClick={dispatch()}>{n}</button>
+}
+
+try {
+  render(<Loop />)
+} catch (error) {
+  console.log((error as Error).message) // React зупиняє петлю й кидає помилку
 }
 ```
 
@@ -425,7 +673,7 @@ Too many re-renders. React limits the number of renders to prevent an infinite l
 
 ```ts
 // файл check.ts
-import { IDLE, washerReducer } from '../lec/washer.ts'
+import { IDLE, washerReducer } from './washer.ts'
 
 const chosen = washerReducer(IDLE, { type: 'program_chosen', program: 'Бавовна', degrees: 60, minutes: 90 })
 console.assert(chosen.minutes === 90, 'програма задала хвилини')
@@ -438,9 +686,19 @@ console.log('кінець файла')
 ```
 
 Команда `node check.ts` виконує цей файл. Ми запустили її окремим процесом, як це робить тест `checks.test.ts` у
-практиці, і надрукували те, що повернув запуск. **Потоком** називають канал, куди програма пише текст: `stdout` для
-звичайного виводу, `stderr` для помилок. У терміналі вони виглядають як один текст, але програма може читати їх
-окремо. Поле `status` є **кодом завершення**, тобто числом, яке програма повертає системі:
+практиці, і надрукували те, що повернув запуск:
+
+```ts
+// файл run-check.ts лежить поруч, а запускає його команда node run-check.ts
+import { spawnSync } from 'node:child_process'
+
+const { status, stdout, stderr } = spawnSync('node', ['check.ts'], { encoding: 'utf8' })
+console.log({ status, stdout, stderr })
+```
+
+**Потоком** називають канал, куди програма пише текст: `stdout` для звичайного виводу, `stderr` для помилок. У
+терміналі вони виглядають як один текст, але програма може читати їх окремо. Поле `status` є **кодом завершення**,
+тобто числом, яке програма повертає системі. Функція `spawnSync` читає ці потоки окремо, тому вивід такий:
 
 ```text
 {
@@ -529,19 +787,55 @@ console.log(n, typeof n)
 два записи на компоненті, який показали й двічі клацнули:
 
 ```tsx
-useReducer(r, make(start))          // другий аргумент є результатом виклику
-useReducer(r, start, make)          // третій аргумент є самою функцією
+import { StrictMode, useReducer, type ReactNode } from 'react'
+
+let renders = 0
+let calls = 0
+const start = 5
+
+function make(n: number) {
+  calls++ // рахуємо, скільки разів React виконав обчислення
+  return n * 2
+}
+const r = (n: number) => n + 1
+
+function Second() {
+  renders++
+  const [n, dispatch] = useReducer(r, make(start)) // другий аргумент є результатом виклику
+  return <button onClick={() => dispatch()}>{n}</button>
+}
+
+function Third() {
+  renders++
+  const [n, dispatch] = useReducer(r, start, make) // третій аргумент є самою функцією
+  return <button onClick={() => dispatch()}>{n}</button>
+}
+
+function run(label: string, tree: ReactNode) {
+  renders = 0
+  calls = 0
+  render(tree)
+  fireEvent.click(screen.getByRole('button'))
+  fireEvent.click(screen.getByRole('button'))
+  console.log(`${label}: рендерів ${renders}, викликів ${calls} | на кнопці ${screen.getByRole('button').textContent}`)
+  cleanup()
+}
+
+run('make(start) другим аргументом', <Second />)
+run('make третім аргументом', <Third />)
+run('make третім аргументом у StrictMode', <StrictMode><Third /></StrictMode>)
 ```
 
 ```text
 make(start) другим аргументом: рендерів 3, викликів 3 | на кнопці 12
 make третім аргументом: рендерів 3, викликів 1 | на кнопці 12
-make третім аргументом у StrictMode: викликів 2
+make третім аргументом у StrictMode: рендерів 6, викликів 2 | на кнопці 12
 ```
 
 У першому записі `make` виконується на кожному рендері, а результат React відкидає. Це те саме, що лекція «Об'єкти й
 масиви в стані» показувала для ініціалізатора `useState`. Різниця лише в тому, що редюсер отримує аргумент окремо:
-React викликає `make(start)` сам. Під `<StrictMode>` така функція виконується двічі, тому вона теж мусить бути чистою.
+React викликає `make(start)` сам. Під `<StrictMode>` така функція виконується двічі, а тіло компонента теж виконується
+двічі, звідси шість рендерів. Тому функція `make` теж мусить бути чистою.
 У вашій практиці `INITIAL` є готовою константою, тому третій аргумент не потрібен.
 
 ## `useState` чи `useReducer`
