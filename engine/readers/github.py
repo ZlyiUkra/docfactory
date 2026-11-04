@@ -40,6 +40,7 @@
 
 import collections
 import json
+import hashlib
 import re
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -117,6 +118,10 @@ def ghdocs(source: dict, ctx) -> list[Item]:
         # розходилося з тим самим документом живого сайту, і незмінний текст не зливався.
         stem = re.sub(r"(^|/)index$", "", rel.removesuffix(".md")) or "index"
         name = _markup.slug(_POSITION.sub(r"\1", stem))
+        # Глибокі шляхи mariadb-docs дають ім'я, довше за межу файлової системи (255 байтів), і
+        # запис падав. Хеш шляху лишає ім'я сталим; коротші імена не змінюються.
+        if len(name.encode()) > 200:
+            name = f"{name.encode()[:180].decode(errors='ignore')}-{hashlib.sha1(path.encode()).hexdigest()[:8]}"
 
         def make(raw=raw, blob=blob, leaf=path.rsplit("/", 1)[-1]):
             text = ctx.text(raw)
@@ -127,8 +132,11 @@ def ghdocs(source: dict, ctx) -> list[Item]:
             # фактом історії: розділ переїхав. Її текст — куди саме.
             if meta.get("layout") == "redirect" and meta.get("dest_url"):
                 body = body or f"This page redirects to {meta['dest_url']}."
-            title = _markup.title_of(meta, blob) if meta else ""
-            if not title and source.get("title_from") == "heading":
+            # `title_from: "h1"` — назва завжди з першого заголовка: шапка mariadb-docs має лише
+            # згорнутий `description: >-`, і назвою документа ставало «>-».
+            first = source.get("title_from") == "h1"
+            title = _markup.title_of(meta, blob) if meta and not first else ""
+            if not title and source.get("title_from") in ("heading", "h1"):
                 # README і нотатки без шапки YAML: назва — перший заголовок «# …»,
                 # а без нього — шлях файла в репозиторії.
                 h1 = re.search(r"^#\s+(.+?)\s*#*\s*$", rest, re.M)

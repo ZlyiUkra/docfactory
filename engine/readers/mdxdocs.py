@@ -115,6 +115,10 @@ def ghdocs_mdx(source: dict, ctx) -> list[Item]:
             meta, rest = _markup.front_matter(text)
             body = _markup.markdown_body(_plain_mdx(rest))
             title = _markup.title_of(meta, blob) if meta else ""
+            if not title and source.get("title_from") == "heading":
+                # Сторінка без шапки YAML: назва — перший заголовок «# …» (сайт mysql2).
+                h1 = re.search(r"^#\s+(.+?)\s*#*\s*$", rest, re.M)
+                title = _markup._inline(h1.group(1)).strip() if h1 else ""
             _markup.require(title, body, raw, min_chars=1)
             return _markup.document(title, blob, ctx.stamp, body, source.get("version", ""))
 
