@@ -56,6 +56,29 @@ components». Функція повертає опис розмітки. Якщ�
 **Коміт** є записом у документ. React порівнює новий опис із попереднім і змінює в DOM лише те, що відрізняється. При
 першому показі він створює всі вузли й додає їх у документ.
 
+Приклади цієї лекції можна запустити самому. Кожен приклад лежить у власному файлі, ім'я якого закінчується на
+`.test.tsx`. Кожен такий файл починається з тих самих рядків, а сам приклад стоїть усередині виклику `test`:
+
+```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { StrictMode, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { test, vi } from 'vitest'
+
+test('приклад', async () => {
+  const user = userEvent.setup() // цей об'єкт клацає й набирає текст замість людини
+  // сюди вставляємо код прикладу
+})
+```
+
+Далі ми цих рядків не повторюємо. Команда `npx vitest run <файл> --disable-console-intercept --reporter=dot` запускає
+файл і друкує рядки `console.log` без службових заголовків. У блоках виводу стоять лише ці рядки, а підсумок Vitest ми
+не показуємо.
+
 Запуск і рендер не відбуваються одночасно. Ось що видно при першому показі, якщо викликати React без допоміжних
 функцій Testing Library:
 
@@ -80,8 +103,9 @@ React викликав Hello
 ```
 
 Виклик `root.render` є запуском. Він лише поставив завдання, а саму роботу React виконав пізніше. Перший рядок
-прикладу вимикає режим тестів React. Без нього React друкував би попередження, що оновлення відбулося поза обгорткою
-`act`.
+прикладу вимикає режим тестів React. Цей рядок потрібен, якщо Vitest запущено з параметром `--globals`: тоді без нього
+React друкує попередження, що оновлення відбулося поза обгорткою `act`. Без цього параметра Testing Library режим
+тестів не вмикає, і попередження не з'являється навіть без першого рядка.
 
 ### Усі три кроки на одному компоненті
 
@@ -171,9 +195,39 @@ console.log('те саме поле?', input === screen.getByLabelText('поба
 Commit` пояснює це так: поле стоїть у тому самому місці JSX, що й минулого разу, тому React його не чіпає. Це поле
 некероване, тобто текст тримає сам браузер.
 
-Є одне уточнення, яке помітно лише інструментом. Ми стежили за текстами й складом вузлів. Якщо стежити ще й за
-атрибутами, jsdom покаже, що на кожному рендері React ненадовго ставить на полі атрибут `name` і прибирає його.
-Значення поля це не зачіпає, і після коміту поле таке саме.
+Є одне уточнення, яке помітно лише інструментом. Досі спостерігач стежив за текстами й складом вузлів. Тепер він
+стежитиме лише за атрибутами, а компонент `Order` лишається тим самим:
+
+```tsx
+const { container } = render(<Order />)
+const input = screen.getByLabelText<HTMLInputElement>('побажання')
+await user.type(input, 'без цукру')
+const observer = new MutationObserver(() => {})
+observer.observe(container, { subtree: true, attributes: true, attributeOldValue: true })
+fireEvent.click(screen.getByRole('button', { name: 'Рендер без змін' }))
+for (const record of observer.takeRecords()) {
+  // oldValue є значенням атрибута перед цією зміною, а null означає, що атрибута не було
+  console.log((record.target as Element).tagName, record.attributeName, 'було:', JSON.stringify(record.oldValue))
+}
+console.log('у полі:', input.value, '| код поля:', input.outerHTML)
+```
+
+```text
+  рендер Order: cups = 1 | у документі зараз: undefined
+  рендер Receipt, cups = 1
+  рендер Footer
+  рендер Order: cups = 1 | у документі зараз: Чашок: 1
+  рендер Receipt, cups = 1
+  рендер Footer
+INPUT name було: null
+INPUT name було: ""
+у полі: без цукру | код поля: <input aria-label="побажання">
+```
+
+Перші шість рядків друкує сам компонент під час двох рендерів. Рядок із `null` означає, що атрибута `name` не було, і
+React його поставив. Рядок із порожніми лапками означає, що атрибут мав порожнє значення, і React його прибрав. Останній
+рядок показує, що набраний текст лишився, а атрибута `name` на полі немає. Отже, під час рендеру без змін React
+ненадовго ставить цей атрибут і прибирає його. Ваш код не повинен на це зважати, бо значення поля це не зачіпає.
 
 ### Що означає слово «рендер»
 
@@ -340,9 +394,53 @@ console.log('після клацання: батько', parents, '| дитин�
 після клацання: батько 2 | дитина 2
 ```
 
-Одне клацання змінило стан у двох різних компонентах, а рендер був один на обох. Наступна таблиця показує межі цього
-правила. Кожен рядок ми запустили в jsdom через Testing Library, а в браузері не запускали. Її обгортка `act` змушує
-React завершити роботу відразу після події:
+Одне клацання змінило стан у двох різних компонентах, а рендер був один на обох. Наступний дослід показує межі цього
+правила. Кожна кнопка компонента `Batch` викликає `set` по-своєму, а функція `count` виконує дію й друкує, скільки разів
+React викликав компонент. Кожен рядок ми запустили в jsdom через Testing Library, а в браузері не запускали. Її обгортка
+`act` змушує React завершити роботу відразу після події:
+
+```tsx
+let renders = 0
+function Batch() {
+  renders = renders + 1 // кожен виклик компонента додає одиницю
+  const [a, setA] = useState(0)
+  const [b, setB] = useState(0)
+  const tick = () => new Promise((resolve) => setTimeout(resolve))
+  return (
+    <>
+      <button onClick={() => { setA(a + 1); setB(b + 1) }}>обробник</button>
+      <button onClick={() => { setTimeout(() => { setA(a + 1); setB(b + 1) }) }}>таймер</button>
+      <button onClick={async () => { setA(a + 1); await Promise.resolve(); setB(b + 1) }}>await проміса</button>
+      <button onClick={async () => { setA(a + 1); await tick(); setB(b + 1) }}>await таймера</button>
+      <button onClick={() => setA((n) => n + 1)}>один set</button>
+    </>
+  )
+}
+async function count(name: string, action: () => Promise<void>) {
+  const before = renders
+  await action()
+  await new Promise((resolve) => setTimeout(resolve, 50)) // чекаємо, поки спрацюють таймери кнопок
+  console.log(name, '| рендерів:', renders - before)
+}
+const button = (name: string) => screen.getByRole('button', { name })
+
+render(<Batch />)
+await count('два set в обробнику', () => user.click(button('обробник')))
+await count('два set у setTimeout', () => user.click(button('таймер')))
+await count('set, await проміса, set', () => user.click(button('await проміса')))
+await count('set, await таймера, set', () => user.click(button('await таймера')))
+await count('подвійне клацання', () => user.dblClick(button('один set')))
+```
+
+```text
+два set в обробнику | рендерів: 1
+два set у setTimeout | рендерів: 1
+set, await проміса, set | рендерів: 2
+set, await таймера, set | рендерів: 2
+подвійне клацання | рендерів: 2
+```
+
+Таблиця пояснює, звідки взялося кожне число. Обидва варіанти з `await` стоять у ній одним рядком:
 
 | Що зроблено | Рендерів | Чому |
 |-------------|----------|------|
@@ -352,7 +450,8 @@ React завершити роботу відразу після події:
 | подвійне клацання, по одному `set` на клацання | 2 | кожна подія обробляється окремо |
 
 Останній рядок сторінка пояснює так: React не об'єднує оновлення з різних навмисних подій, наприклад клацань. Якщо
-перше клацання вимкнуло кнопку форми, друге вже не надішле її вдруге.
+перше клацання вимкнуло кнопку форми, друге вже не надішле її вдруге. Для вашого коду рядок з `await` означає таке:
+якщо обробник викликає `set` і до, і після `await`, між цими викликами React покаже проміжний стан.
 
 ### Що лежить у черзі
 
@@ -475,8 +574,52 @@ await user.click(screen.getByRole('button'))
 
 Висновок з цього простий: не робіть в оновлювачі нічого, що залежить від моменту виклику. Сторінка вимагає, щоб
 оновлювач був чистим і лише повертав результат. У `StrictMode`, тобто в перевірному режимі розробки, React викликає
-кожен оновлювач двічі й один результат відкидає. У нашому запуску кожен оновлювач у цьому режимі виконався двічі. Якщо
-оновлювач чистий, ви цього не помітите.
+кожен оновлювач двічі й один результат відкидає. Перевіримо це на тому самому компоненті `Till`. Змінилося лише те, що
+компонент тепер показано всередині `StrictMode`, а наприкінці друкується текст кнопки:
+
+```tsx
+render(<StrictMode><Till /></StrictMode>)
+console.log('--- перше клацання')
+await user.click(screen.getByRole('button'))
+console.log('--- друге клацання')
+await user.click(screen.getByRole('button'))
+console.log(screen.getByRole('button').textContent)
+```
+
+```text
+рендер: початок
+рендер: cups = 0
+рендер: початок
+рендер: cups = 0
+--- перше клацання
+обробник: початок
+  перший оновлювач, c = 0
+обробник: кінець
+рендер: початок
+  перший оновлювач, c = 0
+  другий оновлювач, c = 1
+  другий оновлювач, c = 1
+рендер: cups = 2
+рендер: початок
+рендер: cups = 2
+--- друге клацання
+обробник: початок
+обробник: кінець
+рендер: початок
+  перший оновлювач, c = 2
+  перший оновлювач, c = 2
+  другий оновлювач, c = 3
+  другий оновлювач, c = 3
+рендер: cups = 4
+рендер: початок
+рендер: cups = 4
+Чашок: 4
+```
+
+Кожен рендер тепер видно двічі, бо в цьому режимі React двічі викликає й сам компонент. Після другого клацання кожен
+оновлювач надрукував свій рядок двічі з тим самим `c`. Після першого клацання перший оновлювач теж надрукував двічі:
+один раз усередині виклику `set`, як у попередньому досліді, і один раз під час рендеру. Кнопка показує 4, тобто
+результат такий самий, як без `StrictMode`. Якщо оновлювач чистий, ви цього не помітите.
 
 ### Коли стан не змінюється
 
@@ -520,13 +663,68 @@ React ще раз викликає компонент, а вже потім пр
 
 Функція `set` вважає будь-яку функцію оновлювачем. Звідси випливають дві помилки, і обидві ми перевірили запуском.
 
-**Оновлювач без `return`.** Запис `setCups((c) => { c + 1 })` має фігурні дужки, тому нічого не повертає. Стан стає
-`undefined`, а на екрані лишається «Чашок: » без числа. `tsc` це ловить: `TS2345`, тип `(c: number) => void` не
-підходить.
+**Оновлювач без `return`.** Запис `setCups((c) => { c + 1 })` має фігурні дужки, тому нічого не повертає:
+
+```tsx
+function Forgot() {
+  const [cups, setCups] = useState(1)
+  return <button onClick={() => setCups((c) => { c + 1 })}>Чашок: {cups}</button>
+}
+
+render(<Forgot />)
+await user.click(screen.getByRole('button'))
+console.log('на кнопці:', JSON.stringify(screen.getByRole('button').textContent))
+```
+
+```text
+на кнопці: "Чашок: "
+```
+
+Стан став `undefined`, тому на кнопці лишився текст без числа. Запуск не друкує помилки, тому таку пастку легко
+пропустити. `tsc` її ловить: `TS2345`, тип `(c: number) => void` не підходить. Повний вивід компілятора стоїть у розділі
+«Хто яку помилку ловить».
 
 **Функція як значення.** Якщо ви хочете зберегти в стані саму функцію, запис `setHandler(other)` не спрацює: React
 викличе `other` і запише результат. Так само поводиться `useState(other)` при першому показі. Довідник радить
-дописувати стрілку: `setHandler(() => other)`.
+дописувати стрілку: `setHandler(() => other)`. Ось усі три випадки на одному компоненті:
+
+```tsx
+function basic() {
+  console.log('React викликав basic')
+  return 100
+}
+function premium() {
+  console.log('React викликав premium')
+  return 200
+}
+function Plan() {
+  const [rule, setRule] = useState<() => number>(basic)
+  console.log('у стані лежить:', typeof rule, rule)
+  return (
+    <>
+      <button onClick={() => setRule(premium)}>без стрілки</button>
+      <button onClick={() => setRule(() => premium)}>зі стрілкою</button>
+    </>
+  )
+}
+
+render(<Plan />)
+await user.click(screen.getByRole('button', { name: 'без стрілки' }))
+await user.click(screen.getByRole('button', { name: 'зі стрілкою' }))
+```
+
+```text
+React викликав basic
+у стані лежить: number 100
+React викликав premium
+у стані лежить: number 200
+у стані лежить: function [Function: premium]
+```
+
+Перші два рядки стосуються першого показу: `useState(basic)` викликав функцію, і в стані опинилося число 100. Наступні
+два рядки дало клацання «без стрілки»: React викликав `premium` і записав число 200. Останній рядок дало клацання «зі
+стрілкою»: React викликав стрілку, вона повернула `premium`, і в стані лежить сама функція. Отже, коли стан має
+зберігати функцію, завжди дописуйте стрілку.
 
 ### Чи завжди потрібен оновлювач
 
@@ -584,20 +782,91 @@ console.log(screen.getByRole('button').textContent)
 пересувала час. Це описано на сторінці `user-event: Options`.
 
 **Друга.** Testing Library після кожної дії чекає на справжній `setTimeout(0)`. Якщо таймери повністю зупинені, цього
-не станеться, і тест зависне. Ми перевірили: запис `vi.useFakeTimers()` без параметрів дає `Error: Test timed out`.
+не станеться, і тест зависне. Перевірмо запис `vi.useFakeTimers()` без параметрів:
+
+```tsx
+vi.useFakeTimers() // без параметрів таймери повністю зупинені
+const timedUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+render(<button>Чашка</button>)
+console.log('клацаємо')
+await timedUser.click(screen.getByRole('button'))
+console.log('клацання завершилося')
+```
+
+Із довгого звіту Vitest тут лишено рядок друку й рядок помилки:
+
+```text
+клацаємо
+Error: Test timed out in 5000ms.
+```
+
+Рядка «клацання завершилося» немає, бо клацання так і не закінчилося. Якщо ваш тест із таймерами падає з такою помилкою,
+спершу перевірте параметри `vi.useFakeTimers`.
+
 Параметр `shouldAdvanceTime: true` змушує підроблений час іти разом зі справжнім, і тест проходить. Звідси побічний
-наслідок: підроблений час рухається й сам. У нашому досліді після `vi.advanceTimersByTime(999)` таймер на 1000 мс уже
-спрацював, бо підроблений час встиг посунутися разом зі справжнім. Тому не пишіть перевірок «через 999 мс ще не
-спрацювало». Перевіряйте лише те, що до проматування виклику не було, а після проматування він є.
+наслідок: підроблений час рухається й сам. Ось таймер на 1000 мс, який ми проматуємо лише на 999 мс:
+
+```tsx
+vi.useFakeTimers({ shouldAdvanceTime: true })
+const timedUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+const spy = vi.fn() // шпигун запам'ятовує кожен свій виклик
+render(<button onClick={() => setTimeout(spy, 1000)}>Запустити</button>)
+await timedUser.click(screen.getByRole('button'))
+console.log('викликів до проматування:', spy.mock.calls.length)
+vi.advanceTimersByTime(999)
+console.log('викликів після 999 мс:', spy.mock.calls.length)
+```
+
+```text
+викликів до проматування: 0
+викликів після 999 мс: 1
+```
+
+Таймер спрацював після проматування на 999 мс, бо підроблений час під час клацання вже встиг посунутися разом зі
+справжнім. Тому не пишіть перевірок «через 999 мс ще не спрацювало». Перевіряйте лише те, що до проматування виклику не
+було, а після проматування він є.
 
 Є ще третя особливість, яка стосується лише таймера, що змінює стан. Тоді проматування треба обгорнути в `await
-act(async () => { ... })`, як у прикладі вище, інакше React не встигне оновити екран до наступного рядка. У нашому
-досліді без `act` кнопка ще показувала старе число. У завданні дня таймер лише викликає функцію `onReport`, тому там
+act(async () => { ... })`, як у прикладі вище, інакше React не встигне оновити екран до наступного рядка. Перевірмо це
+на тому самому компоненті `Delayed`. Проматування тепер стоїть без `act`, а порожній виклик `act` стоїть після друку:
+
+```tsx
+vi.useFakeTimers({ shouldAdvanceTime: true })
+const timedUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+render(<Delayed />)
+await timedUser.click(screen.getByRole('button'))
+await timedUser.click(screen.getByRole('button'))
+await timedUser.click(screen.getByRole('button'))
+vi.advanceTimersByTime(1000)
+console.log('без act:', screen.getByRole('button').textContent)
+await act(async () => {}) // дає React завершити відкладену роботу
+console.log('після act:', screen.getByRole('button').textContent)
+```
+
+```text
+без act: Числом: 0, оновлювачем: 0
+після act: Числом: 1, оновлювачем: 3
+```
+
+Таймери вже спрацювали, але кнопка ще показує старі числа, бо React не оновив документ. Перевірка, поставлена відразу
+після такого проматування, побачила б старий текст. У завданні дня таймер лише викликає функцію `onReport`, тому там
 `act` не потрібен.
 
-Чому в завданні дня взагалі стоїть `onReport`, а не `alert`? У jsdom виклик `alert` лише друкує `Not implemented:
-Window's alert() method` і нічого не повертає, тому перевірити його в прикладі нічим. Функцію-проп можна замінити
-шпигуном. На сторінці `f1-d08.html` проп дорівнює справжньому `alert`, і за описом MDN браузер покаже вікно й
+Чому в завданні дня взагалі стоїть `onReport`, а не `alert`? Подивімося, що робить `alert` у jsdom:
+
+```tsx
+const answer = window.alert('чашок: 0')
+console.log('alert повернув:', answer)
+```
+
+```text
+Not implemented: Window's alert() method
+alert повернув: undefined
+```
+
+Перший рядок друкує сам jsdom, бо вікна він показати не може. Другий рядок показує, що виклик нічого не повернув, тому
+перевірити його в прикладі нічим. Функцію-проп можна замінити шпигуном.
+На сторінці `f1-d08.html` проп дорівнює справжньому `alert`, і за описом MDN браузер покаже вікно й
 чекатиме, поки людина його закриє. Цей варіант ми в браузері не перевіряли, тому перевірте його самі: клацніть кнопку
 й подивіться, яке число стоїть на екрані, коли з'явиться вікно.
 
@@ -693,9 +962,123 @@ console.log(applyDiscount(100, (p) => p / 2))
 | `await` після `set`, щоб дочекатися | мовчить | мовчить | те саме старе число |
 | `setTimeout` читає `cups` | мовчить | мовчить | число на мить клацання |
 | `cups++` | `TS2588`, змінна є константою | мовчить | `TypeError` |
-| оновлювач без `return` | `TS2345` | `no-unused-expressions` | стан стає `undefined` |
+| оновлювач без `return` | `TS2345` | `@typescript-eslint/no-unused-expressions` | стан стає `undefined` |
 | `setCups` у тілі компонента | мовчить | `react-hooks/set-state-in-render` | `Too many re-renders` |
 | `order.cups = 5; setOrder(order)` | мовчить | `react-hooks/immutability` | екран не змінюється |
+
+Останні чотири рядки таблиці можна перевірити таким файлом `src/mistakes.tsx`:
+
+```tsx
+import { useState } from 'react'
+
+// Кожен компонент цього файлу містить одну помилку з таблиці.
+export function Increment() {
+  const [cups] = useState(1)
+  return <button onClick={() => { cups++ }}>Чашок: {cups}</button>
+}
+export function NoReturn() {
+  const [cups, setCups] = useState(1)
+  return <button onClick={() => setCups((c) => { c + 1 })}>Чашок: {cups}</button>
+}
+export function InBody() {
+  const [cups, setCups] = useState(1)
+  setCups(cups + 1) // виклик стоїть у тілі компонента, а не в обробнику
+  return <p>Чашок: {cups}</p>
+}
+export function SameObject() {
+  const [order, setOrder] = useState({ cups: 1 })
+  function change() {
+    order.cups = 5 // змінює старий об'єкт
+    setOrder(order) // передає той самий об'єкт
+  }
+  return <button onClick={change}>Чашок: {order.cups}</button>
+}
+```
+
+Команда `npx tsc --noEmit -p tsconfig.app.json --pretty false` знаходить дві помилки:
+
+```text
+src/mistakes.tsx(6,35): error TS2588: Cannot assign to 'cups' because it is a constant.
+src/mistakes.tsx(10,41): error TS2345: Argument of type '(c: number) => void' is not assignable to parameter of type 'SetStateAction<number>'.
+  Type '(c: number) => void' is not assignable to type '(prevState: number) => number'.
+    Type 'void' is not assignable to type 'number'.
+```
+
+Команда `npx eslint src/mistakes.tsx` знаходить три помилки. До кожної вона друкує довге пояснення зі шматком коду, тому
+тут лишено лише номер рядка й назву правила:
+
+```text
+рядок 10: @typescript-eslint/no-unused-expressions
+рядок 14: react-hooks/set-state-in-render
+рядок 20: react-hooks/immutability
+```
+
+Рядок 6 у цьому виводі відсутній, тому ESLint про `cups++` мовчить. Тепер запустимо ці компоненти у файлі
+`src/mistakes.test.tsx`, щоб побачити стовпець «Під час роботи»:
+
+```tsx
+import { Increment, InBody, NoReturn, SameObject } from './mistakes'
+
+window.addEventListener('error', (event) => {
+  event.preventDefault() // не даємо jsdom друкувати весь стек, беремо лише текст помилки
+  console.log('помилка в обробнику:', String(event.error))
+})
+const first = render(<Increment />)
+fireEvent.click(screen.getByRole('button'))
+first.unmount()
+const second = render(<NoReturn />)
+fireEvent.click(screen.getByRole('button'))
+console.log('на кнопці:', JSON.stringify(screen.getByRole('button').textContent))
+second.unmount()
+try {
+  render(<InBody />)
+} catch (error) {
+  console.log('помилка під час рендеру:', (error as Error).message)
+}
+render(<SameObject />)
+fireEvent.click(screen.getByRole('button'))
+console.log('на кнопці:', screen.getByRole('button').textContent)
+```
+
+```text
+помилка в обробнику: TypeError: Assignment to constant variable.
+на кнопці: "Чашок: "
+помилка під час рендеру: Too many re-renders. React limits the number of renders to prevent an infinite loop.
+на кнопці: Чашок: 1
+```
+
+Рядки виводу йдуть у тому самому порядку, що й компоненти у файлі. Останній рядок показує, що кнопка лишилася зі старим
+числом, хоча `order.cups` уже дорівнює 5.
+
+Перші чотири рядки таблиці перевіряє ось такий файл `src/silent.tsx`. Обробник `addThree` узято з початку лекції:
+
+```tsx
+import { useState } from 'react'
+
+export function Silent() {
+  const [cups, setCups] = useState(0)
+  function addThree() {
+    setCups(cups + 1)
+    setCups(cups + 1)
+    setCups(cups + 1)
+    console.log('тепер чашок:', cups)
+    setTimeout(() => alert('чашок: ' + cups), 3000)
+  }
+  async function addAndWait() {
+    setCups(cups + 1)
+    await Promise.resolve() // спроба дочекатися нового значення
+    console.log('після await:', cups)
+  }
+  return (
+    <>
+      <button onClick={addThree}>Три чашки</button>
+      <button onClick={addAndWait}>Чашка й очікування</button>
+    </>
+  )
+}
+```
+
+Про цей файл `tsc` і ESLint не друкують нічого.
 
 Перші чотири рядки є саме темою дня. Ні компілятор, ні лінтер про них нічого не скажуть, бо для типів і правил код
 правильний. Такі помилки ловлять лише приклади, тому день і просить їх писати.

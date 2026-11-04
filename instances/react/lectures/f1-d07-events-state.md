@@ -55,9 +55,17 @@ function Order() {
 
 Лекція «JSX» пояснила, що у фігурних дужках стоїть звичайний вираз JavaScript, а компілятор кладе його значення в
 об'єкт пропсів. Тому вираз обчислюється щоразу, коли виконується функція компонента, тобто під час рендеру. Запис
-`onClick={...}` не є винятком. Подивімося на три кнопки. Функція `pour` друкує назву напою й повертає її:
+`onClick={...}` не є винятком. Подивімося на дві кнопки. Функція `pour` друкує назву напою й повертає її. Компонент і
+тест лежать в одному файлі, ім'я якого закінчується на `.test.tsx`, наприклад `src/menu.test.tsx`. Команда
+`npx vitest run src/menu.test.tsx` запускає такий файл:
 
 ```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { test } from 'vitest'
+
 function pour(drink: string) {
   console.log('наливаємо:', drink)
   return drink
@@ -74,10 +82,18 @@ function Menu() {
   )
 }
 
-render(<Menu />)
-console.log('рендер завершено, клацань ще не було')
-await user.click(screen.getByRole('button', { name: 'Лате' }))
+test('Menu', async () => {
+  const user = userEvent.setup() // об'єкт user виконує дії людини, а його метод click клацає елемент
+  render(<Menu />) // render показує компонент, тобто React викликає Menu
+  console.log('рендер завершено, клацань ще не було')
+  await user.click(screen.getByRole('button', { name: 'Лате' }))
+})
 ```
+
+Решта прикладів цієї лекції запускаються так само. Кожен дослід лежить у власному файлі, а рядки показу, клацання й
+друку стоять усередині `test`. Перші рядки файла, `test` і створення `user` ми далі не повторюємо. Коли приклад
+цього потребує, до імпортів додається `useState` з `react`, `within` з `@testing-library/react`, `vi` або `expect` з `vitest`. Vitest
+друкує ще назву тесту й підсумок, а ми показуємо лише рядки, які надрукував сам код:
 
 ```text
 рендер Menu
@@ -103,25 +119,104 @@ called». Ось три правильні й один неправильний 
 
 ### Що React робить із тим, що отримав
 
-У попередньому прикладі кнопка «Чай» отримала рядок. Наступна таблиця показує, що буває з різними значеннями. Ми
-перевірили кожне значення запуском у режимі розробки:
+У попередньому прикладі кнопка «Чай» отримала рядок. Наступний дослід передає в `onClick` чотири різні значення й
+клацає кожну кнопку. React друкує свої повідомлення через `console.error`, а разом із текстом іде довгий стек викликів.
+Тому дослід замінює `console.error` функцією `printMessage`, яка друкує лише текст. Помилку, яка виникає під час
+клацання, ловить слухач події `error` на `window`:
+
+```tsx
+// React передає шаблон із позначками %s і окремо значення для них, а ця функція складає їх у текст.
+function printMessage(template: string, ...values: unknown[]) {
+  let next = 0
+  console.log('React пише:', template.replace(/%s/g, () => String(values[next++])))
+}
+
+function addCup() {
+  console.log('addCup виконано')
+}
+function silent() {
+  console.log('silent виконано') // функція нічого не повертає, тому її результат дорівнює undefined
+}
+const ready = false
+
+function Values() {
+  return (
+    <>
+      <button onClick={addCup}>функція</button>
+      {/* @ts-expect-error навмисна помилка */}
+      <button onClick={silent()}>undefined</button>
+      {/* @ts-expect-error навмисна помилка */}
+      <button onClick="Чай">рядок</button>
+      {/* @ts-expect-error навмисна помилка */}
+      <button onClick={ready && addCup}>false</button>
+    </>
+  )
+}
+
+vi.spyOn(console, 'error').mockImplementation(printMessage) // тепер повідомлення React потрапляють у printMessage
+window.addEventListener('error', (event) => {
+  event.preventDefault() // прибирає довгий друк цієї помилки, який jsdom робить сам
+  console.log('помилка при клацанні:', event.error.message)
+})
+
+render(<Values />)
+for (const name of ['функція', 'undefined', 'рядок', 'false']) {
+  console.log('клацання:', name)
+  await user.click(screen.getByRole('button', { name }))
+}
+```
+
+```text
+silent виконано
+React пише: Expected `onClick` listener to be a function, instead got a value of `string` type.
+React пише: Expected `onClick` listener to be a function, instead got `false`.
+
+If you used to conditionally omit it with onClick={condition && value}, pass onClick={condition ? value : undefined} instead.
+клацання: функція
+addCup виконано
+клацання: undefined
+клацання: рядок
+помилка при клацанні: Expected `onClick` listener to be a function, instead got a value of `string` type.
+клацання: false
+помилка при клацанні: listener is not a function
+```
+
+Прочитайте вивід зверху вниз. Рядки перед першим словом «клацання» надруковано під час рендеру. Рядок
+`silent виконано` показує, що виклик `silent()` спрацював ще під час рендеру, а в проп потрапив `undefined`. Про це React
+не написав нічого. Про рядок і про `false` React написав одразу. Потім кнопка з функцією викликала `addCup`, кнопка з
+`undefined` не зробила нічого, а кнопки з рядком і `false` дали помилки. Таблиця збирає цей вивід:
 
 | Значення в `onClick` | Звідки береться | Під час рендеру | При клацанні |
 |----------------------|-----------------|-----------------|--------------|
 | функція | `onClick={addCup}` | нічого | React викликає функцію |
 | `undefined` | `onClick={addCup()}`, коли функція нічого не повертає | нічого | нічого, помилки немає |
-| рядок | `onClick={pour('Чай')}` | повідомлення `Expected onClick listener to be a function` | помилка з тим самим текстом |
-| `false` | `onClick={ready && addCup}` | те саме повідомлення з порадою писати `ready ? addCup : undefined` | помилка `listener is not a function` |
+| рядок | `onClick={pour('Чай')}` | повідомлення ``Expected `onClick` listener to be a function`` | помилка з тим самим текстом |
+| `false` | `onClick={ready && addCup}` | схоже повідомлення з порадою писати `onClick={condition ? value : undefined}` | помилка `listener is not a function` |
+
+Отже, в `onClick` кладіть лише функцію, а якщо обробник потрібен за умовою, пишіть `ready ? addCup : undefined`.
 
 Рядок із `undefined` є найнеприємнішим, бо нічого не повідомляє. Функція спрацювала один раз під час рендеру, а кнопка
-мовчки не робить нічого. Помилку такого виду бачить лише `tsc`:
+мовчки не робить нічого. Помилку такого виду бачить лише `tsc`. У досліді вище рядок `@ts-expect-error` просив `tsc` не
+повідомляти про помилку в наступному рядку. Покладемо той самий запис без цього рядка у файл `src/dead.tsx`:
 
-```text
-error TS2322: Type 'void' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+```tsx
+function silent() {
+  console.log('silent виконано')
+}
+
+export function Dead() {
+  return <button onClick={silent()}>Мертва кнопка</button>
+}
 ```
 
-Тип `void` означає, що функція нічого не повертає. Отже, компілятор каже, що в `onClick` стоїть результат виклику, а
-не обробник.
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/dead.tsx(6,18): error TS2322: Type 'void' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+```
+
+Числа в дужках означають рядок і колонку у файлі. Тип `void` означає, що функція нічого не повертає. Отже, компілятор
+каже, що в `onClick` стоїть результат виклику, а не обробник. Якщо кнопка не реагує на клацання, а в консолі порожньо,
+запустіть цю команду.
 
 ### Навіщо стрілка
 
@@ -138,6 +233,8 @@ error TS2322: Type 'void' is not assignable to type 'MouseEventHandler<HTMLButto
 React викликає обробник з одним аргументом, **об'єктом події**. Зазвичай його називають `e`:
 
 ```tsx
+import type { MouseEvent } from 'react' // тип події React, а не однойменний тип браузера
+
 function Latte() {
   function show(e: MouseEvent<HTMLButtonElement>) {
     const target = e.target as HTMLElement
@@ -168,15 +265,47 @@ nativeEvent PointerEvent
 
 ### Як можна назвати проп
 
-Вбудовані теги розуміють лише назви подій браузера. Ми перевірили дві помилки:
+Вбудовані теги розуміють лише назви подій браузера. Перевіримо дві помилки в назві пропа. Функція `printMessage` тут
+та сама, що в досліді зі значеннями `onClick`:
 
-```text
-<button onSmash={f}>    Unknown event handler property `onSmash`. It will be ignored.
-<button onclick={f}>    Invalid event handler property `onclick`. Did you mean `onClick`?
+```tsx
+function f() {
+  console.log('f викликано')
+}
+
+vi.spyOn(console, 'error').mockImplementation(printMessage)
+render(
+  <>
+    {/* @ts-expect-error навмисна помилка */}
+    <button onSmash={f}>Перша</button>
+    {/* @ts-expect-error навмисна помилка */}
+    <button onclick={f}>Друга</button>
+  </>,
+)
+await user.click(screen.getByRole('button', { name: 'Перша' }))
+await user.click(screen.getByRole('button', { name: 'Друга' }))
+console.log('клацання завершено')
 ```
 
-В обох випадках обробника на кнопці немає, а `tsc` повідомляє про зайву властивість. У власних компонентах назву
-вибираєте ви. Домовленість така: проп зі значенням-функцією називають `on` із великою літерою далі, наприклад
+```text
+React пише: Unknown event handler property `onSmash`. It will be ignored.
+React пише: Invalid event handler property `onclick`. Did you mean `onClick`?
+клацання завершено
+```
+
+Два повідомлення React надрукував під час рендеру. Рядка `f викликано` у виводі немає, отже, в обох випадках обробника
+на кнопці немає. Якщо прибрати рядки `@ts-expect-error`, `tsc` повідомляє про зайву властивість:
+
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/names.test.tsx(22,13): error TS2322: Type '{ children: string; onSmash: () => void; }' is not assignable to type 'DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>'.
+  Property 'onSmash' does not exist on type 'DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>'.
+src/names.test.tsx(23,13): error TS2322: Type '{ children: string; onclick: () => void; }' is not assignable to type 'DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>'.
+  Property 'onclick' does not exist on type 'DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>'. Did you mean 'onClick'?
+```
+
+Отже, вбудованому тегу пишіть назву події точно, а виправити її підкаже `tsc`. У власних компонентах назву вибираєте
+ви. Домовленість така: проп зі значенням-функцією називають `on` із великою літерою далі, наприклад
 `onPick`, а саму функцію всередині компонента називають `handle` з назвою події, наприклад `handleClick`. Це лише
 домовленість, яка робить код зрозумілішим, і React її не перевіряє.
 
@@ -212,7 +341,26 @@ await user.click(screen.getByRole('button', { name: 'З type' }))
 
 Якщо `onSubmit` не викликає `preventDefault`, у браузері форма надсилається звичним способом, і сторінка
 перезавантажується разом з усім станом. Це твердження спирається на сторінку `Responding to Events`, бо jsdom переходу
-не робить, а лише друкує повідомлення `Not implemented`. Тому кнопки міст у заготовці дня мають `type="button"`: вони
+не робить, а лише друкує повідомлення. Ось форма без `onSubmit`:
+
+```tsx
+function Plain() {
+  return (
+    <form>
+      <button>Без type</button>
+    </form>
+  )
+}
+
+render(<Plain />)
+await user.click(screen.getByRole('button'))
+```
+
+```text
+Not implemented: HTMLFormElement's requestSubmit() method
+```
+
+Цей рядок означає, що клацання справді почало надсилати форму, а jsdom не вміє виконати цю дію. Тому кнопки міст у заготовці дня мають `type="button"`: вони
 лежать усередині `<form>` і нічого надсилати не повинні.
 
 ## Чому звичайна змінна не може бути пам'яттю
@@ -264,8 +412,26 @@ await user.click(screen.getByRole('button', { name: 'Ще чашка' }))
 `PlainOrder` ще раз, і рядок `let cups = 0` створив нову змінну. Останній рядок виводу доводить це інакше: новий
 обробник почав рахувати з одиниці, бо він замкнув нову змінну, а не стару.
 
-Лінтер помічає таку спробу: правило `react-hooks/immutability` пише `Cannot reassign variable after render completes`.
-`tsc` мовчить, бо для типів тут усе правильно.
+Лінтер помічає таку спробу. Звичайний вивід ESLint для кожного зауваження друкує ще цитату коду й абзац пояснень. Тому
+ми просимо ESLint видати результат у форматі JSON, а короткий скрипт Node друкує з нього назву правила, перший рядок
+повідомлення й рядок коду, якого воно стосується. Файлом досліду тут є `src/plain-order.test.tsx`:
+
+```bash
+npx eslint src/plain-order.test.tsx -f json | node -e "
+  const [file] = JSON.parse(require('fs').readFileSync(0))
+  const lines = file.source.split('\n')
+  for (const m of file.messages) console.log(m.ruleId, '|', m.message.split('\n')[0], '|', lines[m.line - 1].trim())"
+```
+
+```text
+react-hooks/globals | Error: Cannot reassign variables declared outside of the component/hook | renders = renders + 1
+react-hooks/immutability | Error: Cannot modify local variables after render completes | <button onClick={() => { cups = cups + 1; console.log('в обробнику cups =', cups) }}>Ще чашка</button>
+react-hooks/immutability | Error: Cannot reassign variable after render completes | <button onClick={() => { cups = cups + 1; console.log('в обробнику cups =', cups) }}>Ще чашка</button>
+```
+
+Рядок із правилом `react-hooks/globals` стосується лічильника `renders`, який ми поставили лише для досліду. Два рядки
+з правилом `react-hooks/immutability` стосуються зміни `cups` в обробнику. Отже, коли лінтер називає це правило, значення
+мусить стати станом. `tsc` мовчить, бо для типів тут усе правильно.
 
 ### А якщо винести змінну за межі компонента
 
@@ -372,20 +538,81 @@ console.log('та сама функція set?', setters[0] === setters[1], sett
 каже, що хуки викликають лише на верхньому рівні компонента або власного хука.
 
 Обробник теж не годиться. Обробник виконується після рендеру, коли React уже не знає, який компонент зараз
-обчислюється. Виклик `useState` в обробнику дає помилку `Invalid hook call`, а лінтер помічає її раніше.
+обчислюється. Перевіримо це:
+
+```tsx
+function HookInHandler() {
+  function handleClick() {
+    const [cups] = useState(0) // навмисна помилка: хук в обробнику
+    console.log('чашок:', cups)
+  }
+  return <button onClick={handleClick}>Ще чашка</button>
+}
+
+window.addEventListener('error', (event) => {
+  event.preventDefault()
+  console.log('помилка при клацанні:', event.error.message.split('\n')[0]) // перший рядок повідомлення
+})
+render(<HookInHandler />)
+await user.click(screen.getByRole('button'))
+```
+
+```text
+помилка при клацанні: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+```
+
+Рядка `чашок:` немає, бо `useState` зупинив обробник помилкою. Скрипт ESLint із попереднього розділу помічає цю помилку
+ще до запуску:
+
+```text
+react-hooks/rules-of-hooks | React Hook "useState" is called in function "handleClick" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use". | const [cups] = useState(0) // навмисна помилка: хук в обробнику
+```
+
+Отже, усі `useState` пишіть на верхньому рівні компонента, а в обробнику викликайте лише функцію `set`.
 
 ### Виклик `set` під час рендеру
 
 Тепер ви можете передбачити, що станеться з `onClick={setCups(cups + 1)}`. Виклик виконується під час рендеру, тому
-просить новий рендер. Новий рендер знову виконує цей вираз, і так без кінця:
+просить новий рендер. Новий рендер знову виконує цей вираз, і так без кінця. Другий компонент нижче робить те саме, але
+під умовою:
+
+```tsx
+function Loop() {
+  const [cups, setCups] = useState(0)
+  // @ts-expect-error навмисна помилка
+  return <button onClick={setCups(cups + 1)}>Чашок: {cups}</button>
+}
+
+function Limited() {
+  const [cups, setCups] = useState(0)
+  // @ts-expect-error навмисна помилка
+  return <button onClick={cups < 3 ? setCups(cups + 1) : undefined}>Чашок: {cups}</button>
+}
+
+try {
+  render(<Loop />)
+} catch (error) {
+  console.log((error as Error).message) // без цього перехоплення помилка зупинила б тест
+}
+render(<Limited />)
+console.log(screen.getByRole('button').textContent)
+```
 
 ```text
 Too many re-renders. React limits the number of renders to prevent an infinite loop.
+Чашок: 3
 ```
 
-React помічає цей цикл і зупиняє його. Якщо такий виклик стоїть під умовою, цикл може зупинитися сам, і помилки не
-буде, а лічильник покаже несподіване число ще до першого клацання. Теорія дня розбирає саме такий випадок. Лінтер у
-всіх цих випадках пише `Cannot call setState during render`, якщо бачить, що функція викликає `set`.
+Перший рядок показує, що React помітив цикл і зупинив його. Другий рядок показує випадок із умовою: цикл зупинився сам,
+помилки немає, а лічильник показує 3 ще до першого клацання. Теорія дня розбирає саме такий випадок. Скрипт ESLint
+указує лише на компонент `Loop`, а запис під умовою пропускає:
+
+```text
+react-hooks/set-state-in-render | Error: Cannot call setState during render | return <button onClick={setCups(cups + 1)}>Чашок: {cups}</button>
+```
+
+Отже, лінтер не гарантує, що такого виклику немає. Якщо число на екрані виросло без жодного клацання, шукайте виклик
+функції `set` у тілі компонента або в `onClick` із дужками.
 
 ## Кероване поле
 
@@ -467,16 +694,80 @@ console.log('у полі коду:', value('код'))
 Цей дослід показує ще дві властивості. Проп `onChange` спрацьовує на кожне натискання. За описом MDN, браузерна подія
 `change` для текстового поля спрацьовує лише тоді, коли людина завершила зміну, зазвичай при втраті фокуса, а довідник
 React порівнює `onChange` саме з браузерною подією `input`. Ми це порівняння в браузері не перевіряли. Крім того,
-`e.target.value` завжди є рядком, навіть у полі `type="number"`. У нашому досліді набране `5` прийшло рядком, а число
-лежало окремо в `e.target.valueAsNumber`.
+`e.target.value` завжди є рядком, навіть у полі `type="number"`:
+
+```tsx
+function CupCount() {
+  return (
+    <input
+      aria-label="чашки"
+      type="number"
+      onChange={(e) => {
+        console.log('value:', typeof e.target.value, e.target.value)
+        console.log('valueAsNumber:', typeof e.target.valueAsNumber, e.target.valueAsNumber)
+      }}
+    />
+  )
+}
+
+render(<CupCount />)
+await user.type(screen.getByLabelText('чашки'), '5')
+```
+
+```text
+value: string 5
+valueAsNumber: number 5
+```
+
+Набране `5` прийшло в `e.target.value` рядком, а число лежить окремо в `e.target.valueAsNumber`. Отже, коли стан має
+бути числом, беріть значення з `valueAsNumber`.
 
 ### Три типові помилки
 
+Цей дослід ставить поруч три неправильні поля й набирає в кожне літеру `х`. Функція `printMessage` тут та сама, що в
+досліді зі значеннями `onClick`:
+
+```tsx
+function NoHandler() {
+  return <input aria-label="без onChange" value="Кава" />
+}
+function NoStart() {
+  const [text, setText] = useState<string>() // початкового значення немає, тому спершу text дорівнює undefined
+  return <input aria-label="без початку" value={text} onChange={(e) => setText(e.target.value)} />
+}
+function NullValue() {
+  // @ts-expect-error навмисна помилка
+  return <input aria-label="з null" value={null} />
+}
+
+vi.spyOn(console, 'error').mockImplementation(printMessage)
+render(<><NoHandler /><NoStart /><NullValue /></>)
+for (const label of ['без onChange', 'без початку', 'з null']) {
+  const input = screen.getByLabelText<HTMLInputElement>(label)
+  await user.type(input, 'х')
+  console.log(label, '| у полі:', input.value)
+}
+```
+
+```text
+React пише: You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+React пише: `value` prop on `input` should not be null. Consider using an empty string to clear the component or `undefined` for uncontrolled components.
+без onChange | у полі: Кава
+React пише: A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components
+без початку | у полі: х
+з null | у полі: х
+```
+
+Два перші повідомлення React надрукував під час першого рендеру: вони стосуються полів `NoHandler` і `NullValue`. Третє
+повідомлення з'явилося пізніше, коли після літери `х` значення `text` перестало бути `undefined`. Поле без `onChange`
+зберегло слово «Кава», бо стан не змінився. Поле з `null` прийняло літеру, бо React ним не керує. Таблиця збирає цей
+вивід:
+
 | Запис | Що виходить | Що пише React |
 |-------|-------------|---------------|
-| `value={text}` без `onChange` | ввести нічого не можна, текст відразу зникає | `You provided a value prop to a form field without an onChange handler` |
+| `value={text}` без `onChange` | ввести нічого не можна, текст відразу зникає | ``You provided a `value` prop to a form field without an `onChange` handler`` |
 | `useState()` без початкового значення | спершу `value` дорівнює `undefined`, тому поле некероване, а після першої літери стає керованим | `A component is changing an uncontrolled input to be controlled` |
-| `value={null}` | поле лишається порожнім | `value prop on input should not be null` |
+| `value={null}` | поле спочатку порожнє, а далі приймає текст, бо React ним не керує | `` `value` prop on `input` should not be null `` |
 
 Звідси правило: початковим значенням текстового поля є порожній рядок `''`. Якщо поле справді лише показує значення,
 додайте проп `readOnly`, і попередження зникне.
@@ -484,14 +775,36 @@ React порівнює `onChange` саме з браузерною подією 
 ### Тип події
 
 Коли стрілка стоїть просто в `onChange`, TypeScript сам знає тип `e`, бо бачить, куди її передано. Якщо винести
-обробник в окрему функцію, цей зв'язок зникає:
+обробник в окрему функцію, цей зв'язок зникає. Файл `src/name-field.tsx` має дві такі функції, одну без типу й одну з
+типом:
 
-```text
-function handleChange(e) { ... }                          error TS7006: Parameter 'e' implicitly has an 'any' type.
-function handleChange(e: ChangeEvent<HTMLInputElement>)   помилки немає
+```tsx
+import { useState, type ChangeEvent } from 'react'
+
+export function NameField() {
+  const [text, setText] = useState('')
+  function handleChange(e) { // тип параметра не вказано
+    setText(e.target.value)
+  }
+  function handleTypedChange(e: ChangeEvent<HTMLInputElement>) {
+    setText(e.target.value)
+  }
+  return (
+    <>
+      <input value={text} onChange={handleChange} />
+      <input value={text} onChange={handleTypedChange} />
+    </>
+  )
+}
 ```
 
-Тип `ChangeEvent` імпортують із пакета `react`. Докладно ці типи розбирає день фази «TypeScript у React».
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/name-field.tsx(5,25): error TS7006: Parameter 'e' implicitly has an 'any' type.
+```
+
+Помилка стоїть лише на першій функції, а друга функція проходить перевірку. Отже, в окремій функції-обробнику завжди
+вказуйте тип параметра. Тип `ChangeEvent` імпортують із пакета `react`. Докладно ці типи розбирає день фази «TypeScript у React».
 
 ## Дитина повідомляє батькові
 
@@ -556,7 +869,59 @@ console.log(screen.getByText(/Стіл 1/).textContent)
 
 ### Чотири записи в дитині
 
-Нижче чотири способи написати `onClick` у дитині. Лише перший правильний. Кожен інший запис ми запустили й перевірили:
+Нижче чотири способи написати `onClick` у дитині. Лише перший правильний. Щоб побачити різницю, зробимо по кнопці на
+кожен запис і передамо кожній підставну функцію `vi.fn()`. Ця функція запам'ятовує свої виклики, а докладніше про неї
+йдеться в розділі про приклади нижче. Vitest типів не перевіряє, тому запускає цей файл, хоча `tsc` має до нього
+зауваження:
+
+```tsx
+type Props = { drink: string; onPick: (drink: string) => void }
+
+function Right({ drink, onPick }: Props) {
+  return <button onClick={() => onPick(drink)}>{drink}</button>
+}
+function CalledInRender({ drink, onPick }: Props) {
+  return <button onClick={onPick(drink)}>{drink}</button>
+}
+function NameOnly({ drink, onPick }: Props) {
+  return <button onClick={onPick}>{drink}</button>
+}
+function NoCall({ drink, onPick }: Props) {
+  return <button onClick={() => onPick}>{drink}</button>
+}
+
+for (const Button of [Right, CalledInRender, NameOnly, NoCall]) {
+  const onPick = vi.fn()
+  const { unmount } = render(<Button drink="Чай" onPick={onPick} />)
+  const inRender = onPick.mock.calls.length // скільки викликів було ще до клацання
+  await user.click(screen.getByRole('button'))
+  const arg = onPick.mock.lastCall?.[0] // що отримав останній виклик
+  const shown = typeof arg === 'string' ? arg : arg?.constructor.name
+  console.log(Button.name, '| під час рендеру:', inRender, '| усього:', onPick.mock.calls.length, '| аргумент:', shown)
+  unmount() // прибираємо кнопку, щоб наступний пошук знайшов лише одну
+}
+```
+
+```text
+Right | під час рендеру: 0 | усього: 1 | аргумент: Чай
+CalledInRender | під час рендеру: 1 | усього: 1 | аргумент: Чай
+NameOnly | під час рендеру: 0 | усього: 1 | аргумент: SyntheticBaseEvent
+NoCall | під час рендеру: 0 | усього: 0 | аргумент: undefined
+```
+
+Ось що каже `tsc` про той самий файл `src/writes.test.tsx`:
+
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/writes.test.tsx(13,18): error TS2322: Type 'void' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+src/writes.test.tsx(16,18): error TS2322: Type '(drink: string) => void' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'drink' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'string'.
+```
+
+Запис `CalledInRender` викликав `onPick` ще під час рендеру, а клацання не додало нового виклику. Запис `NameOnly` викликав
+`onPick` при клацанні, але аргументом став об'єкт події. Запис `NoCall` не викликав `onPick` жодного разу, і `tsc` про
+нього не згадав. Таблиця збирає цей вивід:
 
 | Запис у `DrinkPicker` | Що станеться | Що каже `tsc` |
 |-----------------------|--------------|---------------|
@@ -568,13 +933,81 @@ console.log(screen.getByText(/Стіл 1/).textContent)
 Останній запис особливо підступний, бо типи правильні, а лінтер теж мовчить. Його ловить лише приклад у тесті.
 
 Другий рядок таблиці має ще один наслідок, якщо `onPick` змінює стан батька. Тоді дитина викликає функцію `set` батька
-під час власного рендеру. Якщо кнопок кілька, останній виклик перезапише попередні. Сторінка дня показує це на кнопках
-міст у розділі про типові помилки.
+під час власного рендеру. Якщо кнопок кілька, останній виклик перезапише попередні. Функція `printMessage` тут та сама,
+що в досліді зі значеннями `onClick`:
+
+```tsx
+function Picker({ drinks, onPick }: { drinks: string[]; onPick: (drink: string) => void }) {
+  return (
+    <div>
+      {drinks.map((drink) => (
+        // @ts-expect-error навмисна помилка
+        <button key={drink} onClick={onPick(drink)}>{drink}</button>
+      ))}
+    </div>
+  )
+}
+
+function Cafe() {
+  const [drink, setDrink] = useState('')
+  return (
+    <>
+      <Picker drinks={['Лате', 'Чай']} onPick={setDrink} />
+      <p>Обрано: {drink || 'нічого'}</p>
+    </>
+  )
+}
+
+vi.spyOn(console, 'error').mockImplementation(printMessage)
+render(<Cafe />)
+console.log(screen.getByText(/Обрано/).textContent)
+```
+
+```text
+React пише: Cannot update a component (`Cafe`) while rendering a different component (`Picker`). To locate the bad setState() call inside `Picker`, follow the stack trace as described in https://react.dev/link/setstate-in-render
+Обрано: Чай
+```
+
+Ніхто нічого не клацав, а в рядку «Обрано» вже стоїть «Чай», бо кнопка «Чай» остання, і її виклик записав стан після виклику кнопки
+«Лате». Перший рядок виводу є попередженням React про те, що дитина змінює стан батька під час рендеру. Отже, якщо вибір
+з'явився до клацання, шукайте дужки в `onClick`. Сторінка дня показує це на кнопках міст у розділі про типові помилки.
 
 ### Кожен рендер створює нові стрілки
 
-Ми записали стрілки кнопок двох рендерів у масив і порівняли їх. Стрілка кнопки «Лате» першого рендеру не дорівнює
-стрілці тієї самої кнопки другого рендеру, а стрілки різних кнопок теж різні. Це звичайна поведінка функцій у
+Запишемо стрілки кнопок двох рендерів у масив і порівняємо їх:
+
+```tsx
+const saved: { latte: () => void; tea: () => void }[] = [] // стрілки кожного рендеру
+
+function Drinks() {
+  const [drink, setDrink] = useState('')
+  const latte = () => setDrink('Лате')
+  const tea = () => setDrink('Чай')
+  saved.push({ latte, tea })
+  return (
+    <>
+      <button onClick={latte}>Лате</button>
+      <button onClick={tea}>Чай</button>
+      <p>{drink}</p>
+    </>
+  )
+}
+
+render(<Drinks />)
+await user.click(screen.getByRole('button', { name: 'Лате' }))
+console.log('рендерів:', saved.length)
+console.log('Лате, перший і другий рендер:', saved[0].latte === saved[1].latte)
+console.log('Лате й Чай, перший рендер:', saved[0].latte === saved[0].tea)
+```
+
+```text
+рендерів: 2
+Лате, перший і другий рендер: false
+Лате й Чай, перший рендер: false
+```
+
+Стрілка кнопки «Лате» першого рендеру не дорівнює стрілці тієї самої кнопки другого рендеру, а стрілки різних кнопок
+теж різні. Це звичайна поведінка функцій у
 JavaScript, і зазвичай це нікому не шкодить. Фаза 2 покаже, коли така різниця має значення для швидкодії.
 
 ## Стан належить екземпляру
@@ -660,8 +1093,16 @@ console.log(screen.getByText(/note/).textContent)
 {"note":"х"}
 ```
 
-Поле `drink` зникло, бо новий об'єкт його не містить. `tsc` тут допомагає: `TS2345`, об'єкт `{ note: string; }` не
-підходить під тип стану. Правильний запис копіює решту полів розгортанням, `setOrder({ ...order, note: e.target.value
+Поле `drink` зникло, бо новий об'єкт його не містить. `tsc` тут допомагає. Якщо прибрати з цього коду рядок
+`@ts-expect-error`, команда друкує таке:
+
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/note.test.tsx(12,82): error TS2345: Argument of type '{ note: string; }' is not assignable to parameter of type 'SetStateAction<{ drink: string; note: string; }>'.
+  Property 'drink' is missing in type '{ note: string; }' but required in type '{ drink: string; note: string; }'.
+```
+
+Тобто об'єкт `{ note: string; }` не підходить під тип стану, бо в ньому немає поля `drink`. Правильний запис копіює решту полів розгортанням, `setOrder({ ...order, note: e.target.value
 })`, про що ви вже знаєте з лекції «Масиви й об'єкти функційно». Стани-об'єкти докладно розгляне день «Об'єкти й
 масиви в стані». Сьогодні зручніше брати окремий `useState` на кожне поле, бо вони не пов'язані між собою.
 
@@ -702,15 +1143,105 @@ console.log('виклики:', JSON.stringify(onPick.mock.calls))
 виклики: [["Чай"]]
 ```
 
-Перша перевірка падає на `onClick={onPick(drink)}`, бо функція спрацювала під час рендеру. Друга падає на
+Вивід досліду з чотирма записами пояснює, що станеться з цими перевірками. Перша перевірка падає на
+`onClick={onPick(drink)}`, бо функція спрацювала під час рендеру. Друга падає на
 `onClick={onPick}`, бо аргументом був об'єкт події, і на `onClick={() => onPick}`, бо виклику не було. Отже, два рядки
 перевіряють усі неправильні записи з таблиці вище, зокрема той, про який мовчать `tsc` і лінтер.
 
 Запит за роллю `form` у файлах дня теж потребує пояснення. Тег `<form>` отримує роль `form` лише тоді, коли має
-доступне ім'я, тому в заготовці стоїть `aria-label={title}`. Без цього атрибута `getByRole('form')` нічого не знайде,
-ми це перевірили.
+доступне ім'я, тому в заготовці стоїть `aria-label={title}`. Без цього атрибута `getByRole('form')` нічого не знайде.
+Метод `queryAllByRole` шукає так само, але повертає масив і не кидає помилки, тому кількість знайденого можна надрукувати:
+
+```tsx
+const { unmount } = render(<form />)
+console.log('форма без імені:', screen.queryAllByRole('form').length)
+unmount()
+render(<form aria-label="Замовлення" />)
+console.log('форма з іменем:', screen.queryAllByRole('form').length)
+```
+
+```text
+форма без імені: 0
+форма з іменем: 1
+```
+
+Отже, коли тест шукає форму за роллю, дайте формі ім'я.
 
 ## Хто яку помилку ловить
+
+Зберемо помилки цієї лекції в один файл `src/mistakes.tsx` і запустимо на ньому `tsc` та скрипт ESLint, який ви бачили в
+розділі про звичайну змінну:
+
+```tsx
+import { useState } from 'react'
+
+function show() {
+  console.log('показ')
+}
+
+export function PrintsOnRender() {
+  return <button onClick={show()}>Показати</button>
+}
+
+export function SetsOnRender() {
+  const [cups, setCups] = useState(0)
+  function add() {
+    setCups(cups + 1)
+  }
+  return <button onClick={add()}>Чашок: {cups}</button>
+}
+
+export function PassesName({ onPick }: { onPick: (drink: string) => void }) {
+  return <button onClick={onPick}>Чай</button>
+}
+
+export function NeverCalls({ onPick }: { onPick: (drink: string) => void }) {
+  return <button onClick={() => onPick}>Чай</button>
+}
+
+export function PlainVariable() {
+  let cups = 0
+  return <button onClick={() => { cups = cups + 1 }}>Чашок: {cups}</button>
+}
+
+export function HookInHandler() {
+  return <button onClick={() => { const [cups] = useState(0); console.log(cups) }}>Клік</button>
+}
+
+export function NoOnChange({ text }: { text: string }) {
+  return <input value={text} />
+}
+
+export function ReplacesObject() {
+  const [order, setOrder] = useState({ drink: 'Лате', note: '' })
+  return <input value={order.note} onChange={(e) => setOrder({ note: e.target.value })} />
+}
+
+export function NoType() {
+  return <form><button onClick={show}>Показати</button></form>
+}
+```
+
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/mistakes.tsx(8,18): error TS2322: Type 'void' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+src/mistakes.tsx(16,18): error TS2322: Type 'void' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+src/mistakes.tsx(20,18): error TS2322: Type '(drink: string) => void' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'drink' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'string'.
+src/mistakes.tsx(42,62): error TS2345: Argument of type '{ note: string; }' is not assignable to parameter of type 'SetStateAction<{ drink: string; note: string; }>'.
+  Property 'drink' is missing in type '{ note: string; }' but required in type '{ drink: string; note: string; }'.
+```
+
+```text
+react-hooks/set-state-in-render | Error: Cannot call setState during render | return <button onClick={add()}>Чашок: {cups}</button>
+react-hooks/immutability | Error: Cannot modify local variables after render completes | return <button onClick={() => { cups = cups + 1 }}>Чашок: {cups}</button>
+react-hooks/immutability | Error: Cannot reassign variable after render completes | return <button onClick={() => { cups = cups + 1 }}>Чашок: {cups}</button>
+react-hooks/rules-of-hooks | React Hook "useState" cannot be called inside a callback. React Hooks must be called in a React function component or a custom React Hook function. | return <button onClick={() => { const [cups] = useState(0); console.log(cups) }}>Клік</button>
+```
+
+`tsc` указав на рядки 8, 16, 20 і 42. ESLint указав на рядки 16, 29 і 33. Компоненти `NeverCalls`, `NoOnChange` і
+`NoType` не згадав жоден із них. Таблиця збирає цей вивід, а колонка «Під час роботи» збирає досліди з розділів вище:
 
 | Помилка | `tsc` | ESLint | Під час роботи |
 |---------|-------|--------|----------------|
