@@ -62,8 +62,64 @@
 Відповідь не приходить одним шматком. Спершу з мережі надходять статус і заголовки, а тіло може йти ще довго. Для
 великого файла різниця становить хвилини. Тому в коді з `fetch` є два очікування, і вони чекають різного.
 
-Перевіримо це. Для прикладів лекції ми написали маленький вигаданий сервер прогнозу погоди `weather-server.mjs`, його
-код не важливий. Адреса `/slow-body` одразу надсилає статус і заголовки, а тіло дописує через 200 мс.
+Перевіримо це. Для прикладів лекції ми написали маленький вигаданий сервер прогнозу погоди. Збережіть його код у файл
+`weather-server.mjs`. Вивчати цей код рядок за рядком не треба: кожна гілка `if` описує одну адресу, а коментар поруч
+каже, що сервер робить, коли хтось просить цю адресу.
+
+```js
+// weather-server.mjs: вигаданий сервер прогнозу погоди
+import { createServer } from "node:http";
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const JSON_TYPE = { "Content-Type": "application/json" };
+
+async function handle(req, res) {
+  const { pathname, searchParams } = new URL(req.url, "http://localhost");
+
+  if (pathname === "/slow-body") {          // статус і заголовки одразу, тіло через 200 мс
+    res.writeHead(200, JSON_TYPE);
+    res.flushHeaders();
+    await pause(200);
+    res.end(JSON.stringify({ city: "Львів", temp: 7 }));
+  } else if (pathname === "/cut") {         // статус 200, половина тексту, потім обрив з'єднання
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.write("половина тек");
+    await pause(50);
+    res.destroy();
+  } else if (pathname === "/no-content") {  // статус 204, тіла немає
+    res.writeHead(204).end();
+  } else if (pathname === "/old") {         // статус 302: дані лежать за адресою /new
+    res.writeHead(302, { Location: "/new" }).end();
+  } else if (pathname === "/new") {
+    res.writeHead(200, JSON_TYPE).end(JSON.stringify({ moved: true }));
+  } else if (pathname === "/chunks") {      // три шматки тексту з паузами між ними
+    for (const word of ["перший ", "другий ", "третій"]) {
+      res.write(word);
+      await pause(50);
+    }
+    res.end();
+  } else if (pathname === "/weather") {     // про Львів відповідає через 400 мс, про інші міста через 100 мс
+    const city = searchParams.get("city");
+    await pause(city === "lviv" ? 400 : 100);
+    res.writeHead(200, JSON_TYPE).end(JSON.stringify({ city, temp: 7 }));
+  } else {
+    res.writeHead(404).end();
+  }
+}
+
+// Запускає сервер і повертає його разом із початком адреси. Порт 0 просить систему вибрати вільний порт.
+export function start() {
+  const server = createServer(handle);
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      resolve({ server, base: "http://127.0.0.1:" + server.address().port });
+    });
+  });
+}
+```
+
+Перший приклад збережіть поруч у файл `example.mjs` і запустіть командою `node example.mjs`. Він просить адресу
+`/slow-body`, яка одразу надсилає статус і заголовки, а тіло дописує через 200 мс.
 
 ```js
 import { start } from "./weather-server.mjs";
@@ -97,8 +153,28 @@ server.close();
 **Що з цього випливає.** Статус можна перевірити раніше, ніж дійде тіло, тож не треба завантажувати велику сторінку
 помилки, щоб дізнатися про помилку. Є й неприємний наслідок: успіх першого `await` нічого не обіцяє другому, бо
 з'єднання може обірватися на середині тіла. Адреса `/cut` нашого сервера надсилає статус 200, половину тексту, а потім
-обриває з'єднання. Перший `await` дає `ok` рівне `true`, а `await cut.text()` падає з `TypeError: terminated`. Текст
-задає Node, у браузері він буде інший. Тому `try` має охоплювати обидва `await`, а не лише перший.
+обриває з'єднання. Цей приклад і всі наступні, що звертаються до `base`, запускаються так само, як перший: на початку
+файла стоять рядки з `import` і `await start()`, а в кінці `server.close()`. Щоб не повторювати їх, ми показуємо лише
+середину.
+
+```js
+const cut = await fetch(base + "/cut");
+console.log("перший await: ok =", cut.ok);
+try {
+  await cut.text();                         // тут з'єднання обірветься
+} catch (e) {
+  console.log("другий await →", e.name + ":", e.message);
+}
+```
+
+```text
+перший await: ok = true
+другий await → TypeError: terminated
+```
+
+Перший рядок надрукував код після `await fetch`: статус і заголовки прийшли, тому `ok` дорівнює `true`. Другий рядок
+надрукував блок `catch`, бо читання тіла не дійшло до кінця. Текст `terminated` задає Node, у браузері він буде інший.
+Тому `try` має охоплювати обидва `await`, а не лише перший.
 
 ## Коли проміс від `fetch` відхиляється
 
@@ -289,13 +365,44 @@ fetch уже виконався, статус 200
 
 `abort()` зупиняє очікування у вашій програмі, і браузер чи Node обриває передачу даних. Але він не відкочує того, що
 сервер уже зробив. Ми написали вигаданий сервер оплати, який працює 100 мс, а наприкінці збільшує лічильник платежів.
-Клієнт надсилає `POST` і викликає `abort()` через 20 мс:
+Клієнт надсилає `POST` і викликає `abort()` через 20 мс. Цей приклад має власний сервер, тому його код показано цілком.
+
+```js
+import { createServer } from "node:http";
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let payments = 0;                                // лічильник платежів на сервері
+const server = createServer(async (req, res) => {
+  await pause(100);                              // сервер працює 100 мс
+  payments += 1;                                 // і лише тепер проводить платіж
+  console.log("сервер: платіж проведено, усього", payments);
+  res.end("готово");
+});
+await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+const base = "http://127.0.0.1:" + server.address().port;
+
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 20);        // клієнт передумує через 20 мс
+try {
+  await fetch(base + "/pay", { method: "POST", signal: controller.signal });
+} catch (e) {
+  console.log("клієнт:", e.name);
+}
+
+await pause(200);                                // даємо серверу час закінчити роботу
+console.log("наприкінці на сервері платежів:", payments);
+server.close();
+```
 
 ```text
 клієнт: AbortError
 сервер: платіж проведено, усього 1
 наприкінці на сервері платежів: 1
 ```
+
+Перший рядок надрукував клієнт на двадцятій мілісекунді. Другий рядок надрукував сервер пізніше, бо він не дізнався
+про скасування й довів роботу до кінця. Третій рядок показує лічильник на сервері після того, як обидва закінчили.
 
 Клієнт вважає, що запит скасовано, а гроші списано. Для пошуку це не має значення, бо читання нічого не змінює. Для
 запитів, що змінюють дані, скасування не є способом «передумати»: відмінити операцію може лише окремий запит до
@@ -324,7 +431,32 @@ fetch уже виконався, статус 200
 | 150 мс | Мережа | Прийшла Одеса (50 + 100) | Одеса |
 | 400 мс | Мережа | Прийшов Львів (0 + 400) | Львів |
 
-Остання відповідь перемагає, хоч її запит був старшим. Код без захисту дає такий вивід:
+Остання відповідь перемагає, хоч її запит був старшим. У коді нижче змінна `screen` стоїть замість екрана, а функція
+`userPicksTwoCities` повторює дії людини, яка вибирає два міста з перервою в 50 мс. Параметр `show` цієї функції —
+інша функція, яка робить запит і показує відповідь. Далі ми запустимо ті самі дії людини ще раз з іншою функцією `show`.
+
+```js
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+let screen = "порожньо";                     // те, що зараз бачить людина
+
+async function showAny(city) {
+  const res = await fetch(base + "/weather?city=" + city);
+  const data = await res.json();
+  screen = data.city;                        // без захисту: малюємо все, що прийшло
+  console.log("  прийшла відповідь:", data.city, "→ на екрані", screen);
+}
+
+async function userPicksTwoCities(show) {
+  const lviv = show("lviv");                 // момент 0: людина вибрала Львів
+  await pause(50);
+  const odesa = show("odesa");               // момент 50 мс: людина вибрала Одесу
+  await Promise.all([lviv, odesa]);          // чекаємо обидві відповіді
+  console.log("  користувач вибрав odesa, на екрані", screen);
+}
+
+console.log("без перевірки:");
+await userPicksTwoCities(showAny);
+```
 
 ```text
 без перевірки:
@@ -333,6 +465,10 @@ fetch уже виконався, статус 200
   користувач вибрав odesa, на екрані lviv
 ```
 
+Перший рядок відповіді належить Одесі, бо її сервер відповідає швидше. Другий рядок належить Львову, і саме він
+перезаписав `screen`. Останній рядок показує наслідок: людина вибрала Одесу, а бачить Львів. Отже, код, який малює все,
+що прийшло, покаже старе місто щоразу, коли відповідь на старий запит прийде останньою.
+
 Є два способи це прибрати, і вони вирішують різне.
 
 **Спосіб перший: скасувати старий запит.** Перед новим запитом код викликає `abort()` на контролері попереднього й
@@ -340,7 +476,7 @@ fetch уже виконався, статус 200
 завданні.
 
 **Спосіб другий: викинути застарілу відповідь.** Запити йдуть до кінця, але код порівнює, чи відповідь ще актуальна.
-Найпростіша перевірка використовує номер запиту:
+Найпростіша перевірка використовує номер запиту. Допишіть цей код у той самий файл, після попереднього досліду:
 
 ```js
 let lastId = 0;
@@ -356,6 +492,9 @@ async function showLatest(city) {
   screen = data.city;
   console.log("  прийшла відповідь:", data.city, "→ на екрані", screen);
 }
+
+console.log("з номером запиту:");
+await userPicksTwoCities(showLatest);
 ```
 
 ```text
@@ -407,18 +546,42 @@ async function showLatest(city) {
 оновлення екрана, а `useEffect` — спосіб її оголосити. Функцію, яку ефект повертає, React викликає перед наступним
 запуском ефекта з новими даними й коли компонент зникає. У цій функції прибирання зручно скасовувати запит.
 
-Ось частина компонента, який показує прогноз. Ми запустили її в React 19 в імітації браузера jsdom з увімкненим
-режимом `StrictMode`.
+Ось компонент, який показує прогноз, разом із тестом, що його запускає. Ми запустили цей код у React 19 в імітації
+браузера jsdom з увімкненим режимом `StrictMode`. Тест запускає програма Vitest командою `npx vitest run`. Для цього в
+проєкті мають стояти пакети `react`, `@testing-library/react`, `vitest` і `jsdom`, а файл тесту має лежати поруч із
+`weather-server.mjs`. Ці пакети ви поставите в день 11, тому сьогодні досить прочитати код і вивід.
 
-```js
-useEffect(() => {
-  const controller = new AbortController();
-  fetch(base + "/weather?city=" + city, { signal: controller.signal })
-    .then((res) => res.json())
-    .then(setData)
-    .catch((e) => { if (e.name !== "AbortError") throw e; console.log("запит скасовано:", city); });
-  return () => controller.abort();
-}, [city]);
+```jsx
+// @vitest-environment jsdom
+import { StrictMode, useEffect, useState } from "react";
+import { render, screen } from "@testing-library/react";
+import { test } from "vitest";
+import { start } from "./weather-server.mjs";
+
+const { server, base } = await start();
+server.on("request", (req) => console.log("сервер отримав", req.url));
+
+function Forecast({ city }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(base + "/weather?city=" + city, { signal: controller.signal })
+      .then((res) => res.json())
+      .then(setData)
+      .catch((e) => { if (e.name !== "AbortError") throw e; console.log("запит скасовано:", city); });
+    return () => controller.abort();
+  }, [city]);
+
+  return <p>{data ? "на екрані: " + data.city : "завантаження"}</p>;
+}
+
+test("прогноз у StrictMode", async () => {
+  render(<StrictMode><Forecast city="lviv" /></StrictMode>);
+  const shown = await screen.findByText(/на екрані/);    // чекаємо, доки з'явиться відповідь
+  console.log(shown.textContent);
+  server.close();
+});
 ```
 
 ```text
@@ -426,6 +589,9 @@ useEffect(() => {
 сервер отримав /weather?city=lviv
 на екрані: lviv
 ```
+
+Перший рядок надрукував блок `catch`, другий надрукував сервер, а третій надрукував тест, коли прогноз з'явився на
+екрані.
 
 Рядок `запит скасовано` з'явився, хоч місто ніхто не змінював. У режимі розробки `StrictMode` спеціально запускає
 ефект двічі, із прибиранням між запусками, щоб знайти код, який погано прибирає за собою. Перший запит скасовано

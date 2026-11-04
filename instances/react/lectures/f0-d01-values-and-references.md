@@ -178,7 +178,35 @@ console.log(pen.price);
 Вміст об'єктів `===` не розглядає взагалі.
 
 Функція `Object.is` робить те саме, але обробляє числа інакше: для неї `NaN` дорівнює `NaN`, а `0` не дорівнює `-0`.
-Більше відмінностей немає. Ось результати, отримані запуском:
+Більше відмінностей немає. Перевірмо це запуском. Кожен рядок коду друкує дві відповіді: спершу `===`, потім
+`Object.is`:
+
+```js
+const box = { n: 1 };
+const sameBox = box; // друга змінна для того самого об'єкта
+
+console.log(5 === 5, Object.is(5, 5));
+console.log(5 === "5", Object.is(5, "5"));
+console.log(NaN === NaN, Object.is(NaN, NaN));
+console.log(0 === -0, Object.is(0, -0));
+console.log({} === {}, Object.is({}, {}));
+console.log(box === sameBox, Object.is(box, sameBox));
+console.log(new Date(0) === new Date(0), Object.is(new Date(0), new Date(0)));
+console.log(Symbol("a") === Symbol("a"), Object.is(Symbol("a"), Symbol("a")));
+```
+
+```text
+true true
+false false
+false true
+true false
+false false
+true true
+false false
+false false
+```
+
+Таблиця показує ті самі результати в тому самому порядку й називає, що саме порівнювалося:
 
 | Що порівнюємо | `===` | `Object.is` |
 |---------------|-------|-------------|
@@ -191,7 +219,9 @@ console.log(pen.price);
 | `new Date(0)` і `new Date(0)` | `false` | `false` |
 | `Symbol("a")` і `Symbol("a")` | `false` | `false` |
 
-Кожен запис `{}` чи `new Date(0)` створює новий об'єкт, тому в цих випадках порівнюються два різні об'єкти.
+Кожен запис `{}` чи `new Date(0)` створює новий об'єкт, тому в цих випадках порівнюються два різні об'єкти. Для вашого
+коду це означає таке: перевірка `a === b` для об'єктів відповідає лише на запитання «це той самий об'єкт?», а про
+однаковий вміст вона нічого не каже.
 
 Значення `-0` виникає, наприклад, як результат `0 * -1`, тому `Object.is(0 * -1, 0)` дає `false`.
 
@@ -205,7 +235,32 @@ console.log(pen.price);
 Перевірки практики цього дня написано через модуль `node:assert`. За [документацією
 Node](https://nodejs.org/api/assert.html) `strictEqual` порівнює через `Object.is`, тобто питає «чи це той самий
 об'єкт», а `deepStrictEqual` порівнює вміст усіх рівнів. Тому `assert.strictEqual` кидає `AssertionError` навіть для
-двох однакових на вигляд об'єктів.
+двох однакових на вигляд об'єктів:
+
+```js
+import assert from "node:assert";
+
+const first = { id: 1 };
+const second = { id: 1 }; // такий самий вміст, але це інший об'єкт
+
+assert.deepStrictEqual(first, second); // вміст однаковий, тому цей рядок проходить
+console.log("deepStrictEqual: помилки немає");
+
+try {
+  assert.strictEqual(first, second); // об'єкти різні, тому цей рядок кидає помилку
+} catch (e) {
+  console.log("strictEqual:", e.name);
+}
+```
+
+```text
+deepStrictEqual: помилки немає
+strictEqual: AssertionError
+```
+
+Перший рядок виводу підтверджує, що вміст об'єктів однаковий. Другий рядок показує, що це все одно два різні об'єкти.
+Тому, якщо `strictEqual` кидає помилку на двох однакових на вигляд об'єктах, ваш код отримав не той самий об'єкт, а
+інший.
 
 ## Що роблять три крапки
 
@@ -363,8 +418,70 @@ true false
 Поля `first` і `second` у копії вказують на один об'єкт, як і в оригіналі, але це вже новий об'єкт, а не `shared`. З
 посиланням на себе відбувається те саме: `clone.self` вказує на копію, а не на оригінал.
 
-Функція копіює дані, а не все підряд. Таблиця підсумовує, що стається з різними значеннями. Усе, крім вузлів сторінки,
-перевірено в Node. Вузли сторінки описано за [довідником
+Функція копіює дані, а не все підряд. Перевірмо це в Node на різних значеннях. Допоміжна функція `tryClone` друкує
+копію, а якщо копіювати не вдалося, друкує назву й текст помилки:
+
+```js
+function tryClone(label, value) {
+  try {
+    console.log(label, structuredClone(value));
+  } catch (e) {
+    console.log(label, e.name + ": " + e.message);
+  }
+}
+
+tryClone("дані:", [new Date(0), new Map([["a", 1]]), new Set([1]), [1], { a: 1 }, undefined]);
+tryClone("метод:", { run() {} });
+tryClone("символ:", Symbol("s"));
+tryClone("Promise:", Promise.resolve(1));
+tryClone("WeakMap:", new WeakMap());
+tryClone("Proxy:", new Proxy({}, {}));
+tryClone("ключ-символ:", { [Symbol("s")]: 1, a: 1 });
+tryClone("геттер:", { get total() { return 5; } }); // геттер обчислює значення поля функцією
+
+// Object.defineProperty додає неперелічуване поле hidden.
+tryClone("неперелічуване:", Object.defineProperty({ a: 1 }, "hidden", { value: 2, enumerable: false }));
+
+class Cart {
+  constructor() {
+    this.count = 2;
+  }
+  total() {
+    return this.count * 10;
+  }
+}
+const cartCopy = structuredClone(new Cart());
+console.log("клас:", cartCopy, cartCopy instanceof Cart, typeof cartCopy.total);
+
+// Object.freeze забороняє змінювати поля об'єкта. Перевіряємо, чи заборона дісталася копії.
+const frozenCopy = structuredClone(Object.freeze({ a: 1 }));
+frozenCopy.a = 2;
+console.log("заморожений:", Object.isFrozen(frozenCopy), frozenCopy.a);
+```
+
+```text
+дані: [
+  1970-01-01T00:00:00.000Z,
+  Map(1) { 'a' => 1 },
+  Set(1) { 1 },
+  [ 1 ],
+  { a: 1 },
+  undefined
+]
+метод: DataCloneError: run() {} could not be cloned.
+символ: DataCloneError: Symbol(s) could not be cloned.
+Promise: DataCloneError: #<Promise> could not be cloned.
+WeakMap: DataCloneError: #<WeakMap> could not be cloned.
+Proxy: DataCloneError: #<Object> could not be cloned.
+ключ-символ: { a: 1 }
+геттер: { total: 5 }
+неперелічуване: { a: 1 }
+клас: { count: 2 } false undefined
+заморожений: false 2
+```
+
+Таблиця підсумовує, що стається з різними значеннями. Усе, крім вузлів сторінки, перевірено цим запуском. Вузли сторінки
+описано за [довідником
 MDN](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm), бо в Node їх немає.
 У браузері ви побачите ту саму помилку `DataCloneError`.
 
@@ -380,11 +497,33 @@ MDN](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured
 | об'єкт класу | звичайний об'єкт із власними полями, клас і методи зникають |
 | заморожений об'єкт | звичайний об'єкт, який можна змінювати |
 
-Текст помилки для функції в Node виглядає так: `DataCloneError: run() {} could not be cloned.`
+Текст помилки для функції видно в рядку `метод:` цього виводу: `DataCloneError: run() {} could not be cloned.` Для
+вашого коду це означає таке: `structuredClone` підходить для даних, об'єкт із функцією він не скопіює, а об'єкт класу
+поверне без методів.
 
-Старий прийом `JSON.parse(JSON.stringify(x))` теж робить глибоку копію, але втрачає більше: дата стає рядком, поле зі
-значенням `undefined` зникає, `NaN` стає `null`, `Set` стає порожнім об'єктом, а об'єкт із посиланням на себе дає
-`TypeError`.
+Старий прийом `JSON.parse(JSON.stringify(x))` теж робить глибоку копію, але втрачає більше:
+
+```js
+const data = { when: new Date(0), nothing: undefined, price: NaN, labels: new Set(["a"]) };
+console.log(JSON.parse(JSON.stringify(data)));
+
+const loop = {};
+loop.self = loop; // об'єкт посилається сам на себе
+try {
+  JSON.stringify(loop);
+} catch (e) {
+  console.log(e.name);
+}
+```
+
+```text
+{ when: '1970-01-01T00:00:00.000Z', price: null, labels: {} }
+TypeError
+```
+
+Перший рядок виводу показує, що дата стає рядком, поле зі значенням `undefined` зникає, `NaN` стає `null`, а `Set` стає
+порожнім об'єктом. Другий рядок показує, що об'єкт із посиланням на себе дає `TypeError`. Тому для даних із датами,
+`Set` чи `NaN` цей прийом не годиться.
 
 Глибока копія зручна, але для оновлення даних вона часто шкодить. Порівняємо два способи змінити один товар у каталозі
 з 1000 товарів:
@@ -451,7 +590,71 @@ setOrder({ ...order, status: "відправлений" });
 setOrder({ ...order });
 ```
 
-Функція `setTick` змінює інший, не пов'язаний стан компонента. Ось що показав запуск у React 19.3:
+Функція `setTick` змінює інший, не пов'язаний стан компонента. Щоб дослід можна було повторити, ми записали компонент і
+чотири дії як **тест**, тобто код, який сам показує компонент, сам клацає кнопки й друкує результат. Запускає тест
+програма Vitest, а показує компонент і клацає кнопки бібліотека Testing Library. З обома ви працюватимете пізніше, тому
+зараз код досить прочитати. Якщо вони вже є у вашому проєкті, покладіть код у файл, ім'я якого закінчується на
+`.test.tsx`, і виконайте команду `npx vitest run --disable-console-intercept`. Прапорець у цій команді просить Vitest
+друкувати рядки `console.log` без додаткових заголовків.
+
+```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { useState } from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { test } from "vitest";
+
+let calls = 0; // скільки разів React викликав компонент
+
+function OrderPage() {
+  calls = calls + 1;
+  const [order, setOrder] = useState({ status: "новий" });
+  const [, setTick] = useState(0); // саме значення нам не потрібне, лише функція зміни
+
+  return (
+    <>
+      <p>{order.status}</p>
+      <button
+        onClick={() => {
+          order.status = "оплачений"; // змінюємо поле наявного об'єкта
+          setOrder(order); // передаємо той самий об'єкт
+        }}
+      >
+        змінити поле
+      </button>
+      <button onClick={() => setTick(1)}>змінити інший стан</button>
+      <button onClick={() => setOrder({ ...order, status: "відправлений" })}>новий статус</button>
+      <button onClick={() => setOrder({ ...order })}>той самий вміст</button>
+    </>
+  );
+}
+
+test("чотири дії", () => {
+  const { container } = render(<OrderPage />); // перший показ компонента
+  const report = (action: string) => {
+    const shown = container.querySelector("p")!.textContent; // що стоїть на екрані зараз
+    console.log(`${action} | викликів: ${calls} | на екрані: ${shown}`);
+  };
+
+  report("перший показ");
+  for (const label of ["змінити поле", "змінити інший стан", "новий статус", "той самий вміст"]) {
+    fireEvent.click(screen.getByText(label)); // клацання: кожна дія стає окремим оновленням
+    report(label);
+  }
+});
+```
+
+Ось що показав запуск у React 19.3:
+
+```text
+перший показ | викликів: 1 | на екрані: новий
+змінити поле | викликів: 1 | на екрані: новий
+змінити інший стан | викликів: 2 | на екрані: оплачений
+новий статус | викликів: 3 | на екрані: відправлений
+той самий вміст | викликів: 4 | на екрані: відправлений
+```
+
+Таблиця показує той самий вивід і докладніше називає кожну дію:
 
 | Дія | Скільки разів React викликав компонент | Що на екрані |
 |-----|-------------------------------------|--------------|
@@ -473,19 +676,152 @@ setOrder({ ...order });
 
 Документація також попереджає, що інколи React викликає компонент ще раз, перш ніж пропустити оновлення, тому
 лічильник викликів може зрости, але екран при цьому не зміниться. Правило `Object.is` пояснює й числові випадки:
-перехід від `NaN` до `NaN` не оновлює компонент, а перехід від `0` до `-0` оновлює.
+перехід від `NaN` до `NaN` не оновлює компонент, а перехід від `0` до `-0` оновлює. Цей тест перевіряє обидва переходи.
+Він лежить в окремому файлі, який починається з тих самих перших рядків: коментаря про jsdom та імпортів:
+
+```tsx
+let calls = 0;
+
+function NumberBox({ start, next }: { start: number; next: number }) {
+  calls = calls + 1;
+  const [value, setValue] = useState(start);
+  return <button onClick={() => setValue(next)}>{String(value)}</button>;
+}
+
+test("числа", () => {
+  for (const [start, next] of [[NaN, NaN], [0, -0]]) {
+    calls = 0; // кожен перехід рахуємо з нуля
+    const { unmount } = render(<NumberBox start={start} next={next} />);
+    fireEvent.click(screen.getByRole("button"));
+    console.log(start, "->", next, "викликів:", calls);
+    unmount(); // прибираємо компонент із документа перед наступним переходом
+  }
+});
+```
+
+```text
+NaN -> NaN викликів: 1
+0 -> -0 викликів: 2
+```
+
+Один виклик у першому рядку виводу означає лише перший показ компонента, тобто клацання нічого не оновило. Два виклики в
+другому рядку означають, що клацання оновило компонент. Оператор `===` для цих двох пар відповів би навпаки, тому для
+оновлення стану враховуйте правило `Object.is`, а не правило `===`.
 
 `Object.is` працює в React і в інших місцях:
 
 - **Залежності ефекту.** Ефект — це код, який React запускає після оновлення екрана, а залежності — значення, від яких
   цей код залежить. React порівнює кожну залежність `useEffect` з попередньою через `Object.is`
   ([useEffect](https://react.dev/reference/react/useEffect#parameters)). Об'єкт, створений під час показу компонента,
-  щоразу новий, тому ефект із такою залежністю запускається після кожного оновлення. У нашому запуску другий показ
-  компонента запустив ефект удруге.
+  щоразу новий, тому ефект із такою залежністю запускається після кожного оновлення. Дослід з ефектом нижче показує, що
+  другий показ компонента запускає ефект удруге.
 - **`memo`.** Обгортка `memo` пропускає повторний виклик компонента, якщо кожен його вхідний параметр (props) не
   змінився за `Object.is` ([memo](https://react.dev/reference/react/memo)). Тому незмінені об'єкти варто лишати тими
-  самими. У запуску зі списком із трьох рядків оновлення одного елемента через `map` викликало лише один рядок, а
-  `structuredClone` усього списку викликав усі три.
+  самими. Дослід зі списком із трьох рядків нижче показує, що оновлення одного елемента через `map` викликає лише один
+  рядок, а `structuredClone` усього списку викликає всі три.
+
+Обидва досліди лежать в окремих файлах із тими самими першими рядками, а з модуля `react` кожен бере ще одну функцію.
+Спершу подивимося на ефект. Об'єкт `options` створюється всередині компонента, тому під час кожного показу він новий:
+
+```tsx
+import { useEffect, useState } from "react";
+
+function Filter() {
+  const [shows, setShows] = useState(1);
+  const options = { sort: "price" }; // цей рядок виконується під час кожного показу компонента
+
+  useEffect(() => {
+    console.log("ефект запустився, показ номер", shows);
+  }, [options]); // React порівнює options із попереднім значенням через Object.is
+
+  return <button onClick={() => setShows(shows + 1)}>оновити</button>;
+}
+
+test("ефект", () => {
+  render(<Filter />); // перший показ
+  fireEvent.click(screen.getByText("оновити")); // другий показ
+});
+```
+
+```text
+ефект запустився, показ номер 1
+ефект запустився, показ номер 2
+```
+
+Перший рядок виводу з'явився після першого показу. Другий рядок з'явився після другого показу, хоча вміст `options` не
+змінився: посилання стало іншим, і для `Object.is` цього досить. Якщо ефект у вашому компоненті запускається частіше,
+ніж ви очікуєте, перевірте, чи немає серед його залежностей об'єкта, створеного під час показу компонента.
+
+Тепер подивимося на `memo`. Список має три рядки, а тест по черзі змінює другий рядок двома способами. Масив `called`
+запам'ятовує номери рядків, які React викликав. Запис `key` каже React, який саме це рядок списку.
+
+```tsx
+import { memo, useState } from "react";
+
+type Row = { id: number; hot: boolean };
+
+let called: number[] = [];
+
+// memo пропускає виклик, якщо row є тим самим об'єктом, що й минулого разу.
+const RowView = memo(function RowView({ row }: { row: Row }) {
+  called.push(row.id);
+  return <li>{row.hot ? "гарячий" : "звичайний"}</li>;
+});
+
+function RowList() {
+  const [rows, setRows] = useState<Row[]>([
+    { id: 1, hot: false },
+    { id: 2, hot: false },
+    { id: 3, hot: false },
+  ]);
+
+  return (
+    <>
+      <button onClick={() => setRows(rows.map((row) => (row.id === 2 ? { ...row, hot: true } : row)))}>
+        через map
+      </button>
+      <button
+        onClick={() => {
+          const next = structuredClone(rows); // нові об'єкти для всіх рядків
+          next[1].hot = true;
+          setRows(next);
+        }}
+      >
+        через structuredClone
+      </button>
+      <ul>
+        {rows.map((row) => (
+          <RowView key={row.id} row={row} />
+        ))}
+      </ul>
+    </>
+  );
+}
+
+test("memo", () => {
+  render(<RowList />);
+  console.log("перший показ:", called);
+
+  called = []; // наступну дію рахуємо спочатку
+  fireEvent.click(screen.getByText("через map"));
+  console.log("через map:", called);
+
+  called = [];
+  fireEvent.click(screen.getByText("через structuredClone"));
+  console.log("через structuredClone:", called);
+});
+```
+
+```text
+перший показ: [ 1, 2, 3 ]
+через map: [ 2 ]
+через structuredClone: [ 1, 2, 3 ]
+```
+
+Під час першого показу React викликав усі три рядки. Функція `map` створила новий об'єкт лише для другого рядка, а два
+інші передала тими самими, тому `memo` пропустив їхні виклики. Функція `structuredClone` створила нові об'єкти для всіх
+рядків, тому `memo` не пропустив жодного, хоча змінився один рядок. Отже, оновлюйте у списку лише той елемент, який
+справді змінився, а решту передавайте тими самими об'єктами.
 
 Звідси правило документації React: стан вважають призначеним лише для читання й замінюють новим об'єктом ([Updating
 Objects in State](https://react.dev/learn/updating-objects-in-state)). Є важливе уточнення. Змінювати об'єкт, який ви
@@ -582,4 +918,4 @@ setOrder(order)`; б) `setOrder({ ...order, total: 900 })`; в) `setOrder({ ...o
 Лекцію написано для цього плану. Вона спирається на довідник MDN (CC BY-SA 2.5 або новіша), специфікацію ECMA-262,
 стандарт HTML спільноти WHATWG (CC BY 4.0), документацію React (CC BY 4.0) і документацію Node.js. Джерела переказано
 своїми словами, а права на них належать їхнім авторам. Код запущено на Node 24.22, а приклади з React запущено в React
-19.3.1.
+19.3.1 у Vitest під jsdom.
