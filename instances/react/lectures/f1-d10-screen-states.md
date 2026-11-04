@@ -9,6 +9,15 @@
 прикладами справжній. Типи перевірено компілятором `tsc` версії 6.0. У справжньому браузері приклади не запускалися,
 тому там, де йдеться про браузер, сказано, на чому це твердження тримається.
 
+Кожен дослід можна повторити в проєкті шаблону. Для цього створіть окремий файл тесту, наприклад
+`src/payment.test.tsx`. Першим рядком напишіть `// @vitest-environment jsdom`. Далі йдуть рядки `import`: функції
+`render`, `screen` і `act` приходять із пакета `@testing-library/react`, функція `userEvent` із пакета
+`@testing-library/user-event`, функції `test` і `vi` із пакета `vitest`, а хук `useState` із пакета `react`. Лекція не
+повторює ці рядки в кожному прикладі. Типи й компоненти залиште зверху файла, а код досліду покладіть усередину
+`test('дослід', async () => { ... })`. Запускає файл команда `npx vitest run src/payment.test.tsx
+--disable-console-intercept`, а прапорець у ній прибирає службові рядки навколо `console.log`. Кожному досліду дайте
+власний файл, щоб екран попереднього досліду не заважав наступному.
+
 **Після лекції ви зможете пояснити:**
 
 - чим опис екрана станами відрізняється від опису діями і що кожен із цих способів вимагає пам'ятати;
@@ -54,6 +63,31 @@ pay.onclick = async () => {
 
 Код виглядає розумно. Тест клацає кнопку, банк відмовляє, тест клацає знову, і банк погоджує. Після кожної події тест
 друкує всі видимі елементи:
+
+```ts
+// Проміс чекає, а функцію, яка його виконує, тест кладе в answer. Так тест сам вирішує, коли й що відповість банк.
+let answer!: (approved: boolean) => void
+const bank = () => new Promise<boolean>((resolve) => { answer = resolve })
+// Пауза дає обробнику час виконати рядки, що стоять після await.
+const pause = () => new Promise((resolve) => setTimeout(resolve))
+// Функція збирає текст усіх елементів, у яких немає атрибута hidden.
+const visible = () =>
+  [...document.body.children]
+    .filter((element) => !(element as HTMLElement).hidden)
+    .map((element) => element.textContent)
+    .join(' + ')
+
+pay.click()
+console.log('перша спроба, банк думає:', visible())
+answer(false)
+await pause()
+console.log('банк відмовив:', visible(), '| кнопка вимкнена:', pay.disabled)
+pay.click()
+console.log('друга спроба, банк думає:', visible())
+answer(true)
+await pause()
+console.log('банк погодив:', visible())
+```
 
 ```text
 перша спроба, банк думає: Оплатити + Банк думає…
@@ -159,6 +193,18 @@ function Gallery() {
 
 Тест малює `Gallery` і для кожної секції друкує кнопку й тексти:
 
+```tsx
+render(<Gallery />)
+for (const section of document.querySelectorAll('section')) {
+  const kind = section.querySelector('h2')!.textContent!
+  const button = section.querySelector('button')
+  const buttonText = button ? button.textContent + (button.disabled ? ' (вимкнена)' : '') : 'немає'
+  // Тексти це всі абзаци секції. Якщо абзаців немає, тест друкує тире.
+  const texts = [...section.querySelectorAll('p')].map((p) => p.textContent).join(' + ') || '—'
+  console.log(`${kind.padEnd(10)} | кнопка: ${buttonText} | текст: ${texts}`)
+}
+```
+
 ```text
 idle       | кнопка: Оплатити | текст: —
 confirming | кнопка: Підтвердити | текст: До сплати: 250 грн
@@ -166,6 +212,10 @@ paying     | кнопка: Підтвердити (вимкнена) | текс�
 paid       | кнопка: немає | текст: Оплачено, чек A-17
 declined   | кнопка: Підтвердити | текст: До сплати: 250 грн + Недостатньо коштів
 ```
+
+Кожен рядок виводу відповідає одному об'єкту з масиву `ALL`. Рядок `paid` не має кнопки, бо перша перевірка в
+`PaymentView` повертає лише абзац із чеком. Рядок `idle` не має тексту, бо друга перевірка повертає лише кнопку. Отже,
+щоб побачити будь-який вигляд форми, вам досить додати один об'єкт у масив.
 
 Компонент `Gallery` називають **службовим екраном**, бо його бачить лише розробник. Документація React наводить для
 такої сторінки дві назви: `living styleguide` і `storybook`. Такий екран дає три вигоди. Ви бачите всі стани одразу, і
@@ -175,12 +225,20 @@ declined   | кнопка: Підтвердити | текст: До сплат�
 Цей прийом працює лише тому, що `PaymentView` нічого не пам'ятає сам. Тест намалював його двічі з тим самим станом і
 порівняв HTML:
 
+```tsx
+const state: Payment = { kind: 'declined', amount: 250, reason: 'Недостатньо коштів' }
+// Кожен виклик render створює окремий контейнер, тому це два незалежні покази компонента.
+const first = render(<PaymentView payment={state} />).container.innerHTML
+const second = render(<PaymentView payment={state} />).container.innerHTML
+console.log(first === second, first)
+```
+
 ```text
 true <p>До сплати: 250 грн</p><button>Підтвердити</button><p role="alert">Недостатньо коштів</p>
 ```
 
-Перше слово `true` означає, що два рядки HTML збіглися. Якби компонент тримав власний стан, п'ять копій на службовому
-екрані показували б різне залежно від того, що в них клацали.
+Перше слово `true` означає, що два рядки HTML збіглися, а за ним надруковано сам рядок. Якби компонент тримав власний
+стан, п'ять копій на службовому екрані показували б різне залежно від того, що в них клацали.
 
 Чому в секції стоїть `key={payment.kind}`? Лекція «Списки й ключі» пояснила, що ключ має однозначно вказувати на
 елемент. Поле `kind` тут підходить, бо в переліку кожен вид трапляється один раз.
@@ -294,7 +352,7 @@ for (const flags of [2, 3, 4, 5, 6, 8]) {
 type Status = 'idle' | 'confirming' | 'paying' | 'paid' | 'declined'
 type Loose = { status: Status; amount: number | null; receipt: string | null; reason: string | null }
 
-const f: Loose = { status: 'paid', amount: null, receipt: null, reason: 'Недостатньо коштів' }
+export const f: Loose = { status: 'paid', amount: null, receipt: null, reason: 'Недостатньо коштів' }
 ```
 
 `tsc` приймає останній рядок мовчки. Цей об'єкт каже, що оплачено, чека немає, а причина відмови є. Документація React
@@ -321,13 +379,13 @@ export type Payment =
 
 ```ts
 // @ts-expect-error: у виду paying немає поля reason
-const a: Payment = { kind: 'paying', amount: 250, reason: 'x' }
+export const a: Payment = { kind: 'paying', amount: 250, reason: 'x' }
 // @ts-expect-error: у виду paid немає amount
-const b: Payment = { kind: 'paid', receipt: 'A-17', amount: 250 }
+export const b: Payment = { kind: 'paid', receipt: 'A-17', amount: 250 }
 // @ts-expect-error: declined без reason
-const c: Payment = { kind: 'declined', amount: 250 }
+export const c: Payment = { kind: 'declined', amount: 250 }
 // @ts-expect-error: такого виду немає
-const d: Payment = { kind: 'refunded' }
+export const d: Payment = { kind: 'refunded' }
 ```
 
 `tsc` мовчить, тобто всі чотири заборони спрацювали. Об'єкт зі значенням «банк думає й водночас відмовив» записати не
@@ -339,7 +397,7 @@ const d: Payment = { kind: 'refunded' }
 
 ```ts
 const raw = { kind: 'paying' as const, amount: 250, reason: 'x' }
-const e: Payment = raw
+export const e: Payment = raw
 ```
 
 Цей код компілюється без помилок. Вид `paying` вимагає полів `kind` і `amount`, і вони є. Зайве поле `reason` при
@@ -356,10 +414,18 @@ export function wrong(payment: Payment) {
 }
 ```
 
+Команда `npx tsc --noEmit -p tsconfig.app.json` перевіряє всі файли теки `src`, зокрема наш файл `src/t2.ts`. Для
+кожної помилки вона друкує шлях, рядок і стовпець. У вашому файлі ці числа будуть іншими, бо в нашому файлі перед цією
+функцією стоять інші приклади:
+
 ```text
-ts/t2.ts(19,18): error TS2339: Property 'reason' does not exist on type 'Payment'.
+src/t2.ts(19,18): error TS2339: Property 'reason' does not exist on type 'Payment'.
   Property 'reason' does not exist on type '{ kind: "idle"; }'.
 ```
+
+Перший рядок називає місце й саму помилку: у типі `Payment` компілятор не знаходить поля `reason`. Другий рядок
+називає причину: поле мусить бути в усіх видах об'єднання, а у виду `idle` його немає. Отже, у своєму коді ви не прочитаєте
+поле чужого виду випадково, бо спершу доведеться перевірити `kind`.
 
 Перевірка `kind` **звужує** тип, тобто каже компілятору, що далі можлива лише частина видів. Усередині гілки
 `payment.kind === 'declined'` тип уже один, і читати `reason` можна. Читати чуже поле в цій гілці не можна:
@@ -371,8 +437,10 @@ export function wrong2(payment: Payment) {
 ```
 
 ```text
-ts/t2.ts(22,53): error TS2339: Property 'receipt' does not exist on type '{ kind: "confirming"; amount: number; }'.
+src/t2.ts(22,53): error TS2339: Property 'receipt' does not exist on type '{ kind: "confirming"; amount: number; }'.
 ```
+
+Тепер повідомлення називає лише один вид, `confirming`, бо перевірка в цьому рядку вже відкинула всі інші.
 
 У компоненті `PaymentView` вище цей механізм працює непомітно. Після двох перших `return` тип `payment` звужено до
 трьох видів, у кожному з яких є `amount`, тому `{payment.amount}` компілюється. А запис `payment.kind === 'declined'
@@ -416,7 +484,7 @@ export function title(payment: Payment): string {
 ```
 
 ```text
-ts/t2.ts(13,13): error TS2322: Type '{ kind: "declined"; amount: number; reason: string; }' is not assignable to type 'never'.
+src/t2.ts(13,13): error TS2322: Type '{ kind: "declined"; amount: number; reason: string; }' is not assignable to type 'never'.
 ```
 
 Повідомлення називає саме той вид, який забуто. Це важливо, коли стан додають через пів року: новий вид одразу стає
@@ -474,7 +542,26 @@ export function nextPayment(payment: Payment, event: PaymentEvent): Payment {
 `payment.kind === 'paying'`. Ця перевірка також звужує тип, і тому `payment.amount` читати дозволено. Новий стан бере
 суму зі старого стану, а текст бере з події. В усіх інших станах функція повертає `payment` без змін.
 
-Тест проганяє всі пари стану й події. Крапка означає, що стан не змінився:
+Тест проганяє всі пари стану й події. Масив `ALL` узято зі службового екрана. Крапка означає, що стан не змінився:
+
+```ts
+const EVENTS: PaymentEvent[] = [
+  { type: 'started', amount: 250 },
+  { type: 'cancelled' },
+  { type: 'confirmed' },
+  { type: 'approved', receipt: 'A-17' },
+  { type: 'refused', reason: 'Недостатньо коштів' },
+]
+console.log(' '.repeat(11) + EVENTS.map((event) => event.type.padEnd(11)).join('').trimEnd())
+for (const payment of ALL) {
+  const cells = EVENTS.map((event) => {
+    const next = nextPayment(payment, event)
+    // Той самий об'єкт означає, що подія не на часі.
+    return (next === payment ? '·' : next.kind).padEnd(11)
+  })
+  console.log((payment.kind.padEnd(11) + cells.join('')).trimEnd())
+}
+```
 
 ```text
            started    cancelled  confirmed  approved   refused
@@ -485,9 +572,9 @@ paid       ·          ·          ·          ·          ·
 declined   ·          ·          paying     ·          ·
 ```
 
-Заголовки стовпців дописано тут для зручності, решта виводу справжня. Кожна клітинка, що не містить крапки, є стрілкою
-зі схеми вище. Порівняйте цей запис із командами DOM із початку лекції: тут неможливо наполовину виконати перехід, бо
-новий стан замінює старий цілком.
+Перший рядок виводу містить назви подій, а кожен наступний рядок відповідає одному стану. Кожна клітинка, що не
+містить крапки, є стрілкою зі схеми вище. Порівняйте цей запис із командами DOM із початку лекції: тут неможливо
+наполовину виконати перехід, бо новий стан замінює старий цілком.
 
 Навіщо писати функцію окремо від компонента? Причин три.
 
@@ -566,7 +653,25 @@ function Live({ charge }: { charge: (amount: number) => Promise<Answer> }) {
 }
 ```
 
-Компонент `Form` влаштований так само, як `PaymentView`, і лише додатково передає обробники кнопкам.
+Компонент `Form` влаштований так само, як `PaymentView`, і лише додатково передає обробники кнопкам:
+
+```tsx
+type FormProps = { payment: Payment; onStart: () => void; onConfirm: () => void; onCancel: () => void }
+
+function Form({ payment, onStart, onConfirm, onCancel }: FormProps) {
+  if (payment.kind === 'paid') return <p>Оплачено, чек {payment.receipt}</p>
+  if (payment.kind === 'idle') return <button onClick={onStart}>Оплатити</button>
+  return (
+    <>
+      <p>До сплати: {payment.amount} грн</p>
+      <button disabled={payment.kind === 'paying'} onClick={onConfirm}>Підтвердити</button>
+      {payment.kind !== 'declined' && <button onClick={onCancel}>Скасувати</button>}
+      {payment.kind === 'paying' && <p>Банк думає…</p>}
+      {payment.kind === 'declined' && <p role="alert">{payment.reason}</p>}
+    </>
+  )
+}
+```
 
 Розберемо функцію `confirm` рядок за рядком, бо в ній зосереджено головну складність дня.
 
@@ -583,14 +688,36 @@ function Live({ charge }: { charge: (amount: number) => Promise<Answer> }) {
 Чому не можна написати простіше: `setPayment(nextPayment(payment, event))`? Лекція «Рендер, коміт і знімок стану»
 пояснила, що змінна стану є знімком рендеру, у якому створено обробник. Цей обробник створено ще тоді, коли стан був
 `confirming`. Рядок `setPayment(next)` змінив стан у React, але не змінив змінну `payment` у цьому виклику.
-Подивімося, що стається, якщо все ж узяти знімок:
+Подивімося, що стається, якщо все ж узяти знімок. Додамо компоненту `Live` пропс `stale`, а останній виклик
+`setPayment` у функції `confirm` замінимо такими двома рядками:
 
 ```tsx
 if (stale) setPayment(nextPayment(payment, event))
 else setPayment((current) => nextPayment(current, event))
 ```
 
-Тест запускає варіант зі знімком, і банк погоджує оплату:
+Тест запускає варіант зі знімком, і банк погоджує оплату. Банк тут представлено функцією `deferred`:
+
+```tsx
+// deferred створює проміс і віддає назовні функцію resolve, тому тест сам вирішує, коли банк відповість.
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
+const bank = deferred<Answer>()
+const user = userEvent.setup()
+render(<Live charge={() => bank.promise} stale />)
+await user.click(screen.getByRole('button', { name: 'Оплатити' }))
+await user.click(screen.getByRole('button', { name: 'Підтвердити' }))
+console.log('банк думає:', screen.queryByText('Банк думає…') !== null)
+// Функція act чекає, поки виконаються рядки після await у confirm і React оновить екран.
+await act(async () => bank.resolve({ ok: true, receipt: 'A-17' }))
+const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Підтвердити' })
+const receipt = screen.queryByText('Оплачено, чек A-17') !== null
+console.log('чек на екрані:', receipt, '| кнопка вимкнена:', button.disabled, '| банк думає:', screen.queryByText('Банк думає…') !== null)
+```
 
 ```text
 банк думає: true
@@ -611,8 +738,36 @@ else setPayment((current) => nextPayment(current, event))
 
 ## Покроковий приклад: відмова й повтор
 
-Тест проходить шлях від початку до кінця: оплата, відмова, повтор, успіх. Банк тут представлено функцією `deferred`,
-яка створює проміс і дає тесту змогу виконати його тоді, коли треба. Компонент записує стан на кожному своєму виклику:
+Тест проходить шлях від початку до кінця: оплата, відмова, повтор, успіх. Банк тут знову представлено функцією
+`deferred`, яка створює проміс і дає тесту змогу виконати його тоді, коли треба. Компонент записує стан на кожному
+своєму виклику, бо в тіло `Live` перед `return` додано рядок `log.push(JSON.stringify(payment))`:
+
+```tsx
+// Цей масив стоїть поза тестом, поруч із компонентом Live, бо компонент дописує в нього.
+const log: string[] = []
+const first = deferred<Answer>()
+const second = deferred<Answer>()
+// Функція vi.fn рахує свої виклики, а кожен виклик повертає наступний проміс із переліку.
+const charge = vi.fn<(amount: number) => Promise<Answer>>()
+  .mockReturnValueOnce(first.promise)
+  .mockReturnValueOnce(second.promise)
+const user = userEvent.setup()
+const confirmButton = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Підтвердити' })
+
+render(<Live charge={charge} />)
+await user.click(screen.getByRole('button', { name: 'Оплатити' }))
+await user.click(confirmButton())
+console.log('під час очікування кнопка вимкнена:', confirmButton().disabled, '| запитів:', charge.mock.calls.length)
+await user.click(confirmButton())
+console.log('після клацання по вимкненій кнопці запитів:', charge.mock.calls.length)
+await act(async () => first.resolve({ ok: false, reason: 'Недостатньо коштів' }))
+await user.click(confirmButton())
+console.log('повтор: запитів', charge.mock.calls.length, '| помилка на екрані:', screen.queryByRole('alert') !== null)
+await act(async () => second.resolve({ ok: true, receipt: 'A-17' }))
+console.log(log.join('\n'))
+```
+
+Останній рядок досліду друкує журнал станів, по одному рядку на кожен виклик компонента:
 
 ```text
 {"kind":"idle"}
@@ -635,7 +790,7 @@ else setPayment((current) => nextPayment(current, event))
 | 6 | людина | «Підтвердити» | `paying`, 250 | текст відмови зник сам |
 | 7 | банк | згода | `paid`, чек | лише чек |
 
-Вивід тесту підтверджує клацання по вимкненій кнопці й повтор:
+Три виклики `console.log`, що стоять посеред того самого досліду, підтверджують клацання по вимкненій кнопці й повтор:
 
 ```text
 під час очікування кнопка вимкнена: true | запитів: 1
@@ -657,13 +812,18 @@ else setPayment((current) => nextPayment(current, event))
 
 ```ts
 let p: Payment = { kind: 'idle' }
-p = nextPayment(p, { type: 'started', amount: 250 })
-p = nextPayment(p, { type: 'confirmed' })
-p = nextPayment(p, { type: 'cancelled' })
-p = nextPayment(p, { type: 'approved', receipt: 'A-17' })
-p = nextPayment(p, { type: 'started', amount: 400 })
-p = nextPayment(p, { type: 'confirmed' })
-p = nextPayment(p, { type: 'approved', receipt: 'A-17' })
+// Функція step застосовує подію й друкує підпис разом із новим станом.
+function step(label: string, event: PaymentEvent) {
+  p = nextPayment(p, event)
+  console.log(label.padEnd(30), JSON.stringify(p))
+}
+step('почали на 250', { type: 'started', amount: 250 })
+step('підтвердили', { type: 'confirmed' })
+step('скасували', { type: 'cancelled' })
+step('прийшла відповідь на 250', { type: 'approved', receipt: 'A-17' })
+step('почали знову, на 400', { type: 'started', amount: 400 })
+step('підтвердили', { type: 'confirmed' })
+step('запізніла відповідь на 250', { type: 'approved', receipt: 'A-17' })
 ```
 
 ```text
@@ -759,7 +919,58 @@ function Timetable({ trains }: { trains: Train[] }) {
 }
 ```
 
+Дочірні компоненти лише малюють пропси й викликають отримані функції. Рейси лежать у звичайному масиві:
+
+```tsx
+type Train = { time: string; to: string; direct: boolean }
+
+const TRAINS: Train[] = [
+  { time: '07:10', to: 'Київ', direct: true },
+  { time: '09:40', to: 'Одеса', direct: true },
+  { time: '13:25', to: 'Київ', direct: false },
+  { time: '18:05', to: 'Львів', direct: false },
+]
+
+type SearchBarProps = {
+  text: string
+  onlyDirect: boolean
+  onTextChange: (text: string) => void
+  onOnlyDirectChange: (onlyDirect: boolean) => void
+}
+
+function SearchBar({ text, onlyDirect, onTextChange, onOnlyDirectChange }: SearchBarProps) {
+  return (
+    <form>
+      <input aria-label="Куди" value={text} onChange={(event) => onTextChange(event.target.value)} />
+      <label>
+        <input type="checkbox" checked={onlyDirect} onChange={(event) => onOnlyDirectChange(event.target.checked)} />
+        Лише прямі
+      </label>
+    </form>
+  )
+}
+
+function TrainTable({ trains }: { trains: Train[] }) {
+  return <ul>{trains.map((t) => <li key={t.time}>{t.time} {t.to}</li>)}</ul>
+}
+```
+
 Тест набирає текст, ставить галочку й після кожної дії друкує лічильник і список:
+
+```tsx
+const user = userEvent.setup()
+render(<Timetable trains={TRAINS} />)
+const report = (label: string) => {
+  const found = screen.getByText(/^Знайдено/).textContent
+  const list = screen.getAllByRole('listitem').map((item) => item.textContent).join(', ')
+  console.log(label.padEnd(22), found, '|', list)
+}
+report('спочатку')
+await user.type(screen.getByLabelText('Куди'), 'Київ')
+report('набрали «Київ»')
+await user.click(screen.getByLabelText('Лише прямі'))
+report('поставили галочку')
+```
 
 ```text
 спочатку               Знайдено: 4 | 07:10 Київ, 09:40 Одеса, 13:25 Київ, 18:05 Львів
@@ -792,6 +1003,18 @@ function Different({ busy }: { busy: boolean }) {
 
 Тест набирає «двері» і змінює `busy` на `true`:
 
+```tsx
+for (const [name, Note] of [['одне дерево', Same], ['два дерева', Different]] as const) {
+  const user = userEvent.setup()
+  const { rerender, unmount } = render(<Note busy={false} />)
+  await user.type(screen.getByLabelText('Нотатка'), 'двері')
+  // Виклик rerender малює той самий компонент із новим пропсом, наче батько змінив свій стан.
+  rerender(<Note busy />)
+  console.log(`${name}: ${JSON.stringify(screen.getByLabelText<HTMLInputElement>('Нотатка').value)}`)
+  unmount()
+}
+```
+
 ```text
 одне дерево: "двері"
 два дерева: ""
@@ -819,6 +1042,11 @@ function Different({ busy }: { busy: boolean }) {
 асинхронної дії потрібен другий:
 
 ```tsx
+const d = deferred<Answer>()
+const user = userEvent.setup()
+render(<Live charge={() => d.promise} />)
+await user.click(screen.getByRole('button', { name: 'Оплатити' }))
+await user.click(screen.getByRole('button', { name: 'Підтвердити' }))
 d.resolve({ ok: true, receipt: 'A-17' })
 try { screen.getByText('Оплачено, чек A-17'); console.log('getByText одразу: знайшов') } catch (e) { console.log('getByText одразу:', (e as Error).name) }
 const found = await screen.findByText('Оплачено, чек A-17')

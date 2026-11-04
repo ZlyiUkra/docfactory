@@ -62,7 +62,43 @@ function Phonebook() {
 ```
 
 Вимоги лекції «Об'єкти й масиви в стані» тут виконано: жодної мутації, усі масиви нові. Тест обирає Ірину, дописує до
-її імені дві літери й видаляє двох людей. Після кожної дії тест друкує імена в полях і обидва абзаци:
+її імені пробіл і літеру К і видаляє двох людей. Після кожної дії тест друкує імена в полях і обидва абзаци. Компонент
+`Phonebook` і цей тест лежать в одному файлі, ім'я якого закінчується на `.test.tsx`. Рядки імпорту стоять на початку
+файла, над компонентом. Команда `npx vitest run` запускає такий файл:
+
+```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { useState } from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { test } from 'vitest'
+
+function report(action: string) {
+  // Збираємо текст із кожного поля вводу, а потім читаємо обидва абзаци так, як їх бачить людина.
+  const names = screen.getAllByRole<HTMLInputElement>('textbox').map((input) => input.value).join(', ')
+  const count = screen.getByText(/^Контактів/).textContent
+  const panel = screen.getByText(/обрано/i).textContent
+  console.log(action.padEnd(22), names.padEnd(30), '|', count, '|', panel)
+}
+
+test('телефонна книга', async () => {
+  const user = userEvent.setup() // цей об'єкт клацає й набирає текст так, як це робить людина
+  render(<Phonebook />)
+  await user.click(screen.getByText('Обрати 1'))
+  report('обрали Ірину')
+  await user.type(screen.getByLabelText("Ім'я 1"), ' К')
+  report('дописали « К»')
+  await user.click(screen.getByText('Видалити 2'))
+  report('видалили Богдана')
+  await user.click(screen.getByText('Видалити 1'))
+  report('видалили Ірину')
+})
+```
+
+Решта прикладів із React у цій лекції мають ті самі рядки імпорту й запускаються так само. Кожен приклад лежить в
+окремому файлі, тому однакові назви компонентів одна одній не заважають. Далі ми показуємо лише компоненти й те, що
+стоїть усередині функції `test`. Ось що надрукував цей тест:
 
 ```text
 обрали Ірину           Ірина, Богдан, Марта           | Контактів: 3 | Обрано: Ірина
@@ -123,7 +159,15 @@ function One() {
 }
 ```
 
-Тест клацає обидві кнопки:
+Тест клацає обидві кнопки й друкує написи на них:
+
+```tsx
+const user = userEvent.setup()
+render(<><Two /><One /></>)
+await user.click(screen.getByText(/Два стани/))
+await user.click(screen.getByText(/Один стан/))
+console.log(screen.getByText(/Два стани/).textContent, '|', screen.getByText(/Один стан/).textContent)
+```
 
 ```text
 Два стани: 4100 євро | Один стан: 100 євро
@@ -133,15 +177,22 @@ function One() {
 весь об'єкт. Сума й валюта мають сенс лише разом, адже число 4100 без валюти нічого не означає.
 
 Є й зворотний бік. Функція `set` замінює значення цілком, про що вже казала лекція «Події й стан». Якщо передати лише
-частину об'єкта, друге поле зникне. TypeScript тут допомагає:
+частину об'єкта, друге поле зникне. TypeScript тут допомагає. Запишемо такий файл `src/partial.tsx` і запустимо
+компілятор командою `npx tsc --noEmit -p tsconfig.app.json`:
 
 ```tsx
-const [price, setPrice] = useState({ amount: 4100, currency: 'грн' })
-return <button onClick={() => setPrice({ amount: 100 })}>{price.amount}</button>
+import { useState } from 'react'
+export function Partial() {
+  const [price, setPrice] = useState({ amount: 4100, currency: 'грн' })
+  return <button onClick={() => setPrice({ amount: 100 })}>{price.amount}</button>
+}
 ```
 
+Компілятор каже, що помилка стоїть у рядку 4 на символі 42, тобто в аргументі `setPrice`, і називає поле, якого
+бракує:
+
 ```text
-ts/partial.tsx(4,42): error TS2345: Argument of type '{ amount: number; }' is not assignable to parameter of type 'SetStateAction<{ amount: number; currency: string; }>'.
+src/partial.tsx(4,42): error TS2345: Argument of type '{ amount: number; }' is not assignable to parameter of type 'SetStateAction<{ amount: number; currency: string; }>'.
   Property 'currency' is missing in type '{ amount: number; }' but required in type '{ amount: number; currency: string; }'.
 ```
 
@@ -209,7 +260,33 @@ function OneObject() {
 ```
 
 Компонент `Cart` лише показує суму й дві кнопки. Спочатку в кошику книжка за 300 гривень в одному примірнику й книжка
-за 450 гривень у двох примірниках. Тест додає ще одну першу книжку, а потім прибирає другу:
+за 450 гривень у двох примірниках. Для кожного варіанта тест додає ще одну першу книжку, а потім прибирає другу:
+
+```tsx
+type Book = { id: number; price: number; qty: number }
+const BOOKS: Book[] = [{ id: 1, price: 300, qty: 1 }, { id: 2, price: 450, qty: 2 }] // разом 1200 гривень
+
+type CartProps = { name: string; books: Book[]; total: number; inc: (id: number) => void; remove: (id: number) => void }
+function Cart({ name, books, total, inc, remove }: CartProps) {
+  return (
+    <>
+      <p>{name}: сума {total}, книжок {books.length}</p>
+      <button onClick={() => inc(1)}>{name}: додати першу</button>
+      <button onClick={() => remove(2)}>{name}: прибрати другу</button>
+    </>
+  )
+}
+
+// Усередині test:
+const user = userEvent.setup()
+render(<><Stored /><Computed /><OneObject /></>)
+for (const name of ['у стані', 'обчислена', "один об'єкт"]) {
+  await user.click(screen.getByText(`${name}: додати першу`))
+  console.log(screen.getByText(new RegExp(`^${name}: сума`)).textContent)
+  await user.click(screen.getByText(`${name}: прибрати другу`))
+  console.log(screen.getByText(new RegExp(`^${name}: сума`)).textContent)
+}
+```
 
 ```text
 у стані: сума 1500, книжок 2
@@ -221,6 +298,7 @@ function OneObject() {
 ```
 
 Правильна сума в кінці дорівнює 600, бо в кошику лишилося дві книжки за 300 гривень. Її показує лише другий варіант.
+Число після слова «книжок» є довжиною масиву, тобто рахує назви, а не примірники.
 
 Подивимося, що саме робить другий варіант. Рядок із `reduce` стоїть у тілі компонента. Кожен рендер спершу читає
 `books` зі стану, а потім рахує суму з цього масиву. Обробникам про суму знати нічого не треба. Сума не може
@@ -250,17 +328,28 @@ function OneObject() {
 розміру. Тест запускає обчислення двадцять разів і друкує медіану, тобто значення посередині впорядкованого ряду:
 
 ```ts
-const books = Array.from({ length: size }, (_, i) => ({ id: i, price: i % 500, qty: 1 + (i % 3) }))
-books.reduce((sum, b) => sum + b.price * b.qty, 0)
+for (const size of [1000, 10000, 100000]) {
+  const books = Array.from({ length: size }, (_, i) => ({ id: i, price: i % 500, qty: 1 + (i % 3) }))
+  const times: number[] = []
+  for (let run = 0; run < 20; run++) {
+    const startedAt = performance.now()
+    books.reduce((sum, b) => sum + b.price * b.qty, 0)
+    times.push(performance.now() - startedAt)
+  }
+  times.sort((a, b) => a - b) // після сортування значення посередині стоїть на місці з номером 10
+  console.log(`${size} елементів: ${times[10].toFixed(3)} мс`)
+}
 ```
 
 ```text
-1000 елементів: 0.009 мс
-10000 елементів: 0.073 мс
-100000 елементів: 0.806 мс
+1000 елементів: 0.013 мс
+10000 елементів: 0.117 мс
+100000 елементів: 1.405 мс
 ```
 
-Числа стосуються однієї машини й Node, а не браузера, але порядок величин зрозумілий. Сторінка `You Might Not Need an
+Числа стосуються однієї машини й Node, а не браузера, і кожен запуск дає трохи інші значення, але порядок величин
+зрозумілий: тисяча елементів займає близько сотої частки мілісекунди, а сто тисяч трохи більше за одну мілісекунду.
+Сторінка `You Might Not Need an
 Effect` радить виміряти час і думати про кешування, якщо обчислення займає приблизно одну мілісекунду або більше. Для
 списку контактів цього порога не досягти. Кешування робить хук `useMemo`, але спершу його слід виміряти, і для цього є
 тема фази 2 про мемоізацію. Сьогодні правило просте: спершу обчислюйте в тілі компонента, а кешуйте лише тоді, коли
@@ -274,6 +363,8 @@ React запускає вже після того, як оновив екран.
 літерами двома способами:
 
 ```tsx
+import { useEffect, useState } from 'react'
+const log: string[] = [] // сюди кожен виклик компонента записує те, що побачив
 function WithEffect() {
   const [city, setCity] = useState('')
   const [label, setLabel] = useState('')
@@ -291,7 +382,18 @@ function Direct() {
 }
 ```
 
-Тест набирає одну літеру:
+Тест показує кожен компонент окремо, набирає одну літеру й друкує записи, які з'явилися після цього:
+
+```tsx
+const user = userEvent.setup()
+for (const Shown of [WithEffect, Direct]) {
+  const { unmount } = render(<Shown />)
+  log.length = 0 // стираємо запис першого показу, бо нас цікавить лише те, що стається після літери
+  await user.type(screen.getByLabelText('Місто'), 'Р')
+  for (const line of log) console.log(line)
+  unmount() // прибираємо компонент, щоб у документі не було двох однакових полів
+}
+```
 
 ```text
 з ефектом: city=Р label=
@@ -304,12 +406,17 @@ function Direct() {
 в ньому узгоджені. Сторінка `You Might Not Need an Effect` каже те саме: обчислення під час рендеру швидше, простіше й
 не дає змінним розійтися.
 
-Цю помилку помічає лінт вашого проєкту. Правило `react-hooks/set-state-in-effect` з пакета `eslint-plugin-react-hooks`
-друкує на такому коді:
+Цю помилку помічає лінт вашого проєкту. Покладіть в окремий файл рядок імпорту, оголошення `log` і всю функцію
+`WithEffect` із коду вище, а перед функцією напишіть слово `export`. Запустіть команду `npx eslint`. Правило
+`react-hooks/set-state-in-effect` з пакета `eslint-plugin-react-hooks` надрукує довге повідомлення. Ось його перший
+рядок, де запис `7:5` означає рядок 7 і символ 5, тобто виклик `setLabel`:
 
 ```text
-6:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+7:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
 ```
+
+Якщо ви бачите таке повідомлення на обчисленому значенні, приберіть ефект і другий стан, а значення обчисліть у тілі
+компонента.
 
 ## Не класти пропс у стан
 
@@ -325,7 +432,14 @@ function Direct({ unit }: { unit: string }) {
 }
 ```
 
-Тест показує обидва компоненти з `°C`, а потім передає `°F`:
+Тест показує обидва компоненти з `°C`, а потім передає `°F`. Функція `rerender` викликає ті самі компоненти з новими
+пропсами, як це зробив би батьківський компонент:
+
+```tsx
+const { rerender } = render(<><Mirror unit="°C" /><Direct unit="°C" /></>)
+rerender(<><Mirror unit="°F" /><Direct unit="°F" /></>)
+console.log(screen.getByText(/Дзеркало/).textContent, '|', screen.getByText(/Напряму/).textContent)
+```
 
 ```text
 Дзеркало: °C | Напряму: °F
@@ -358,6 +472,8 @@ function NameDraft({ initialName, onSave }: { initialName: string; onSave: (name
 Але виникає нове питання: що робити, коли людина перейшла до іншого контакта? Перевіримо:
 
 ```tsx
+const user = userEvent.setup()
+const value = () => screen.getByLabelText<HTMLInputElement>('Чернетка').value // текст у полі просто зараз
 const { rerender } = render(<NameDraft initialName="Ірина" onSave={() => {}} />)
 await user.type(screen.getByLabelText('Чернетка'), ' К')
 console.log('після набору:', value())
@@ -389,7 +505,15 @@ function B({ name }: { name: string }) {
 }
 ```
 
-Тест показує обидва поля з ім'ям Ірина, а потім передає Богдана:
+Тест показує обидва поля з ім'ям Ірина, а потім передає Богдана й друкує текст кожного поля:
+
+```tsx
+const { rerender } = render(<><A name="Ірина" /><B name="Ірина" /></>)
+rerender(<><A name="Богдан" /><B name="Богдан" /></>)
+for (const label of ['defaultValue', 'value']) {
+  console.log(label, screen.getByLabelText<HTMLInputElement>(label).value)
+}
+```
 
 ```text
 defaultValue Ірина
@@ -417,14 +541,22 @@ function Phonebook() {
   return (
     <>
       <p>Контактів: {contacts.length}</p>
-      {/* список той самий, лише кнопка викликає setSelectedId(c.id) */}
+      <ul>
+        {contacts.map((c) => (
+          <li key={c.id}>
+            <input aria-label={`Ім'я ${c.id}`} value={c.name} onChange={(e) => rename(c.id, e.target.value)} />
+            <button onClick={() => setSelectedId(c.id)}>Обрати {c.id}</button>
+            <button onClick={() => remove(c.id)}>Видалити {c.id}</button>
+          </li>
+        ))}
+      </ul>
       <p>{selected === null ? 'Нікого не обрано' : `Обрано: ${selected.name}`}</p>
     </>
   )
 }
 ```
 
-Той самий тест:
+Той самий тест із функцією `report` тепер друкує:
 
 ```text
 обрали Ірину           Ірина, Богдан, Марта           | Контактів: 3 | Обрано: Ірина
@@ -441,8 +573,43 @@ function Phonebook() {
 
 ### Покроковий приклад із посиланнями
 
-Подивимося, які об'єкти існують на кожному кроці. Тест дає кожному новому об'єкту номер і друкує стан при кожному
-виклику компонента:
+Подивимося, які об'єкти існують на кожному кроці. Спеціальний компонент дає кожному новому об'єкту номер і друкує стан
+при кожному своєму виклику. Функція `label` запам'ятовує номер об'єкта у `WeakMap`. Це словник, у якому ключем є сам
+об'єкт, тому той самий об'єкт завжди отримує той самий номер, а новий об'єкт отримує наступний:
+
+```tsx
+const START: Contact[] = [{ id: 1, name: 'Ірина' }, { id: 2, name: 'Богдан' }]
+const numbers = new WeakMap<Contact, number>()
+let nextNumber = 0
+function label(c: Contact | null) {
+  if (c === null) return 'null'
+  if (!numbers.has(c)) numbers.set(c, nextNumber++)
+  return `${c.name}(об${numbers.get(c)})`
+}
+
+function Steps() {
+  const [contacts, setContacts] = useState(START)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const selected = contacts.find((c) => c.id === selectedId) ?? null
+  console.log(`список: ${contacts.map((c) => label(c)).join(', ')} | selectedId: ${selectedId} | обраний: ${label(selected)}`)
+  return (
+    <>
+      <button onClick={() => setSelectedId(1)}>Обрати</button>
+      <button onClick={() => setContacts(contacts.map((c) => (c.id === 1 ? { ...c, name: 'Іра' } : c)))}>Перейменувати</button>
+      <button onClick={() => setContacts(contacts.filter((c) => c.id !== 1))}>Видалити</button>
+    </>
+  )
+}
+
+// Усередині test:
+const user = userEvent.setup()
+render(<Steps />)
+await user.click(screen.getByText('Обрати'))
+await user.click(screen.getByText('Перейменувати'))
+await user.click(screen.getByText('Видалити'))
+```
+
+Перший рядок виводу надрукував перший показ, а кожен наступний рядок надрукувало одне клацання:
 
 ```text
 список: Ірина(об0), Богдан(об1) | selectedId: null | обраний: null
@@ -604,7 +771,25 @@ const nextTable = { ...table, [parent.id]: nextParent }
 
 Запис `[parent.id]: nextParent` підставляє значення змінної як назву поля. Такий запис називається обчислюваним ім'ям
 поля, і розбір читання до лекції «Об'єкти й масиви в стані» вже показував його. Подивимося, які об'єкти лишилися
-спільними зі старими даними:
+спільними зі старими даними. Оператор `===` дає `true`, лише коли зліва й справа стоїть той самий об'єкт:
+
+```ts
+const nextDepartment = nextTree.children[0].children[0]
+console.log('дерево:', nextDepartment.children.map((g) => g.title))
+console.log(
+  'спільні зі старим: Група Б', nextDepartment.children[0] === department.children[1],
+  '| кафедра', nextDepartment === department,
+  '| факультет', nextTree.children[0] === faculty,
+  '| корінь', nextTree === tree,
+)
+console.log('таблиця:', nextParent.childIds.map((id) => nextTable[id].title))
+console.log(
+  'спільні зі старим: корінь', nextTable[0] === table[0],
+  '| факультет', nextTable[1] === table[1],
+  '| кафедра', nextTable[2] === table[2],
+  '| сама таблиця', nextTable === table,
+)
+```
 
 ```text
 дерево: [ 'Група Б' ]
@@ -614,7 +799,42 @@ const nextTable = { ...table, [parent.id]: nextParent }
 ```
 
 У дереві довелося створити новий об'єкт для кожного предка видаленого запису. У таблиці нові лише два об'єкти: кафедра
-й сама таблиця. Це різниця не лише в кількості коду. Чим глибше дерево, тим вона більша:
+й сама таблиця. Це різниця не лише в кількості коду. Чим глибше дерево, тим вона більша. Наступний код будує дерево,
+де в кожного вузла одна дитина, а на дні лежить листок. Глибина тут означає кількість предків листка. Потім код
+прибирає
+листок, порівнює нове дерево й нову таблицю зі старими та рахує об'єкти, які стали новими:
+
+```ts
+function chain(depth: number): Tree {
+  return depth === 0 ? { title: 'листок', children: [] } : { title: `вузол ${depth}`, children: [chain(depth - 1)] }
+}
+// Копіює кожен вузол на шляху вниз, а в останнього предка забирає листок.
+function removeLeaf(node: Tree): Tree {
+  const child = node.children[0]
+  return { ...node, children: child.children.length === 0 ? [] : [removeLeaf(child)] }
+}
+// Спускається двома деревами одночасно й рахує вузли, які не є тими самими об'єктами.
+function countNew(before: Tree, after: Tree | undefined): number {
+  if (after === undefined) return 0
+  return (before === after ? 0 : 1) + countNew(before.children[0], after.children[0])
+}
+
+for (const depth of [2, 4, 8, 16]) {
+  const oldTree = chain(depth)
+  const newTree = removeLeaf(oldTree)
+
+  const oldTable: Record<number, Unit> = {}
+  for (let id = 0; id <= depth; id++) {
+    oldTable[id] = { id, title: `запис ${id}`, childIds: id < depth ? [id + 1] : [] }
+  }
+  const last = oldTable[depth - 1] // предок листка; листок має номер depth
+  const newTable = { ...oldTable, [last.id]: { ...last, childIds: [] } }
+  const changedRows = Object.keys(oldTable).filter((id) => newTable[Number(id)] !== oldTable[Number(id)])
+
+  // У таблиці до змінених записів додаємо сам новий об'єкт таблиці.
+  console.log(`глибина ${depth}: копій у дереві ${countNew(oldTree, newTree)}, у таблиці ${changedRows.length + 1}`)
+}
+```
 
 ```text
 глибина 2: копій у дереві 2, у таблиці 2
@@ -623,9 +843,17 @@ const nextTable = { ...table, [parent.id]: nextParent }
 глибина 16: копій у дереві 16, у таблиці 2
 ```
 
+У дереві число копій дорівнює глибині, а в таблиці завжди дорівнює двом: новий батько й нова таблиця. Тому дерево,
+у якому часто змінюють нижні записи, зручніше зберігати плоскою таблицею.
+
 ### Що треба знати про плоску таблицю
 
-**Видалений запис лишається в таблиці.** Код вище забрав номер із `childIds`, але сам запис лишився:
+**Видалений запис лишається в таблиці.** Код із `nextTable` вище забрав номер із `childIds`, але сам запис лишився.
+Прочитаємо нову таблицю за номером 3, де лежала група А, і порахуємо її записи:
+
+```ts
+console.log('запис Групи А досі в таблиці:', nextTable[3].title, '| усього записів:', Object.keys(nextTable).length)
+```
 
 ```text
 запис Групи А досі в таблиці: Група А | усього записів: 5
@@ -634,7 +862,8 @@ const nextTable = { ...table, [parent.id]: nextParent }
 На екрані його не видно, бо ніхто на нього не посилається, але він займає пам'ять. Якщо прибрати цілу кафедру, у
 таблиці лишаться й усі її групи. Вилучити їх можна рекурсивною функцією, яка спускається за `childIds`. Глава показує
 це у згорнутому блоці `Improving memory usage` за допомогою бібліотеки Immer, а тут показано той самий обхід без
-бібліотеки:
+бібліотеки. Цей код читає початкову таблицю `table` і лежить в окремому файлі, бо назва `parent` позначає в ньому
+інший запис, ніж у коді вище:
 
 ```ts
 const removeSubtree = (t: Record<number, Unit>, id: number): Record<number, Unit> => {
@@ -718,7 +947,8 @@ TypeError: Cannot read properties of undefined (reading 'title')
 | передано лише частину об'єкта стану | так | інколи | ні |
 | читання запису за номером, якого немає | лише з `noUncheckedIndexedAccess` | так, якщо є такий приклад | ні |
 
-Лінт не друкує нічого ні на збереженій копії, ні на компоненті з `useState(unit)`, бо не знає, що два значення мають
+Команда `npx eslint` не друкує нічого ні на збереженій копії, ні на компоненті з `useState(unit)`, бо не знає, що два
+значення мають
 бути пов'язаними. Тому в цій темі найцінніші приклади, які роблять дію, а потім перевіряють усе, що показує екран.
 
 ## Типові хибні уявлення
