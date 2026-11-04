@@ -8,7 +8,7 @@
 Приклади запущено на React 19.3 у Vitest під jsdom, тобто в імітації браузера всередині Node. Вивід під прикладами
 справжній. Типи перевірено компілятором `tsc` версії 6.0, а лінт перевірено ESLint із тим самим набором правил
 `react-hooks`, що й у проєкті `spa`. Один дослід потребував справжнього малювання сторінки, тому ми запустили його в
-Chrome 156 без вікна, на зібраному застосунку, і біля нього про це сказано.
+Chrome 157 без вікна, на зібраному застосунку, і біля нього про це сказано.
 
 Практика дня дає заготовку із зайвими ефектами й просить їх прибрати. Лекція бере інший об'єкт, кав'ярню, тому
 компоненти заготовки доведеться переробити самостійно.
@@ -55,6 +55,42 @@ function TotalDirect({ lines }: { lines: Line[] }) {
 }
 ```
 
+Кожен дослід цієї лекції є окремим файлом тесту, наприклад `total.test.tsx`. Файл починається такими рядками, а далі
+в нього йдуть блоки коду з розділу. Команда `npx vitest run total.test.tsx --disable-console-intercept` запускає файл,
+а прапорець прибирає службові підписи біля кожного надрукованого рядка.
+
+```tsx
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { StrictMode, useEffect, useMemo, useState, useSyncExternalStore, type FC, type ReactNode } from 'react'
+import { expect, test } from 'vitest'
+```
+
+Тест спершу показує кошик із лате, потім очищує журнал і передає кошик із лате й чаєм. Тому в журналі лишається тільки
+те, що сталося після додавання чаю:
+
+```tsx
+type Line = { name: string; price: number; qty: number }
+const LATTE: Line = { name: 'лате', price: 80, qty: 2 }
+const TEA: Line = { name: 'чай', price: 50, qty: 1 }
+const log: string[] = []
+
+function addTea(title: string, Total: FC<{ lines: Line[] }>) {
+  const { rerender, unmount } = render(<Total lines={[LATTE]} />)
+  log.length = 0 // Журнал першого показу нам не потрібен.
+  rerender(<Total lines={[LATTE, TEA]} />) // Людина додала чай, і батько передає новий масив.
+  console.log(title + '\n' + log.join('\n'))
+  expect(screen.getByRole('status')).toHaveTextContent('Разом: 210 грн')
+  unmount()
+}
+
+test('кошик', () => {
+  addTea('з ефектом', TotalByEffect)
+  addTea('без ефекту', TotalDirect)
+})
+```
+
 ```text
 з ефектом
 рендер: позицій 2, разом 160
@@ -73,16 +109,103 @@ function TotalDirect({ lines }: { lines: Line[] }) {
 однозначно: після клацання React може виконати ефект до малювання, а після таймера чи відповіді мережі зазвичай після
 нього. Ми заміряли це для кошика в Chrome без вікна на зібраному застосунку. Перед кожним кадром функція
 `requestAnimationFrame` порівнювала кількість позицій і суму. Компонент ми навмисно уповільнили, щоб рендер займав 6
-мс, а таймер ставив оновлення в різні моменти кадру.
+мс, а таймер ставив оновлення в різні моменти кадру. Команда `npx vite build` збирає таку сторінку, а `npx vite
+preview` показує її, і результат друкується в консоль браузера:
 
-| Що викликало оновлення | Спроб | Кадрів зі старою сумою, з ефектом | Кадрів зі старою сумою, без ефекту |
-|------------------------|-------|-----------------------------------|------------------------------------|
-| клацання, викликане кодом | 60 | 0 | 0 |
-| таймер | 60 | 19 | 0 |
+```tsx
+// src/main.tsx
+import { useEffect, useState, type FC } from 'react'
+import { createRoot } from 'react-dom/client'
 
-Отже, неправильна сума справді потрапляла на кадр у 19 спробах із 60. Це те мерехтіння, яке згадує план. Без
-уповільнення перший наш запуск дав 0 з 60 в обох рядках, тому число залежить від машини й важкості рендеру. Гарантії
-немає, а варіант без ефекту ніколи не дає такого кадру, бо в нього немає проміжного стану.
+type Line = { name: string; price: number; qty: number }
+const LATTE: Line = { name: 'лате', price: 80, qty: 2 }
+const TEA: Line = { name: 'чай', price: 50, qty: 1 }
+const RENDER_MS = 6 // Скільки мілісекунд компонент навмисно зайнятий під час кожного рендеру.
+const sum = (lines: Line[]) => lines.reduce((s, l) => s + l.price * l.qty, 0)
+
+function slowDown() {
+  const end = performance.now() + RENDER_MS
+  while (performance.now() < end); // Порожній цикл просто тримає рендер зайнятим.
+}
+
+function TotalByEffect({ lines }: { lines: Line[] }) {
+  slowDown()
+  const [total, setTotal] = useState(0)
+  useEffect(() => {
+    effectRan = lines.length === 2
+    setTotal(sum(lines))
+  }, [lines])
+  return <p data-count={lines.length} data-total={total}>Разом: {total} грн</p>
+}
+
+function TotalDirect({ lines }: { lines: Line[] }) {
+  slowDown()
+  const total = sum(lines)
+  return <p data-count={lines.length} data-total={total}>Разом: {total} грн</p>
+}
+
+let effectRan = false // Чи встиг ефект цієї спроби виконатися після додавання чаю.
+let afterEffect = 0 // Скільки застарілих кадрів прийшло вже після ефекту.
+let addTea = () => {} // Кошик записує сюди функцію, щоб таймер міг додати чай без клацання.
+
+function Cart({ Total }: { Total: FC<{ lines: Line[] }> }) {
+  const [lines, setLines] = useState([LATTE])
+  addTea = () => setLines([LATTE, TEA])
+  return <><button onClick={addTea}>чай</button><Total lines={lines} /></>
+}
+
+const nextFrame = () => new Promise(requestAnimationFrame)
+
+async function staleFrames(Total: FC<{ lines: Line[] }>, how: string, attempt: number) {
+  const box = document.body.appendChild(document.createElement('div'))
+  const root = createRoot(box)
+  root.render(<Cart Total={Total} />)
+  await nextFrame()
+  await nextFrame()
+  const shown = box.querySelector('p')!
+  let stale = 0
+  let watching = true
+  function beforeFrame() {
+    // Дві позиції й сума не 210 означають, що цей кадр покаже застарілу суму.
+    if (shown.dataset.count === '2' && shown.dataset.total !== '210') {
+      stale++
+      if (effectRan) afterEffect++
+    }
+    if (watching) requestAnimationFrame(beforeFrame)
+  }
+  requestAnimationFrame(beforeFrame)
+  // Різна затримка ставить оновлення в різні моменти кадру.
+  setTimeout(() => (how === 'клацання' ? box.querySelector('button')!.click() : addTea()), 20 + (attempt % 17))
+  await new Promise((done) => setTimeout(done, 100))
+  watching = false
+  root.unmount()
+  box.remove()
+  return stale
+}
+
+for (const how of ['клацання', 'таймер']) {
+  let byEffect = 0
+  let direct = 0
+  afterEffect = 0
+  for (let attempt = 0; attempt < 60; attempt++) {
+    byEffect += await staleFrames(TotalByEffect, how, attempt)
+    direct += await staleFrames(TotalDirect, how, attempt)
+  }
+  console.log(`${how} | спроб 60 | кадрів зі старою сумою: з ефектом ${byEffect}, із них після ефекту ${afterEffect}, без ефекту ${direct}`)
+}
+```
+
+| Що викликало оновлення | Спроб | Кадрів зі старою сумою, з ефектом | Із них кадрів уже після ефекту | Кадрів зі старою сумою, без ефекту |
+|------------------------|-------|-----------------------------------|--------------------------------|------------------------------------|
+| клацання, викликане кодом | 60 | 23 | 23 | 0 |
+| таймер | 60 | 22 | 0 | 0 |
+
+Отже, неправильна сума справді потрапляла на кадр приблизно в кожній третій спробі. Це те мерехтіння, яке згадує план.
+Стовпець «Із них кадрів уже після ефекту» показує різницю між двома рядками. Після таймера кадр прийшов ще до ефекту.
+Після клацання ефект уже виконався, але новий рендер, який попросив виклик `setTotal`, ще не встиг статися, тому
+клацання теж не захищає від застарілого кадру. Коли ми поставили `RENDER_MS = 0`, той самий дослід дав лише по одному
+такому кадру в кожному рядку, тому число залежить від машини й важкості рендеру. Гарантії немає, а варіант без ефекту
+ніколи не дає такого кадру, бо в нього немає проміжного стану.
 
 Обидва варіанти проходять той самий тест `expect(screen.getByRole('status')).toHaveTextContent('Разом: 210 грн')`, бо
 Testing Library дочікується ефектів. Звідси практичний висновок: після вилучення ефекту тести мають лишитися зеленими,
@@ -141,6 +264,33 @@ function SearchMemo({ menu, query }: { menu: string[]; query: string }) {
 
 Лічильник у `pickActive` рахує виклики. Сценарій такий: показ, три літери в нотатці, потім новий запит:
 
+```tsx
+const MENU = ['лате', 'чай', 'какао']
+let calls = 0
+
+function pickActive(menu: string[], query: string) {
+  calls++ // Лічильник показує, скільки разів фільтр справді виконався.
+  return menu.filter((name) => name.includes(query))
+}
+
+function typeNote(title: string, Search: FC<{ menu: string[]; query: string }>) {
+  calls = 0
+  const { rerender, unmount } = render(<Search menu={MENU} query="лате" />)
+  for (const value of ['б', 'бе', 'без']) {
+    fireEvent.change(screen.getByLabelText('нотатка'), { target: { value } })
+  }
+  const afterNote = calls
+  rerender(<Search menu={MENU} query="чай" />)
+  console.log(`${title} | показ і три літери в нотатці: ${afterNote} | новий запит: ${calls}`)
+  unmount()
+}
+
+test('пошук', () => {
+  typeNote('без useMemo', SearchPlain)
+  typeNote('з useMemo', SearchMemo)
+})
+```
+
 ```text
 без useMemo | показ і три літери в нотатці: 4 | новий запит: 5
 з useMemo | показ і три літери в нотатці: 1 | новий запит: 2
@@ -148,15 +298,28 @@ function SearchMemo({ menu, query }: { menu: string[]; query: string }) {
 
 Хук справді прибрав три зайві виклики. Чи варто було? Сторінка React радить міряти. Вартим уваги вона вважає
 обчислення, на яке за одну дію набігає близько однієї мілісекунди, а якщо ви не створюєте й не обходите тисячі
-об'єктів, обчислення, мабуть, недороге. Ось наш замір на Node:
+об'єктів, обчислення, мабуть, недороге. Ось наш замір у файлі `filter.mjs`, який запускає команда `node filter.mjs`:
 
-```text
-фільтр 1000 рядків, медіана з 200 запусків, мс: 0.020
+```js
+const rows = Array.from({ length: 1000 }, (_, i) => ({ name: 'напій ' + i, active: i % 2 === 0 }))
+const times = []
+let found = 0
+for (let run = 0; run < 200; run++) {
+  const start = performance.now()
+  found = rows.filter((row) => row.active && row.name.includes('7')).length
+  times.push(performance.now() - start)
+}
+times.sort((a, b) => a - b) // Посередині відсортованого списку лежить медіана.
+console.log('фільтр 1000 рядків, медіана з 200 запусків, мс:', times[100].toFixed(3))
 ```
 
-Двадцять мікросекунд на тисячу рядків менше за одну мілісекунду в п'ятдесят разів. Тому для такого меню хук нічого не
-дає, а лише додає код. На вашій машині число буде іншим, і машина користувача теж інша, тому міряйте функцією
-`console.time` у зібраному застосунку, бо режим розробки працює повільніше й подвоює виклики.
+```text
+фільтр 1000 рядків, медіана з 200 запусків, мс: 0.018
+```
+
+Близько двадцяти мікросекунд на тисячу рядків менше за одну мілісекунду приблизно в п'ятдесят разів. Тому для такого
+меню хук нічого не дає, а лише додає код. На вашій машині число буде іншим, і машина користувача теж інша, тому
+міряйте функцією `console.time` у зібраному застосунку, бо режим розробки працює повільніше й подвоює виклики.
 
 Функція в `useMemo` виконується під час рендеру, тому має бути чистою, як і все інше в рендері. Запит у мережу чи
 запис у стан у неї не кладіть. Докладно мемоізацію вивчає фаза 2.
@@ -178,7 +341,39 @@ function DrinkByEffect({ drink, addToCart, notify }: { drink: Drink; addToCart: 
 ```
 
 Клацання справді показує сповіщення. Тепер уявімо, що кошик пам'ятається між перезавантаженнями сторінки, тому напій
-може бути в кошику вже на самому початку:
+може бути в кошику вже на самому початку. Тест запускає обидва сценарії в `<StrictMode>`, а батько `Shop` тримає напій
+у стані:
+
+```tsx
+type Drink = { name: string; inCart: boolean }
+type CardProps = { drink: Drink; addToCart: () => void; notify: (t: string) => void }
+const log: string[] = []
+let toasts = 0
+const notify = () => {
+  toasts++ // Лічильник замість справжнього сповіщення.
+}
+
+function Shop({ Card, inCart }: { Card: FC<CardProps>; inCart: boolean }) {
+  const [drink, setDrink] = useState({ name: 'лате', inCart })
+  return <Card drink={drink} addToCart={() => setDrink({ ...drink, inCart: true })} notify={notify} />
+}
+
+function openAndBuy(title: string, Card: FC<CardProps>) {
+  toasts = 0
+  const opened = render(<StrictMode><Shop Card={Card} inCart={true} /></StrictMode>)
+  console.log(`${title} | сторінка відкрита, напій уже в кошику: сповіщень ${toasts}`)
+  opened.unmount()
+
+  toasts = 0
+  const empty = render(<StrictMode><Shop Card={Card} inCart={false} /></StrictMode>)
+  const beforeClick = toasts
+  fireEvent.click(screen.getByRole('button', { name: 'купити' }))
+  console.log(`${title} | напою немає в кошику: до клацання ${beforeClick}, після клацання ${toasts}`)
+  empty.unmount()
+}
+
+test('ефект', () => openAndBuy('ефект', DrinkByEffect))
+```
 
 ```text
 ефект | сторінка відкрита, напій уже в кошику: сповіщень 2
@@ -212,6 +407,12 @@ function DrinkByHandler({ drink, addToCart, notify }: { drink: Drink; addToCart:
     </>
   )
 }
+```
+
+Той самий сценарій тепер отримує новий компонент:
+
+```tsx
+test('обробник', () => openAndBuy('обробник', DrinkByHandler))
 ```
 
 ```text
@@ -263,6 +464,53 @@ function TableNote({ tableId }: { tableId: number }) {
 показує, що станеться зі справжнім підключенням. Сценарій такий: ввести нотатку, клацнути чайові один раз, перейти до
 столика 2.
 
+```tsx
+const log: string[] = []
+
+function Tip() {
+  const [percent, setPercent] = useState(0)
+  return <button onClick={() => setPercent(percent + 5)}>чайові {percent}%</button>
+}
+
+function Note({ tableId }: { tableId: number }) {
+  const [note, setNote] = useState('')
+  useEffect(() => {
+    log.push('підключено стіл ' + tableId) // Рядок журналу замість справжнього підключення.
+    return () => {
+      log.push('відключено стіл ' + tableId)
+    }
+  }, [tableId])
+  log.push(`рендер: стіл ${tableId}, нотатка «${note}»`)
+  return (
+    <>
+      <input aria-label="нотатка" value={note} onChange={(e) => setNote(e.target.value)} />
+      <Tip />
+    </>
+  )
+}
+
+function moveToTable2(title: string, Form: FC<{ tableId: number }>) {
+  const { rerender, unmount } = render(<Form tableId={1} />)
+  const oldField = screen.getByLabelText('нотатка')
+  fireEvent.change(oldField, { target: { value: 'без цукру' } })
+  fireEvent.click(screen.getByRole('button'))
+  oldField.focus()
+  log.length = 0 // Далі журнал показує лише перехід до іншого столика.
+  rerender(<Form tableId={2} />)
+  const sameNode = screen.getByLabelText('нотатка') === oldField
+  console.log(title + '\n' + log.join('\n'))
+  console.log(
+    `${title} | кнопка: ${screen.getByRole('button').textContent} | той самий вузол поля: ${sameNode} | у фокусі: ${document.activeElement?.tagName}`,
+  )
+  unmount()
+}
+
+test('столик', () => {
+  moveToTable2('ефект', NoteByEffect)
+  moveToTable2('key', TableNote)
+})
+```
+
 ```text
 ефект
 рендер: стіл 2, нотатка «без цукру»
@@ -299,6 +547,8 @@ function PickByEffect({ items }: { items: Item[] }) {
   useEffect(() => {
     setSelection(null)
   }, [items])
+  return <><button onClick={() => setSelection(items[1])}>чай</button><Picked item={selection} /></>
+}
 ```
 
 ```tsx
@@ -309,12 +559,46 @@ function PickDuringRender({ items }: { items: Item[] }) {
     setPrevItems(items)
     setSelection(null)
   }
+  return <><button onClick={() => setSelection(items[1])}>чай</button><Picked item={selection} /></>
+}
 ```
 
 ```tsx
 function PickById({ items }: { items: Item[] }) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const selection = items.find((item) => item.id === selectedId) ?? null
+  return <><button onClick={() => setSelectedId(items[1].id)}>чай</button><Picked item={selection} /></>
+}
+```
+
+Тест показує меню, клацає чай, а потім передає нове меню й друкує, що за цей час побачив `Picked`:
+
+```tsx
+type Item = { id: number; name: string }
+const MORNING: Item[] = [{ id: 1, name: 'лате' }, { id: 2, name: 'чай' }]
+const EVENING: Item[] = [{ id: 3, name: 'какао' }, { id: 2, name: 'чай' }]
+const log: string[] = []
+
+function Picked({ item }: { item: Item | null }) {
+  const name = item ? item.name : 'нічого'
+  log.push('Picked бачить: ' + name)
+  return <p role="status">{name}</p>
+}
+
+function changeMenu(title: string, Pick: FC<{ items: Item[] }>) {
+  const { rerender, unmount } = render(<Pick items={MORNING} />)
+  fireEvent.click(screen.getByRole('button', { name: 'чай' })) // Людина обрала чай.
+  log.length = 0
+  rerender(<Pick items={EVENING} />) // Прийшло нове меню, у якому чай теж є.
+  console.log(`${title} | інше меню: ${log.join(', ')} | на екрані: ${screen.getByRole('status').textContent}`)
+  unmount()
+}
+
+test('вибір', () => {
+  changeMenu('ефект', PickByEffect)
+  changeMenu('під час рендеру', PickDuringRender)
+  changeMenu('за id', PickById)
+})
 ```
 
 ```text
@@ -358,7 +642,52 @@ function PriceCopy() {
 
 Спочатку лате коштує 80 гривень, а кнопка «дорожче» додає 10. Копія не оновлюється, і людина бачить стару ціну. Перша
 думка полагодити це ефектом, який оновлює копію щоразу, коли змінилося меню. Така думка лише лікує наслідок, а причина
-лишається. Правильний варіант зберігає ідентифікатор, а об'єкт знаходить під час рендеру:
+лишається. Правильний варіант зберігає ідентифікатор, а об'єкт знаходить під час рендеру. Ось обидва варіанти й тест,
+який один раз клацає «дорожче»:
+
+```tsx
+function PriceCopyEffect() {
+  const [items, setItems] = useState(HOT)
+  const [selected, setSelected] = useState(HOT[0])
+  useEffect(() => {
+    // Ефект шукає в новому меню той самий напій і оновлює копію.
+    setSelected((old) => items.find((i) => i.id === old.id) ?? old)
+  }, [items])
+  log.push('рендер')
+  function raise() {
+    setItems(items.map((i) => (i.id === 1 ? { ...i, price: i.price + 10 } : i)))
+  }
+  return <><button onClick={raise}>дорожче</button><button onClick={() => setSelected(items[0])}>обрати</button><p role="status">{selected.name}: {selected.price} грн</p></>
+}
+
+function PriceById() {
+  const [items, setItems] = useState(HOT)
+  const [selectedId, setSelectedId] = useState(HOT[0].id)
+  const selected = items.find((i) => i.id === selectedId)! // Об'єкт завжди береться з поточного меню.
+  log.push('рендер')
+  function raise() {
+    setItems(items.map((i) => (i.id === 1 ? { ...i, price: i.price + 10 } : i)))
+  }
+  return <><button onClick={raise}>дорожче</button><button onClick={() => setSelectedId(items[0].id)}>обрати</button><p role="status">{selected.name}: {selected.price} грн</p></>
+}
+
+const HOT = [{ id: 1, name: 'лате', price: 80 }, { id: 2, name: 'чай', price: 50 }]
+const log: string[] = []
+
+function raiseOnce(title: string, Menu: FC) {
+  const { unmount } = render(<Menu />)
+  log.length = 0 // Рахуємо лише рендери після клацання.
+  fireEvent.click(screen.getByRole('button', { name: 'дорожче' }))
+  console.log(`${title} | на екрані ${screen.getByRole('status').textContent} | рендерів на одне клацання: ${log.length}`)
+  unmount()
+}
+
+test('ціни', () => {
+  raiseOnce('копія в стані', PriceCopy)
+  raiseOnce('копія й ефект', PriceCopyEffect)
+  raiseOnce('id і обчислення', PriceById)
+})
+```
 
 ```text
 копія в стані | на екрані лате: 80 грн | рендерів на одне клацання: 1
@@ -447,6 +776,35 @@ function StampsHandler() {
 
 Гість купує три лате. Лічильники рахують виклики батька й вкладеного чека:
 
+```tsx
+type Cup = { name: string; counts: boolean }
+const LATTE_CUP: Cup = { name: 'лате', counts: true }
+const WATER_CUP: Cup = { name: 'вода', counts: false }
+let parentRenders = 0
+let receiptRenders = 0
+
+function Receipt({ text }: { text: string }) {
+  receiptRenders++
+  return <p role="status">{text}</p>
+}
+
+function threeCups(title: string, Card: FC) {
+  const { unmount } = render(<Card />)
+  for (let cup = 1; cup <= 3; cup++) {
+    parentRenders = 0
+    receiptRenders = 0
+    fireEvent.click(screen.getByRole('button', { name: 'лате' }))
+    console.log(`${title} | чашка ${cup}: рендерів батька ${parentRenders}, чека ${receiptRenders} | ${screen.getByRole('status').textContent}`)
+  }
+  unmount()
+}
+
+test('три чашки', () => {
+  threeCups('ланцюг', StampsChain)
+  threeCups('обробник', StampsHandler)
+})
+```
+
 ```text
 ланцюг | чашка 1: рендерів батька 2, чека 2 | штампів 1, рівень 1, золота картка: false
 ланцюг | чашка 2: рендерів батька 2, чека 2 | штампів 2, рівень 1, золота картка: false
@@ -470,7 +828,25 @@ function StampsHandler() {
 швидкодії.
 
 Друга проблема важливіша. Сторінка React пропонує уявити нову вимогу: перегляд історії. Кнопка «показати минулу чашку»
-лише показує минулу покупку, тобто змінює `cup` на старе значення:
+лише показує минулу покупку, тобто змінює `cup` на старе значення. Тест знову купує три лате, а потім клацає цю
+кнопку:
+
+```tsx
+function viewPastCup(title: string, Card: FC) {
+  const { unmount } = render(<Card />)
+  for (let cup = 1; cup <= 3; cup++) {
+    fireEvent.click(screen.getByRole('button', { name: 'лате' }))
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'показати минулу чашку' }))
+  console.log(`${title} | перегляд минулої чашки: ${screen.getByRole('status').textContent}`)
+  unmount()
+}
+
+test('перегляд', () => {
+  viewPastCup('ланцюг', StampsChain)
+  viewPastCup('обробник', StampsHandler)
+})
+```
 
 ```text
 ланцюг | перегляд минулої чашки: штампів 1, рівень 2, золота картка: true
@@ -519,7 +895,45 @@ function ToggleHandler({ onChange }: { onChange: (on: boolean) => void }) {
 ```
 
 Третій спосіб найпростіший: перемикач узагалі не тримає стану, а отримує `isOn` від батька, як навчила лекція
-«Спільний стан і скидання стану».
+«Спільний стан і скидання стану». Ось цей варіант і тест, який клацає перемикач один раз, а лічильники рахують виклики
+батька й перемикача:
+
+```tsx
+function ToggleControlled({ isOn, onChange }: { isOn: boolean; onChange: (on: boolean) => void }) {
+  togglePasses++
+  return <button onClick={() => onChange(!isOn)}>{isOn ? 'увімкнено' : 'вимкнено'}</button>
+}
+
+let togglePasses = 0
+let parentPasses = 0
+
+function ParentKnows({ Toggle }: { Toggle: FC<{ onChange: (on: boolean) => void }> }) {
+  parentPasses++
+  const [knows, setKnows] = useState(false)
+  return <><Toggle onChange={setKnows} /><p role="status">{String(knows)}</p></>
+}
+
+function ParentOwns() {
+  parentPasses++
+  const [isOn, setIsOn] = useState(false)
+  return <><ToggleControlled isOn={isOn} onChange={setIsOn} /><p role="status">{String(isOn)}</p></>
+}
+
+function oneClick(title: string, page: ReactNode) {
+  const { unmount } = render(page)
+  parentPasses = 0
+  togglePasses = 0
+  fireEvent.click(screen.getByRole('button'))
+  console.log(`${title} | одне клацання: батько ${parentPasses}, перемикач ${togglePasses} | батько знає: ${screen.getByRole('status').textContent}`)
+  unmount()
+}
+
+test('перемикач', () => {
+  oneClick('батьку, ефект', <ParentKnows Toggle={ToggleEffect} />)
+  oneClick('батьку, обробник', <ParentKnows Toggle={ToggleHandler} />)
+  oneClick('батьку, стан у батька', <ParentOwns />)
+})
+```
 
 ```text
 батьку, ефект | одне клацання: батько 1, перемикач 2 | батько знає: true
@@ -550,6 +964,34 @@ function AppOnce() {
 }
 ```
 
+Поруч стоїть звичайний ефект без змінної. Функція `checkToken` тут лише рахує виклики:
+
+```tsx
+let checks = 0
+function checkToken() {
+  checks++
+}
+
+function AppPlain() {
+  useEffect(() => {
+    checkToken()
+  }, [])
+  return <h1>Кав'ярня</h1>
+}
+
+function start(title: string, App: FC) {
+  checks = 0
+  const { unmount } = render(<StrictMode><App /></StrictMode>)
+  console.log(`${title} | перевірок токена: ${checks}`)
+  unmount()
+}
+
+test('запуск', () => {
+  start('запуск, звичайний ефект, StrictMode', AppPlain)
+  start('запуск, змінна didInit, StrictMode', AppOnce)
+})
+```
+
 ```text
 запуск, звичайний ефект, StrictMode | перевірок токена: 2
 запуск, змінна didInit, StrictMode | перевірок токена: 1
@@ -568,6 +1010,37 @@ function AppOnce() {
 function useOnline() {
   return useSyncExternalStore(subscribe, () => navigator.onLine)
 }
+
+let subscriptions = 0 // Лічильник показує, скільки підписок діє зараз.
+
+function subscribe(onChange: () => void) {
+  subscriptions++
+  window.addEventListener('online', onChange)
+  window.addEventListener('offline', onChange)
+  return () => {
+    subscriptions--
+    window.removeEventListener('online', onChange)
+    window.removeEventListener('offline', onChange)
+  }
+}
+
+function Status() {
+  return <p role="status">{useOnline() ? 'у мережі' : 'без мережі'}</p>
+}
+
+test('сховище', () => {
+  let online = true
+  Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => online })
+  const { unmount } = render(<Status />)
+  const first = screen.getByRole('status').textContent
+  act(() => {
+    online = false
+    window.dispatchEvent(new Event('offline')) // Подію викликаємо вручну, бо в jsdom немає мережі.
+  })
+  console.log(`сховище | спочатку: ${first} | після події: ${screen.getByRole('status').textContent} | підписок: ${subscriptions}`)
+  unmount()
+  console.log(`сховище | компонент зник, підписок: ${subscriptions}`)
+})
 ```
 
 ```text
@@ -600,7 +1073,135 @@ function useOnline() {
 
 Перевірка дня вимагає, щоб лінт не видавав попереджень правила `set-state-in-effect`. Сторінка правила каже, що воно
 спрацьовує на синхронному виклику `set` у тілі ефекту. Ми запустили ESLint на окремому файлі з кожним записом, щоб
-побачити межі цього правила.
+побачити межі цього правила. Коментар над кожним компонентом каже, який запис він перевіряє:
+
+```tsx
+// src/lint-cases.tsx
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+
+// set прямо в тілі ефекту
+export function DirectSet({ value }: { value: number }) {
+  const [copy, setCopy] = useState(0)
+  useEffect(() => {
+    setCopy(value)
+  }, [value])
+  return <p>{copy}</p>
+}
+
+// set усередині if в ефекті
+export function SetInIf({ value }: { value: number }) {
+  const [copy, setCopy] = useState(0)
+  useEffect(() => {
+    if (value > 0) {
+      setCopy(value)
+    }
+  }, [value])
+  return <p>{copy}</p>
+}
+
+// set у локальній функції, яку ефект одразу викликає
+export function SetInLocal({ value }: { value: number }) {
+  const [copy, setCopy] = useState(0)
+  useEffect(() => {
+    function update() {
+      setCopy(value)
+    }
+    update()
+  }, [value])
+  return <p>{copy}</p>
+}
+
+// сповіщення за значенням стану
+export function NotifyOnState({ notify }: { notify: (t: string) => void }) {
+  const [paid, setPaid] = useState(false)
+  useEffect(() => {
+    if (paid) {
+      notify('Оплачено')
+    }
+  }, [paid, notify])
+  return <button onClick={() => setPaid(true)}>оплатити</button>
+}
+
+// виклик пропса onChange
+export function CallProp({ onChange }: { onChange: (on: boolean) => void }) {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    onChange(on)
+  }, [on, onChange])
+  return <button onClick={() => setOn(!on)}>перемкнути</button>
+}
+
+// set у .then після запиту
+export function SetInThen({ url }: { url: string }) {
+  const [text, setText] = useState('')
+  useEffect(() => {
+    fetch(url).then((r) => r.text()).then((body) => setText(body))
+  }, [url])
+  return <p>{text}</p>
+}
+
+// set у функції таймера
+export function SetInTimer() {
+  const [ticks, setTicks] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTicks((t) => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return <p>{ticks}</p>
+}
+
+// set зі значенням, виміряним через ref у useLayoutEffect
+export function Measure() {
+  const box = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState(0)
+  useLayoutEffect(() => {
+    const rect = box.current!.getBoundingClientRect()
+    setHeight(rect.height)
+  }, [])
+  return <div ref={box}>{height}</div>
+}
+
+// set під час рендеру за умовою
+export function RenderWithCondition({ items }: { items: string[] }) {
+  const [prevItems, setPrevItems] = useState(items)
+  const [picked, setPicked] = useState('')
+  if (items !== prevItems) {
+    setPrevItems(items)
+    setPicked('')
+  }
+  return <button onClick={() => setPicked(items[0])}>{picked}</button>
+}
+
+// set під час рендеру без умови
+export function RenderNoCondition({ value }: { value: number }) {
+  const [copy, setCopy] = useState(0)
+  setCopy(value)
+  return <p>{copy}</p>
+}
+```
+
+Звичайний вивід ESLint тут дуже довгий, бо кожне повідомлення має кілька абзаців пояснення. Тому ми запустили ESLint
+із маленького файлу `lint-report.mjs`, який лежить у корені проєкту й запускається командою `node lint-report.mjs`.
+Цей файл друкує лише номер рядка, правило й перший рядок повідомлення:
+
+```js
+import { ESLint } from 'eslint'
+
+const [result] = await new ESLint().lintFiles(['src/lint-cases.tsx'])
+for (const m of result.messages) {
+  console.log(`${m.line}: ${m.ruleId} | ${m.message.split('\n')[0]}`)
+}
+```
+
+```text
+8: react-hooks/set-state-in-effect | Error: Calling setState synchronously within an effect can trigger cascading renders
+18: react-hooks/set-state-in-effect | Error: Calling setState synchronously within an effect can trigger cascading renders
+100: react-hooks/set-state-in-render | Error: Cannot call setState during render
+```
+
+Рядок 8 лежить у `DirectSet`, рядок 18 у `SetInIf`, а рядок 100 у `RenderNoCondition`. Решта сім компонентів не дали
+жодного повідомлення. Таблиця зводить цей вивід разом, а останній стовпець уже не є виводом лінту, а нашою оцінкою за
+критерієм цієї лекції:
 
 | Запис | Що каже лінт | Чи зайвий ефект |
 |-------|--------------|-----------------|
@@ -622,7 +1223,43 @@ function useOnline() {
 ## Як рахувати ефекти
 
 Практика просить записати два числа: скільки ефектів було й скільки стало. Для цього підходить пошук рядка, але
-результат доведеться прочитати. Ось такий пошук у невеликому зразку проєкту кав'ярні:
+результат доведеться прочитати. Ось невеликий зразок проєкту кав'ярні з трьох файлів. Перший файл,
+`shop/src/Menu.tsx`, завантажує меню, а коментар у ньому залишився від старого коду:
+
+```tsx
+import { useEffect, useState } from 'react'
+// Раніше тут стояв useEffect(() => ...) для підрахунку, тепер підрахунок іде під час рендеру.
+export function Menu() {
+  const [items, setItems] = useState<string[]>([])
+  useEffect(() => {
+    fetch('/api/menu').then((r) => r.json()).then(setItems)
+  }, [])
+  return <ul>{items.map((name) => <li key={name}>{name}</li>)}</ul>
+}
+```
+
+Другий файл, `shop/src/cart/Cart.tsx`, обчислює суму ефектом:
+
+```tsx
+import { useEffect, useState } from 'react'
+export function Cart({ prices }: { prices: number[] }) {
+  const [total, setTotal] = useState(0)
+  useEffect(() => {
+    setTotal(prices.reduce((sum, price) => sum + price, 0))
+  }, [prices])
+  return <p>{total}</p>
+}
+```
+
+Третій файл, `shop/src/cart/Cart.test.tsx`, належить тестам:
+
+```tsx
+import { useEffect } from 'react'
+export function Probe() { useEffect(() => {}, []); return null }
+```
+
+Такий пошук друкує кожен рядок, де стоїть `useEffect(`. Порядок файлів у вашому виводі може бути іншим, бо він
+залежить від файлової системи:
 
 ```bash
 grep -rn "useEffect(" shop/src --include="*.tsx"
@@ -630,9 +1267,9 @@ grep -rn "useEffect(" shop/src --include="*.tsx"
 
 ```text
 shop/src/cart/Cart.test.tsx:2:export function Probe() { useEffect(() => {}, []); return null }
+shop/src/cart/Cart.tsx:4:  useEffect(() => {
 shop/src/Menu.tsx:2:// Раніше тут стояв useEffect(() => ...) для підрахунку, тепер підрахунок іде під час рендеру.
 shop/src/Menu.tsx:5:  useEffect(() => {
-shop/src/cart/Cart.tsx:4:  useEffect(() => {
 ```
 
 Команда знайшла чотири рядки, але справжніх ефектів застосунку лише два. Один рядок є коментарем, а інший лежить у
@@ -657,10 +1294,11 @@ shop/src/cart/Cart.tsx:4:  useEffect(() => {
 пропси, тому обчислення в тілі виконається саме. Ефект лише додає другий рендер.
 
 **«Значення в стані й ефект, який його оновлює, це нормальне розділення логіки».** Це два місця для одного факту. Вони
-можуть розійтися, і на кадрі можна побачити проміжний результат: у нашому досліді це сталося в 19 спробах із 60.
+можуть розійтися, і на кадрі можна побачити проміжний результат: у нашому досліді це сталося приблизно в кожній третій
+спробі.
 
 **«`useMemo` треба ставити на будь-яке обчислення».** Хук сам додає код і порівняння. Фільтр тисячі рядків зайняв у
-нас двадцять мікросекунд, тому там нічого економити. Міряйте.
+нас близько двадцяти мікросекунд, тому там нічого економити. Міряйте.
 
 **«Ефект зручніший для спільної логіки двох кнопок».** Спільну логіку виносять у звичайну функцію. Ефект не знає, що
 натиснула людина, і спрацює також під час відкриття сторінки.
@@ -709,8 +1347,8 @@ React викликає компонент із новим `first` і стари�
 <details><summary>Відповідь</summary>
 
 Коли заміряно, що обчислення дороге: сторінка React називає межу приблизно в одну мілісекунду на дію, і міряти треба
-на зібраному застосунку. Для фільтра тисячі рядків наш замір дав двадцять мікросекунд, тому хук нічого не дає. Функція
-в `useMemo` має бути чистою, бо виконується під час рендеру.
+на зібраному застосунку. Для фільтра тисячі рядків наш замір дав близько двадцяти мікросекунд, тому хук нічого не дає.
+Функція в `useMemo` має бути чистою, бо виконується під час рендеру.
 
 </details>
 

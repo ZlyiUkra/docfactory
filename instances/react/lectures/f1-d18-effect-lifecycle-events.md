@@ -31,7 +31,72 @@
 
 Служба доставки існує поза React, тому код до неї звертається з ефекту. Функція `createTracking` створює канал, метод
 `open` відкриває його, `close` закриває, а `onPosition` задає функцію, яку канал викличе при новій відстані. Методи
-`open` і `close` пишуть рядок у журнал, тож ми бачимо кожне підключення. Перша спроба виглядає розумно:
+`open` і `close` пишуть рядок у журнал, тож ми бачимо кожне підключення.
+
+Усі досліди лекції беруть ці функції з одного файлу. Справжньої мережі в ньому немає, а функція `step` виконує одну дію
+тесту й друкує один рядок: назву дії й усе, що за цю дію потрапило в журнал.
+
+```ts
+// src/tracking.ts
+export type Units = 'km' | 'mi'
+
+export function formatDistance(km: number, units: Units): string {
+  return units === 'km' ? `${km} км` : `${(km * 0.621).toFixed(1)} милі`
+}
+
+// Журнал збирає дії одного кроку тесту.
+let journal: string[] = []
+
+export function say(line: string) {
+  journal.push(line)
+}
+
+export function notify(text: string) {
+  say(`сповіщення «${text}»`)
+}
+
+export function logVisit(orderId: string) {
+  say(`візит ${orderId}`)
+}
+
+type Listener = (km: number) => void
+
+// Тут лежать усі канали, відкриті зараз.
+const openChannels = new Set<Listener>()
+
+export function createTracking(orderId: string) {
+  let listener: Listener = () => {}
+  const deliver: Listener = (km) => listener(km)
+  return {
+    onPosition(callback: Listener) {
+      listener = callback
+    },
+    open() {
+      openChannels.add(deliver)
+      say(`відкрито ${orderId}`)
+    },
+    close() {
+      openChannels.delete(deliver)
+      say(`закрито ${orderId}`)
+    },
+  }
+}
+
+// Служба надсилає нову відстань усім відкритим каналам.
+export function sendPosition(km: number) {
+  openChannels.forEach((deliver) => deliver(km))
+}
+
+// Очищає журнал, виконує дію, друкує рядок і повертає результат дії.
+export function step<T>(name: string, action: () => T): T {
+  journal = []
+  const result = action()
+  console.log(`${name} | ${journal.join(', ')}`)
+  return result
+}
+```
+
+Перша спроба виглядає розумно:
 
 ```tsx
 function TrackerDeps({ orderId, units }: { orderId: string; units: Units }) {
@@ -47,7 +112,36 @@ function TrackerDeps({ orderId, units }: { orderId: string; units: Units }) {
 }
 ```
 
-Тест показує компонент, надсилає відстань, перемикає одиниці й надсилає ще одну відстань:
+Тест показує компонент, надсилає відстань, перемикає одиниці й надсилає ще одну відстань. Компоненти лекції й тести
+лежать в одному файлі `src/tracker.test.tsx`, а всі наступні приклади дописуються в нього ж:
+
+```tsx
+// @vitest-environment jsdom
+import { StrictMode, useEffect, useEffectEvent, useRef } from 'react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, test, vi } from 'vitest'
+import {
+  createTracking, formatDistance, logVisit, notify, say, sendPosition, step, type Units,
+} from './tracking'
+
+// Прибирає компонент після кожного тесту, тому його канал не отримає чужих відстаней.
+afterEach(cleanup)
+
+test('одиниці в залежностях', () => {
+  const view = step('одиниці в залежностях, показ', () =>
+    render(<TrackerDeps orderId="A-17" units="km" />),
+  )
+  step('одиниці в залежностях, 5 км', () => sendPosition(5))
+  step('одиниці в залежностях, перемикання на милі', () =>
+    view.rerender(<TrackerDeps orderId="A-17" units="mi" />),
+  )
+  step('одиниці в залежностях, 4 км', () => sendPosition(4))
+})
+```
+
+Перший рядок файлу просить Vitest запускати його під jsdom. Команда
+`npx vitest run src/tracker.test.tsx --disable-console-intercept` запускає файл, а прапорець у кінці прибирає службові
+рядки навколо `console.log`. Цей тест друкує таке:
 
 ```text
 одиниці в залежностях, показ | відкрито A-17
@@ -91,6 +185,18 @@ function TrackerOne({ orderId }: { orderId: string }) {
 Запис під час рендеру порушує чистоту компонента, і ми робимо його лише для цього досліду. Тест проводить компонент
 через п'ять подій:
 
+```tsx
+test('пʼять подій', () => {
+  const view = step('показ A-17', () => render(<TrackerOne orderId="A-17" />))
+  step('новий рендер, те саме A-17', () => view.rerender(<TrackerOne orderId="A-17" />))
+  step('перехід на B-42', () => view.rerender(<TrackerOne orderId="B-42" />))
+  step('перехід на C-05', () => view.rerender(<TrackerOne orderId="C-05" />))
+  step('компонент зник', () => view.unmount())
+})
+```
+
+Вивід такий:
+
 ```text
 показ A-17 | рендер A-17, відкрито A-17
 новий рендер, те саме A-17 | рендер A-17
@@ -127,8 +233,23 @@ function TrackerOne({ orderId }: { orderId: string }) {
 
 ### Перевірка в режимі розробки
 
-Тема «Синхронізація ефектами» показала, що `<StrictMode>` у розробці робить зайвий цикл запуску й зупинки. Запуск того
-самого компонента в цьому режимі дав такий вивід:
+Тема «Синхронізація ефектами» показала, що `<StrictMode>` у розробці робить зайвий цикл запуску й зупинки. Цей тест
+запускає той самий компонент у цьому режимі:
+
+```tsx
+test('TrackerOne під StrictMode', () => {
+  const show = (orderId: string) => (
+    <StrictMode>
+      <TrackerOne orderId={orderId} />
+    </StrictMode>
+  )
+  const view = step('StrictMode, показ A-17', () => render(show('A-17')))
+  step('StrictMode, перехід на B-42', () => view.rerender(show('B-42')))
+  step('StrictMode, компонент зник', () => view.unmount())
+})
+```
+
+Вивід такий:
 
 ```text
 StrictMode, показ A-17 | рендер A-17, рендер A-17, відкрито A-17, закрито A-17, відкрито A-17
@@ -160,6 +281,24 @@ StrictMode, компонент зник | закрито B-42
 Перший рядок таблиці дає найгрубішу версію нашої скарги. Той самий ефект без масиву реагує навіть на рендер із
 незмінними пропсами:
 
+```tsx
+function NoArray({ orderId }: { orderId: string }) {
+  useEffect(() => {
+    const tracking = createTracking(orderId)
+    tracking.open()
+    return () => tracking.close()
+  }) // другого аргументу немає
+  return <h1>Замовлення {orderId}</h1>
+}
+
+test('без масиву', () => {
+  const view = step('без масиву, показ', () => render(<NoArray orderId="A-17" />))
+  step('без масиву, новий рендер', () => view.rerender(<NoArray orderId="A-17" />))
+})
+```
+
+Вивід такий:
+
 ```text
 без масиву, показ | відкрито A-17
 без масиву, новий рендер | закрито A-17, відкрито A-17
@@ -182,17 +321,37 @@ function OnMount({ orderId }: { orderId: string }) {
 }
 ```
 
-```text
-порожній масив | на екрані: Замовлення B-42 | відкрито A-17
+Тест показує компонент із A-17, переводить його на B-42 і друкує заголовок з екрана:
+
+```tsx
+test('порожній масив', () => {
+  const view = step('порожній масив, показ', () => render(<OnMount orderId="A-17" />))
+  step('порожній масив, перехід на B-42', () => view.rerender(<OnMount orderId="B-42" />))
+  console.log('на екрані:', screen.getByRole('heading').textContent)
+})
 ```
 
-Екран показує B-42, а канал досі підключений до A-17. Сповіщення надходитимуть про чуже замовлення, і жодна помилка
-про це не повідомить. Коментар у коді вимкнув правило лінту для наступного рядка. Без коментаря лінт попереджає:
+```text
+порожній масив, показ | відкрито A-17
+порожній масив, перехід на B-42 |
+на екрані: Замовлення B-42
+```
+
+Екран показує B-42, а канал досі підключений до A-17, бо при переході журнал лишився порожнім. Сповіщення надходитимуть
+про чуже замовлення, і жодна помилка про це не повідомить. Коментар у коді вимкнув правило лінту для наступного рядка.
+
+Перевірмо, що каже лінт без коментаря. Покладіть компонент в окремий файл `src/OnMount.tsx` і видаліть рядок із
+коментарем. Перед словом `function` допишіть `export`, а над компонентом поставте два рядки імпорту: перший бере
+`useEffect` з `react`, другий бере `createTracking` з `./tracking`. Команда
+`npx eslint src/OnMount.tsx; echo "код завершення $?"` друкує шлях до файлу, а під ним такі рядки:
 
 ```text
-8:6  warning  React Hook useEffect has a missing dependency: 'orderId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  8:6  warning  React Hook useEffect has a missing dependency: 'orderId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+✖ 1 problem (0 errors, 1 warning)
 код завершення 0
 ```
+
+Запис `8:6` на початку означає восьмий рядок файлу й шосту позицію в ньому, тобто масив `[]`.
 
 Зверніть увагу на останній рядок. Правило `exhaustive-deps` за замовчуванням дає попередження, а не помилку, тому
 команда `eslint` завершується успішно, і попередження легко пропустити.
@@ -255,8 +414,11 @@ export function Mutable() {
 }
 ```
 
+Команда `npx eslint` на цьому компоненті серед інших рядків друкує попередження й помилку:
+
 ```text
 React Hook useEffect has unnecessary dependencies: 'location.pathname' and 'seen.current'. Either exclude them or remove the dependency array. Mutable values like 'seen.current' aren't valid dependencies because mutating them doesn't re-render the component
+Error: Cannot access refs during render
 ```
 
 Лінт має рацію з простої причини. React порівнює список лише після рендеру, а зміна цих значень рендеру не запускає,
@@ -282,7 +444,37 @@ function OneEffect({ orderId, server }: { orderId: string; server: string }) {
 }
 ```
 
-Той самий код можна записати двома ефектами. Тест змінює лише сервер:
+Той самий код можна записати двома ефектами. Тест запускає обидва варіанти й змінює лише сервер:
+
+```tsx
+function TwoEffects({ orderId, server }: { orderId: string; server: string }) {
+  // Запис відвідування залежить лише від номера.
+  useEffect(() => {
+    logVisit(orderId)
+  }, [orderId])
+
+  // Канал залежить і від номера, і від сервера.
+  useEffect(() => {
+    const tracking = createTracking(`${server}/${orderId}`)
+    tracking.open()
+    return () => tracking.close()
+  }, [orderId, server])
+  return null
+}
+
+test('один ефект і два ефекти', () => {
+  const one = render(<OneEffect orderId="A-17" server="s1" />)
+  step('один ефект, змінився сервер', () =>
+    one.rerender(<OneEffect orderId="A-17" server="s2" />),
+  )
+  const two = render(<TwoEffects orderId="A-17" server="s1" />)
+  step('два ефекти, змінився сервер', () =>
+    two.rerender(<TwoEffects orderId="A-17" server="s2" />),
+  )
+})
+```
+
+Показ компонентів стоїть поза `step`, тому у вивід потрапляє лише зміна сервера:
 
 ```text
 один ефект, змінився сервер | закрито s1/A-17, візит A-17, відкрито s2/A-17
@@ -334,6 +526,19 @@ function TrackerSilenced({ orderId, units }: { orderId: string; units: Units }) 
 }
 ```
 
+Тест повторює дії з першого тесту, а показ компонента стоїть поза `step`, тому у вивід не потрапляє:
+
+```tsx
+test('вимкнений лінт', () => {
+  const view = render(<TrackerSilenced orderId="A-17" units="km" />)
+  step('вимкнений лінт, 5 км', () => sendPosition(5))
+  step('вимкнений лінт, перемикання на милі', () =>
+    view.rerender(<TrackerSilenced orderId="A-17" units="mi" />),
+  )
+  step('вимкнений лінт, 4 км', () => sendPosition(4))
+})
+```
+
 ```text
 вимкнений лінт, 5 км | сповіщення «Кур'єр за 5 км»
 вимкнений лінт, перемикання на милі | 
@@ -379,7 +584,27 @@ function TrackerEvent({ orderId, units }: { orderId: string; units: Units }) {
 - Список `[orderId]` тепер повний. Ефект справді читає лише `orderId`, а саму `onPosition` у список не пишуть. Лінт не
   знаходить у цьому файлі проблем, і коментар для вимкнення не потрібен.
 
-Той самий тест дає потрібну поведінку:
+Тест повторює ті самі дії, а потім ще переводить компонент на інше замовлення, надсилає відстань і прибирає компонент:
+
+```tsx
+test('подія ефекту', () => {
+  const view = step('подія ефекту, показ', () =>
+    render(<TrackerEvent orderId="A-17" units="km" />),
+  )
+  step('подія ефекту, 5 км', () => sendPosition(5))
+  step('подія ефекту, перемикання на милі', () =>
+    view.rerender(<TrackerEvent orderId="A-17" units="mi" />),
+  )
+  step('подія ефекту, 4 км', () => sendPosition(4))
+  step('подія ефекту, перехід на B-42', () =>
+    view.rerender(<TrackerEvent orderId="B-42" units="mi" />),
+  )
+  step('подія ефекту, 3 км', () => sendPosition(3))
+  step('подія ефекту, компонент зник', () => view.unmount())
+})
+```
+
+Вивід показує потрібну поведінку:
 
 ```text
 подія ефекту, показ | відкрито A-17
@@ -407,6 +632,18 @@ function TrackerEvent({ orderId, units }: { orderId: string; units: Units }) {
 нового рядка про підключення. Під `<StrictMode>` компонент дав той самий результат, лише з додатковим циклом при
 показі:
 
+```tsx
+test('подія ефекту під StrictMode', () => {
+  const show = (units: Units) => (
+    <StrictMode>
+      <TrackerEvent orderId="A-17" units={units} />
+    </StrictMode>
+  )
+  const view = step('подія ефекту, StrictMode, показ', () => render(show('km')))
+  step('подія ефекту, StrictMode, перемикання', () => view.rerender(show('mi')))
+})
+```
+
 ```text
 подія ефекту, StrictMode, показ | відкрито A-17, закрито A-17, відкрито A-17
 подія ефекту, StrictMode, перемикання | 
@@ -419,8 +656,47 @@ function TrackerEvent({ orderId, units }: { orderId: string; units: Units }) {
 ## Як подія ефекту бачить найновіше
 
 Ефект створено під час першого рендеру, і він пам'ятає функцію `onPosition` саме першого рендеру. Чому ж тоді ця
-функція читає `units` останнього рендеру? Ось дослід. Перший ефект зберігає функцію першого рендеру, а другий викликає
-її при кожній зміні одиниць. Окремо порівняємо самі функції двох рендерів:
+функція читає `units` останнього рендеру? Ось дослід. Перший ефект зберігає функцію першого рендеру й один раз викликає
+її, а другий викликає її при кожній зміні одиниць. Окремо порівняємо самі функції двох рендерів:
+
+```tsx
+function FirstFunction({ units }: { units: Units }) {
+  const read = useEffectEvent(() => `перша функція бачить ${units}`)
+  const first = useRef<() => string>(() => '')
+
+  useEffect(() => {
+    first.current = read // ця функція належить першому рендеру
+    say(first.current())
+  }, [])
+
+  useEffect(() => {
+    say(`ефект рендеру ${units}: ${first.current()}`)
+  }, [units])
+  return null
+}
+
+// Сюди кожен рендер кладе свою функцію.
+const madeByRender: Array<() => Units> = []
+
+function CompareFunctions({ units }: { units: Units }) {
+  const read = useEffectEvent(() => units)
+  useEffect(() => {
+    madeByRender.push(read)
+  })
+  return null
+}
+
+test('функція першого рендеру', () => {
+  const compared = render(<CompareFunctions units="km" />)
+  compared.rerender(<CompareFunctions units="mi" />)
+  console.log('функція першого рендеру та сама:', madeByRender[0] === madeByRender[1])
+
+  step('функція першого рендеру', () => {
+    const view = render(<FirstFunction units="km" />)
+    view.rerender(<FirstFunction units="mi" />)
+  })
+})
+```
 
 ```text
 функція першого рендеру та сама: false
@@ -433,17 +709,136 @@ function TrackerEvent({ orderId, units }: { orderId: string; units: Units }) {
 рендеру, який ще не дійшов до коміту, подія ефекту не прочитає.
 
 Те, що функції різні, зроблено навмисно: подію ефекту не можна використати як залежність. Якщо записати її в список,
-ефект перезапускатиметься після кожного рендеру, і помилка буде помітна одразу:
+ефект перезапускатиметься після кожного рендеру, і помилка буде помітна одразу. Компонент покладено в окремий файл, щоб
+перевірити його лінтом:
+
+```tsx
+// src/InDeps.tsx
+import { useEffect, useEffectEvent } from 'react'
+import { say } from './tracking'
+
+export function InDeps({ orderId }: { orderId: string }) {
+  const onOpen = useEffectEvent(() => {
+    say(`відкрито ${orderId}`)
+  })
+  useEffect(() => {
+    onOpen()
+    return () => say('прибрано')
+  }, [onOpen]) // подію записано в список, чого робити не можна
+  return null
+}
+```
+
+Тест у файлі `src/tracker.test.tsx` показує компонент і рендерить його ще двічі з тим самим номером:
+
+```tsx
+import { InDeps } from './InDeps'
+
+test('подія в залежностях', () => {
+  step('подія в залежностях, три рендери', () => {
+    const view = render(<InDeps orderId="A-17" />)
+    view.rerender(<InDeps orderId="A-17" />)
+    view.rerender(<InDeps orderId="A-17" />)
+  })
+})
+```
+
+Перший рядок нижче надрукував тест, а другий надрукувала команда `npx eslint src/InDeps.tsx`:
 
 ```text
 подія в залежностях, три рендери | відкрито A-17, прибрано, відкрито A-17, прибрано, відкрито A-17
-6:7  warning  Functions returned from `useEffectEvent` must not be included in the dependency array. Remove `onOpen` from the list
+  12:7  warning  Functions returned from `useEffectEvent` must not be included in the dependency array. Remove `onOpen` from the list  react-hooks/exhaustive-deps
 ```
 
 ## Де можна викликати подію ефекту
 
 Подію ефекту можна викликати лише всередині ефекту чи іншої події ефекту того самого компонента. Лінт перевіряє це
-правилом `rules-of-hooks`, і ось що дали наші спроби.
+правилом `rules-of-hooks`. Файл нижче пробує всі місця виклику:
+
+```tsx
+// src/Places.tsx
+import { useEffect, useEffectEvent } from 'react'
+import { say } from './tracking'
+
+function useAfterMount(callback: () => void) {
+  useEffect(() => {
+    callback()
+  }, [callback])
+}
+
+function Child({ onDone }: { onDone: () => void }) {
+  return <button onClick={onDone}>Готово</button>
+}
+
+export function InEffect() {
+  const onPing = useEffectEvent(() => say('подія'))
+  useEffect(() => {
+    onPing()
+  }, [])
+  return null
+}
+
+export function DuringRender() {
+  const onPing = useEffectEvent(() => say('подія'))
+  onPing()
+  return null
+}
+
+export function InClick() {
+  const onPing = useEffectEvent(() => say('подія'))
+  return <button onClick={() => onPing()}>Пінг</button>
+}
+
+export function AsProp() {
+  const onPing = useEffectEvent(() => say('подія'))
+  return <Child onDone={onPing} />
+}
+
+export function InOwnHook() {
+  const onPing = useEffectEvent(() => say('подія'))
+  useAfterMount(onPing)
+  return null
+}
+```
+
+Команда `npx eslint src/Places.tsx` під шляхом до файлу друкує чотири помилки:
+
+```text
+  25:3   error  `onPing` is a function created with React Hook "useEffectEvent", and can only be called from Effects and Effect Events in the same component                                                      react-hooks/rules-of-hooks
+  31:33  error  `onPing` is a function created with React Hook "useEffectEvent", and can only be called from Effects and Effect Events in the same component                                                      react-hooks/rules-of-hooks
+  36:25  error  `onPing` is a function created with React Hook "useEffectEvent", and can only be called from Effects and Effect Events in the same component. It cannot be assigned to a variable or passed down  react-hooks/rules-of-hooks
+  41:17  error  `onPing` is a function created with React Hook "useEffectEvent", and can only be called from Effects and Effect Events in the same component                                                      react-hooks/rules-of-hooks
+✖ 4 problems (4 errors, 0 warnings)
+```
+
+Рядки 25, 31, 36 і 41 належать компонентам `DuringRender`, `InClick`, `AsProp` і `InOwnHook`. Компонент
+`InEffect` лежить вище, і для нього лінт нічого не надрукував. Тест запускає два компоненти, щоб побачити, що станеться під час виконання:
+
+```tsx
+import { DuringRender, InClick } from './Places'
+
+test('виклик під час рендеру', () => {
+  try {
+    render(<DuringRender />)
+  } catch (error) {
+    console.log('виклик під час рендеру:', (error as Error).message)
+  }
+})
+
+test('виклик в обробнику', () => {
+  step('виклик в обробнику клацання', () => {
+    render(<InClick />)
+    fireEvent.click(screen.getByRole('button'))
+  })
+})
+```
+
+```text
+виклик під час рендеру: A function wrapped in useEffectEvent can't be called during rendering.
+виклик в обробнику клацання | подія
+```
+
+Ось що дали наші спроби разом.
 
 | Де викликано | Лінт | Під час виконання |
 |--------------|------|-------------------|
@@ -452,13 +847,6 @@ function TrackerEvent({ orderId, units }: { orderId: string; units: Units }) {
 | в обробнику клацання | помилка | у нашому запуску спрацювала без помилки |
 | передано дочірньому компоненту пропсом | помилка | не перевіряли |
 | передано у власний хук | помилка | не перевіряли |
-
-Ось точний текст помилки під час виконання й помилки лінту для виклику під час рендеру:
-
-```text
-виклик під час рендеру: A function wrapped in useEffectEvent can't be called during rendering.
-`onPing` is a function created with React Hook "useEffectEvent", and can only be called from Effects and Effect Events in the same component
-```
 
 Рядок про обробник показує, що покладатися слід саме на лінт: React не зупинить такий виклик. Якщо вам потрібна
 функція для обробника, пишіть звичайну функцію.
@@ -481,8 +869,20 @@ function Hides({ orderId }: { orderId: string }) {
 }
 ```
 
+Тест робить те саме, що й тест для порожнього масиву:
+
+```tsx
+test('сховане замовлення', () => {
+  const view = step('сховане замовлення, показ', () => render(<Hides orderId="A-17" />))
+  step('сховане замовлення, перехід на B-42', () => view.rerender(<Hides orderId="B-42" />))
+  console.log('на екрані:', screen.getByRole('heading').textContent)
+})
+```
+
 ```text
-сховане замовлення | на екрані: Замовлення B-42 | відкрито A-17
+сховане замовлення, показ | відкрито A-17
+сховане замовлення, перехід на B-42 |
+на екрані: Замовлення B-42
 ```
 
 Лінт не знаходить у цьому файлі проблем, бо формально ефект не читає нічого реактивного. Довідник `useEffectEvent`
@@ -513,7 +913,37 @@ function DelayedArg({ orderId, units }: { orderId: string; units: Units }) {
 ```
 
 У першому способі подія не має параметра й читає `orderId` усередині. У другому, який показано вище, ефект передає
-номер аргументом. Заради цього досліду ефекти не мають прибирання, тому обидва таймери спрацьовують:
+номер аргументом. Заради цього досліду ефекти не мають прибирання, тому обидва таймери спрацьовують. Ось перший спосіб і
+тест, який перевіряє обидва. Фальшиві таймери Vitest дають тесту перемотати дві секунди без справжнього очікування:
+
+```tsx
+function DelayedInside({ orderId }: { orderId: string }) {
+  const onOpened = useEffectEvent(() => {
+    notify(`Стежимо за ${orderId}`)
+  })
+  useEffect(() => {
+    setTimeout(() => onOpened(), 2000)
+  }, [orderId])
+  return null
+}
+
+test('аргумент чи найновіше значення', () => {
+  vi.useFakeTimers()
+  step('читає всередині', () => {
+    const view = render(<DelayedInside orderId="A-17" />)
+    view.rerender(<DelayedInside orderId="B-42" />)
+    vi.advanceTimersByTime(2000)
+  })
+  step('отримує аргументом', () => {
+    const view = render(<DelayedArg orderId="A-17" units="km" />)
+    view.rerender(<DelayedArg orderId="B-42" units="mi" />)
+    vi.advanceTimersByTime(2000)
+  })
+  vi.useRealTimers()
+})
+```
+
+Користувач переходить на B-42 раніше, ніж спрацьовують таймери, а при другому способі ще й обирає милі:
 
 ```text
 читає всередині | сповіщення «Стежимо за B-42», сповіщення «Стежимо за B-42»

@@ -6,7 +6,7 @@
 
 Приклади запущено на React 19.3 у Vitest під jsdom, тобто в імітації браузера всередині Node. Вивід під прикладами
 справжній. Типи перевірено компілятором `tsc` версії 6.0, а лінт перевірено ESLint із тим самим набором правил
-`react-hooks`, що й у проєкті `spa`. Частину тверджень jsdom перевірити не може, тому ми запустили їх у Chrome 156 без
+`react-hooks`, що й у проєкті `spa`. Частину тверджень jsdom перевірити не може, тому ми запустили їх у Chrome 157 без
 вікна на сервері розробки Vite й на зібраному застосунку через `vite preview`. Біля кожного такого твердження сказано,
 де воно перевірялося.
 
@@ -33,11 +33,20 @@
 відкриті стрічки:
 
 ```tsx
+const log: string[] = [] // журнал дій
+let active = 0 // скільки стрічок зараз відкрито
+
 function createFeed(matchId: string) {
   return {
     open() { active++; log.push('open ' + matchId) },
     close() { active--; log.push('close ' + matchId) },
   }
+}
+
+// Друкує журнал і лічильник, а потім очищує журнал для наступного кроку досліду.
+function report(title: string) {
+  console.log(title + ': ' + log.join(', ') + ' | відкритих стрічок: ' + active)
+  log.length = 0
 }
 ```
 
@@ -51,7 +60,34 @@ function FeedInBody({ matchId }: { matchId: string }) {
 }
 ```
 
-Показуємо компонент, викликаємо його ще двічі з тим самим матчем і прибираємо з екрана:
+Перевіримо цей компонент тестом. Увесь код лекції, який запускається під jsdom, можна скласти в один файл
+`src/effects.test.tsx` проєкту `spa`: спочатку імпорти, потім функції, потім тести. Перший рядок файлу вмикає jsdom, а
+функції `beforeEach` і `afterEach` дають кожному тесту чистий початок. Цей тест показує компонент, викликає його ще
+двічі з тим самим матчем і прибирає з екрана:
+
+```tsx
+// @vitest-environment jsdom
+import { StrictMode, useEffect, useRef, useState, type ReactNode } from 'react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, test, vi } from 'vitest'
+
+beforeEach(() => {
+  log.length = 0 // кожен тест починає з порожнього журналу
+  active = 0
+})
+afterEach(cleanup) // прибирає з екрана все, що лишив попередній тест
+
+test('тіло компонента', () => {
+  const { rerender, unmount } = render(<FeedInBody matchId="кубок" />) // перший рендер
+  rerender(<FeedInBody matchId="кубок" />) // другий рендер
+  rerender(<FeedInBody matchId="кубок" />) // третій рендер
+  unmount() // компонент зникає з екрана
+  report('у тілі компонента, три рендери й зникнення')
+})
+```
+
+Команда `npx vitest run src/effects.test.tsx --disable-console-intercept` запускає файл. Прапорець прибирає службові
+заголовки Vitest, які інакше стоять над кожним рядком консолі. Серед виводу стоїть такий рядок:
 
 ```text
 у тілі компонента, три рендери й зникнення: open кубок, open кубок, open кубок | відкритих стрічок: 3
@@ -93,6 +129,14 @@ function WhenRuns() {
   })
   return <h2>Табло</h2>
 }
+```
+
+Далі лекція показує лише вміст функції `test`, бо решта обгортки не змінюється. Якщо у вмісті є `await`, функція
+всередині `test` має бути `async`. Цей тест показує компонент і друкує журнал:
+
+```tsx
+render(<WhenRuns />)
+console.log(log.join('\n'))
 ```
 
 ```text
@@ -141,6 +185,24 @@ function WithList({ matchId }: { matchId: string }) {
 }
 ```
 
+Компонент `WithoutList` закінчує ефект рядком `})`, а компонент `EmptyList` рядком `}, [])`. Усе інше в них таке саме.
+Тест проводить кожен варіант через один сценарій:
+
+```tsx
+function scenario(title: string, Note: (props: { matchId: string }) => ReactNode) {
+  const { rerender } = render(<Note matchId="кубок" />)
+  const input = screen.getByLabelText('нотатка')
+  fireEvent.change(input, { target: { value: 'г' } }) // перша літера
+  fireEvent.change(input, { target: { value: 'го' } }) // друга літера
+  rerender(<Note matchId="ліга" />) // перехід на інший матч
+  console.log(title + ' | ' + log.join(', '))
+}
+
+test('без списку', () => scenario('без списку', WithoutList))
+test('порожній список', () => scenario('порожній список', EmptyList))
+test('зі списком', () => scenario('[matchId]', WithList))
+```
+
 ```text
 без списку | open кубок, open кубок, open кубок, open ліга
 порожній список | open кубок
@@ -178,14 +240,31 @@ function Endless() {
 }
 ```
 
+Тест показує компонент і збирає все, що React друкує через `console.error`:
+
+```tsx
+// vi.spyOn перехоплює console.error, а mockImplementation записує текст замість друку.
+const messages: string[] = []
+const spy = vi.spyOn(console, 'error').mockImplementation((text) => {
+  messages.push(String(text))
+})
+render(<Endless />)
+spy.mockRestore() // повертаємо справжній console.error
+console.log(
+  'цикл | екран: ' + document.querySelector('p')?.textContent +
+    ' | повідомлень: ' + messages.length + ' | перше: ' + messages[0],
+)
+```
+
 ```text
 цикл | екран: 200 | повідомлень: 3 | перше: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
 ```
 
-Умова `count < 200` стоїть лише заради досліду. Перша версія нашого досліду була без неї, і тест завис, поки ми його
-не зупинили. Отже, React не обриває такий цикл винятком, а лише друкує повідомлення в консоль, і компонент продовжує
-рендеритися. У браузері ми цього не запускали. Лінт заздалегідь повідомляє про такий запис двома правилами,
-`exhaustive-deps` і `set-state-in-effect`.
+Число 200 на екрані означає, що ефект записав стан 200 разів і зупинився лише через свою умову. Повідомлення React є
+попередженням, яке цикла не перериває. Умова `count < 200` стоїть лише заради досліду. Перша версія нашого досліду
+була без неї, і тест завис, поки ми його не зупинили. Отже, React не обриває такий цикл винятком, а лише друкує
+повідомлення в консоль, і компонент продовжує рендеритися. У браузері ми цього не запускали. Лінт заздалегідь
+повідомляє про такий запис двома правилами, `exhaustive-deps` і `set-state-in-effect`.
 
 ## Прибирання: як скасувати зроблене
 
@@ -199,6 +278,15 @@ function Leaky({ matchId }: { matchId: string }) {
   }, [matchId])
   return <h2>Матч {matchId}</h2>
 }
+```
+
+Тест показує матч «кубок», переходить на матч «ліга» і прибирає компонент з екрана:
+
+```tsx
+const { rerender, unmount } = render(<Leaky matchId="кубок" />)
+rerender(<Leaky matchId="ліга" />)
+unmount()
+report('без прибирання')
 ```
 
 ```text
@@ -222,6 +310,16 @@ function Scoreboard({ matchId }: { matchId: string }) {
   }, [matchId])
   return <h2>Матч {matchId}</h2>
 }
+```
+
+Тест проводить компонент через той самий перехід, а перед ним додає ще один рендер із тим самим матчем:
+
+```tsx
+const { rerender, unmount } = render(<Scoreboard matchId="кубок" />)
+rerender(<Scoreboard matchId="кубок" />) // рендер із тим самим матчем
+rerender(<Scoreboard matchId="ліга" />)
+unmount()
+report('з прибиранням')
 ```
 
 ```text
@@ -257,6 +355,31 @@ own Effects` каже про це так: ефект є частиною рез�
 робить іншу перевірку: одразу після першої появи компонента React один раз виконує прибирання й запускає ефект знову.
 Стан і вузли документа при цьому лишаються. Ось наші два варіанти табло в `<StrictMode>`:
 
+```tsx
+test('StrictMode без прибирання', () => {
+  render(
+    <StrictMode>
+      <Leaky matchId="кубок" />
+    </StrictMode>,
+  )
+  report('StrictMode, без прибирання, показ')
+})
+
+test('StrictMode з прибиранням', () => {
+  const app = (matchId: string) => (
+    <StrictMode>
+      <Scoreboard matchId={matchId} />
+    </StrictMode>
+  )
+  const { rerender, unmount } = render(app('кубок'))
+  report('StrictMode, з прибиранням, показ')
+  rerender(app('ліга'))
+  report('StrictMode, з прибиранням, новий матч')
+  unmount()
+  report('StrictMode, з прибиранням, зникнення')
+})
+```
+
 ```text
 StrictMode, без прибирання, показ: open кубок, open кубок | відкритих стрічок: 2
 StrictMode, з прибиранням, показ: open кубок, close кубок, open кубок | відкритих стрічок: 1
@@ -274,8 +397,20 @@ StrictMode, з прибиранням, зникнення: close ліга | ві
 від послідовності «запуск, прибирання, запуск». Тому в журналі з прибиранням число відкритих стрічок дорівнює одиниці,
 і це те саме, що дав би один запуск.
 
-Перевіримо це не в jsdom, а в браузері. У Chrome без вікна ми відкрили той самий компонент на сервері розробки Vite і
-в зібраному застосунку через `vite preview`. У журнал сторінки потрапили такі рядки:
+Перевіримо це не в jsdom, а в браузері. У браузері журнал читають у консолі, тому у функції `createFeed` кожен виклик
+`log.push(...)` ми замінили на `console.log(...)`. Файл `src/main.tsx` показує той самий компонент:
+
+```tsx
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <Scoreboard matchId="кубок" />
+  </StrictMode>,
+)
+```
+
+У Chrome без вікна ми відкрили цю сторінку двічі: на сервері розробки після команди `npm run dev` і в зібраному
+застосунку після команд `npm run build` та `npm run preview`. Крім службових рядків Vite й підказки про React
+DevTools, які ми тут і далі не показуємо, у консолі з'явилися такі рядки:
 
 | Де працює застосунок | Рядки журналу | Чому так |
 |----------------------|---------------|----------|
@@ -289,6 +424,13 @@ StrictMode, з прибиранням, зникнення: close ліга | ві
 ### Чому не варто вимикати перевірку
 
 Подивіться, що станеться, якщо забрати обгортку з варіанта без прибирання:
+
+```tsx
+const { unmount } = render(<Leaky matchId="кубок" />)
+report('без StrictMode, без прибирання, показ')
+unmount()
+report('без StrictMode, без прибирання, зникнення')
+```
 
 ```text
 без StrictMode, без прибирання, показ: open кубок | відкритих стрічок: 1
@@ -313,6 +455,24 @@ function Guarded({ matchId }: { matchId: string }) {
   }, [matchId])
   return <h2>Матч {matchId}</h2>
 }
+```
+
+Тест ставить компонент у `<StrictMode>`, прибирає його, показує знову й змінює матч:
+
+```tsx
+const app = (matchId: string) => (
+  <StrictMode>
+    <Guarded matchId={matchId} />
+  </StrictMode>
+)
+const first = render(app('кубок'))
+report('запобіжник у ref, показ')
+first.unmount()
+report('запобіжник у ref, зникнення')
+const second = render(app('кубок')) // людина повернулася, це новий компонент із новим ref
+report('запобіжник у ref, повернення')
+second.rerender(app('ліга'))
+report('запобіжник у ref, новий матч')
 ```
 
 ```text
@@ -420,18 +580,56 @@ function SlidesRefCleanup() {
 ```
 
 Перед новим запуском обробник зупиняє попередній таймер: ця пастка показана в лекції «Ref». Тест запускає всі три
-варіанти в `<StrictMode>` зі штучними таймерами, клацає «пуск», чекає три секунди, прибирає компонент і чекає ще три
-секунди. Змінна `ticks` рахує спрацювання:
+варіанти в `<StrictMode>`, клацає «пуск», чекає три секунди, прибирає компонент і чекає ще три секунди. Чекати
+по-справжньому не треба: штучні таймери Vitest спрацьовують лише тоді, коли тест сам посуває час. Змінна `ticks` рахує
+спрацювання:
 
-```text
-лише ref | за 3 с: 3, Слайд 3 | компонент зник, ще за 3 с: 6 | попереджень React: 0
-ефект і стан playing | за 3 с: 3, Слайд 3 | компонент зник, ще за 3 с: 3 | попереджень React: 0
-ref і прибирання | за 3 с: 3, Слайд 3 | компонент зник, ще за 3 с: 3 | попереджень React: 0
+```tsx
+let ticks = 0 // скільки разів спрацював таймер
+
+// Посуває штучний час і дає React обробити все, що сталося за цей час.
+async function wait(ms: number) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms)
+  })
+}
+
+async function runSlides(title: string, Slides: () => ReactNode) {
+  vi.useFakeTimers() // вмикає штучні таймери й забуває таймери попереднього тесту
+  ticks = 0
+  const warnings = vi.spyOn(console, 'error') // рахує повідомлення React про помилки
+  render(
+    <StrictMode>
+      <Slides />
+    </StrictMode>,
+  )
+  fireEvent.click(screen.getByText('пуск'))
+  await wait(3000)
+  const shown = ticks + ', ' + screen.getByRole('status').textContent
+  cleanup() // компонент зникає
+  await wait(3000)
+  console.log(
+    title + ' | за 3 с: ' + shown + ' | компонент зник, через 3 с усього: ' + ticks +
+      ' | попереджень React: ' + warnings.mock.calls.length,
+  )
+  warnings.mockRestore()
+}
+
+test('лише ref', () => runSlides('лише ref', SlidesLeaky))
+test('ефект', () => runSlides('ефект і стан playing', SlidesEffect))
+test('ref і прибирання', () => runSlides('ref і прибирання', SlidesRefCleanup))
 ```
 
-Перший рядок є причиною, чому ця помилка так легко лишається. Таймер спрацював іще тричі для компонента, якого немає,
-а React не надрукував жодного попередження про виклик `set`. Екран теж нічого не покаже, бо компонента немає. Помилку
-видно лише тоді, коли ви рахуєте спрацювання в тесті.
+```text
+лише ref | за 3 с: 3, Слайд 3 | компонент зник, через 3 с усього: 6 | попереджень React: 0
+ефект і стан playing | за 3 с: 3, Слайд 3 | компонент зник, через 3 с усього: 3 | попереджень React: 0
+ref і прибирання | за 3 с: 3, Слайд 3 | компонент зник, через 3 с усього: 3 | попереджень React: 0
+```
+
+Число після слова «усього» рахує спрацювання від початку тесту. У двох нижніх рядках воно лишилося 3, бо прибирання
+зупинило таймер разом зі зникненням компонента. Перший рядок є причиною, чому ця помилка так легко лишається. Таймер
+спрацював іще тричі для компонента, якого немає, а React не надрукував жодного попередження про виклик `set`. Екран
+теж нічого не покаже, бо компонента немає. Помилку видно лише тоді, коли ви рахуєте спрацювання в тесті.
 
 Який спосіб обрати? Перший спосіб кращий, якщо таймер справді описує стан компонента, бо запуск і зупинка лежать поруч
 в одному місці й окремий ref не потрібен. Другий спосіб підходить, коли таймером уже керують обробники й ви лише
@@ -440,6 +638,50 @@ ref і прибирання | за 3 с: 3, Слайд 3 | компонент з
 
 Якщо ефект запускає таймер сам, без кнопки, `<StrictMode>` викриває відсутнє прибирання одразу, навіть без зникнення
 компонента:
+
+```tsx
+function SlidesAutoLeaky() {
+  const [slide, setSlide] = useState(0)
+  useEffect(() => {
+    // Ідентифікатор таймера нікуди не записано, тому зупинити таймер нічим.
+    setInterval(() => {
+      ticks++
+      setSlide((s) => s + 1)
+    }, 1000)
+  }, [])
+  return <p role="status">Слайд {slide}</p>
+}
+
+function SlidesAutoClean() {
+  const [slide, setSlide] = useState(0)
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      ticks++
+      setSlide((s) => s + 1)
+    }, 1000)
+    return () => {
+      clearInterval(timerId)
+    }
+  }, [])
+  return <p role="status">Слайд {slide}</p>
+}
+
+async function runAuto(title: string, Slides: () => ReactNode) {
+  vi.useFakeTimers()
+  ticks = 0
+  render(
+    <StrictMode>
+      <Slides />
+    </StrictMode>,
+  )
+  await wait(3000)
+  const shown = screen.getByRole('status').textContent
+  console.log(title + ' | за 3 с спрацювань: ' + ticks + ', ' + shown)
+}
+
+test('авто без', () => runAuto('автозапуск, без прибирання, StrictMode', SlidesAutoLeaky))
+test('авто з', () => runAuto('автозапуск, з прибиранням, StrictMode', SlidesAutoClean))
+```
 
 ```text
 автозапуск, без прибирання, StrictMode | за 3 с спрацювань: 6, Слайд 6
@@ -467,7 +709,41 @@ function AutoSave({ save }: { save: (t: string) => void }) {
 }
 ```
 
-Людина вводить чотири літери з проміжком пів секунди, а потім чекає:
+Варіант без прибирання має той самий ефект без рядка `return` і без змінної `timerId`:
+
+```tsx
+function AutoSaveLeaky({ save }: { save: (t: string) => void }) {
+  const [text, setText] = useState('')
+  useEffect(() => {
+    setTimeout(() => save(text), 3000)
+  }, [text, save])
+  return <textarea aria-label="чернетка" value={text} onChange={(e) => setText(e.target.value)} />
+}
+```
+
+У тесті людина вводить чотири літери з проміжком пів секунди, а потім чекає:
+
+```tsx
+async function typeDraft(title: string, Draft: (props: { save: (t: string) => void }) => ReactNode) {
+  vi.useFakeTimers()
+  const saved: string[] = []
+  // Функція одна на весь тест, тому ефект не перезапускається через зміну save.
+  const save = (t: string) => {
+    saved.push('"' + t + '"')
+  }
+  render(<Draft save={save} />)
+  const box = screen.getByLabelText('чернетка')
+  for (const value of ['к', 'ка', 'кав', 'кава']) {
+    fireEvent.change(box, { target: { value } }) // людина вводить наступну літеру
+    await wait(500)
+  }
+  await wait(3000)
+  console.log(title + ' | збережено: ' + saved.join(', '))
+}
+
+test('чернетка без', () => typeDraft('автозбереження, без прибирання', AutoSaveLeaky))
+test('чернетка з', () => typeDraft('автозбереження, з прибиранням', AutoSave))
+```
 
 ```text
 автозбереження, без прибирання | збережено: "", "к", "ка", "кав", "кава"
@@ -497,6 +773,8 @@ to handle the Effect firing twice in development`.
 `addEventListener`. Ось правильний запис:
 
 ```tsx
+let calls = 0 // скільки разів спрацювала функція підписки
+
 function WidthGood() {
   const [width, setWidth] = useState(window.innerWidth)
   useEffect(() => {
@@ -517,12 +795,53 @@ function WidthGood() {
 функцію, а функція є об'єктом, тому браузер порівнює посилання, як пояснила лекція «Значення й посилання». Посилання
 різні, отже, підписка лишається:
 
+```tsx
+function WidthBad() {
+  const [width, setWidth] = useState(window.innerWidth)
+  useEffect(() => {
+    window.addEventListener('resize', () => {
+      calls++
+      setWidth(window.innerWidth)
+    })
+    return () => {
+      window.removeEventListener('resize', () => {
+        calls++
+        setWidth(window.innerWidth)
+      })
+    }
+  }, [])
+  return <p role="status">{width}</p>
+}
+
+function runWidth(title: string, Width: () => ReactNode) {
+  calls = 0
+  const { unmount } = render(
+    <StrictMode>
+      <Width />
+    </StrictMode>,
+  )
+  act(() => {
+    window.dispatchEvent(new Event('resize')) // одна подія, поки компонент на екрані
+  })
+  const perEvent = calls
+  calls = 0
+  unmount()
+  window.dispatchEvent(new Event('resize')) // ще одна подія, компонента вже немає
+  console.log(title + ' | викликів на одну подію: ' + perEvent + ' | після зникнення: ' + calls)
+}
+
+test('одна функція', () => runWidth('підписка, одна функція', WidthGood))
+test('дві функції', () => runWidth('підписка, дві однакові на вигляд функції', WidthBad))
+```
+
 ```text
 підписка, одна функція | викликів на одну подію: 1 | після зникнення: 0
 підписка, дві однакові на вигляд функції | викликів на одну подію: 2 | після зникнення: 2
 ```
 
-Компонент зник, а обидві підписки лишилися, і компілятор та лінт нічого про це не кажуть.
+Дві підписки з'явилися тому, що тест ставить компонент у `<StrictMode>`, а ця обгортка запускає ефект двічі. У першому
+варіанті прибирання між двома запусками зняло першу підписку, тому лишилася одна. У другому варіанті прибирання нічого
+не зняло. Компонент зник, а обидві підписки лишилися, і компілятор та лінт нічого про це не кажуть.
 
 **Вузол документа.** Лекція «Ref» обіцяла місце, де можна прочитати вузол без події. Це ефект, бо на момент його
 запуску React уже поклав вузол у `ref.current`. Ось компонент, який показує діалог браузера:
@@ -541,28 +860,88 @@ function ConfirmDialog({ text }: { text: string }) {
 }
 ```
 
-У jsdom немає методу `showModal`, тому ми запустили цей код у Chrome без вікна на сервері розробки з `<StrictMode>`.
-Журнал показав таку послідовність: `showModal, open=true`, `close, open=false`, `showModal, open=true`. Після цього
-діалог лишився відкритим, тобто людина побачила той самий результат, що й після одного запуску.
+У jsdom немає методу `showModal`, тому ми запустили цей код у Chrome без вікна на сервері розробки з `<StrictMode>`. Щоб
+бачити порядок дій, ми додали в ефект два рядки друку:
+
+```tsx
+useEffect(() => {
+  const dialog = dialogRef.current
+  dialog?.showModal()
+  console.log('showModal, open=' + dialog?.open)
+  return () => {
+    dialog?.close()
+    console.log('close, open=' + dialog?.open)
+  }
+}, [])
+```
+
+```text
+showModal, open=true
+close, open=false
+showModal, open=true
+```
+
+Перший запуск ефекту відкрив діалог, перевірка `<StrictMode>` закрила його й відкрила знову. Після цього діалог лишився
+відкритим, тобто людина побачила той самий результат, що й після одного запуску.
 
 Рядок `const dialog = dialogRef.current` стоїть не для краси. Коли компонент зникає, React очищує ref раніше, ніж
-викликає прибирання:
+викликає прибирання. Це видно на маленькому компоненті, який має абзац із ref:
+
+```tsx
+function Box() {
+  const boxRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    const node = boxRef.current // запам'ятовуємо вузол, поки ефект запускається
+    return () => {
+      console.log('прибирання, змінна: ' + node?.tagName + ', ref.current: ' + boxRef.current)
+    }
+  }, [])
+  return <p ref={boxRef}>Абзац</p>
+}
+
+test('вузол у прибиранні', () => {
+  const { unmount } = render(<Box />)
+  unmount()
+})
+```
 
 ```text
 прибирання, змінна: P, ref.current: null
 ```
 
-Цей рядок надрукував інший маленький компонент, який має абзац із ref. Отже, прибирання має користуватися вузлом, який
+Змінна `node` досі тримає абзац, а поле `boxRef.current` уже порожнє. Отже, прибирання має користуватися вузлом, який
 ефект запам'ятав у своїй змінній, а не читати `ref.current` заново. Лінт нагадує про це правилом
 `react-hooks/exhaustive-deps` словами `The ref value 'boxRef.current' will likely have changed by the time this effect
 cleanup function runs`. У слайд-шоу вище такої проблеми немає, бо там `timerRef` тримає ваш ідентифікатор, а React
 цього поля не чіпає.
 
-Сторінка React пояснює прибирання діалогу тим, що `showModal` кидає виняток, якщо викликати його двічі. У Chrome 156
-цього вже не сталося: другий виклик на відкритому модальному діалозі нічого не зробив і не кинув винятку, а виняток
-`InvalidStateError` прийшов лише тоді, коли діалог перед цим відкрили методом `show()`. Інших браузерів ми не
-запускали. Прибирання все одно лишайте: запуск і скасування стають дзеркальними, а якщо ефект залежить від пропса, без
-прибирання діалог не закриється, коли пропс зміниться.
+Сторінка React пояснює прибирання діалогу тим, що `showModal` кидає виняток, якщо викликати його двічі. Цей код у
+консолі Chrome перевіряє, чи це так:
+
+```js
+const dialog = document.createElement('dialog')
+document.body.append(dialog)
+dialog.showModal()
+dialog.showModal() // другий виклик на відкритому модальному діалозі
+console.log('другий showModal: винятку немає')
+dialog.close()
+dialog.show() // метод show відкриває діалог не як модальний
+try {
+  dialog.showModal()
+} catch (e) {
+  console.log('showModal після show: ' + e.name)
+}
+```
+
+```text
+другий showModal: винятку немає
+showModal після show: InvalidStateError
+```
+
+Отже, у Chrome другий виклик на відкритому модальному діалозі нічого не робить, а виняток приходить лише тоді, коли
+діалог перед цим відкрили методом `show()`. Інших браузерів ми не запускали. Прибирання все одно лишайте: запуск і
+скасування стають дзеркальними, а якщо ефект залежить від пропса, без прибирання діалог не закриється, коли пропс
+зміниться.
 
 ### Що не є ефектом
 
@@ -576,6 +955,36 @@ function BuyInEffect({ post }: { post: (u: string) => void }) {
   }, [post])
   return <h2>Квиток</h2>
 }
+
+function BuyInHandler({ post }: { post: (u: string) => void }) {
+  return <button onClick={() => post('/api/tickets')}>купити</button>
+}
+
+test('купівля в ефекті', () => {
+  const post = vi.fn() // функція vi.fn запам'ятовує кожен свій виклик у post.mock.calls
+  const app = (
+    <StrictMode>
+      <BuyInEffect post={post} />
+    </StrictMode>
+  )
+  const first = render(app)
+  console.log('купівля в ефекті, показ у StrictMode | запитів: ' + post.mock.calls.length)
+  first.unmount() // людина пішла зі сторінки
+  render(app) // людина повернулася; лічильник post.mock.calls не обнулявся
+  console.log('купівля в ефекті, людина повернулася на сторінку | запитів: ' + post.mock.calls.length)
+})
+
+test('купівля в обробнику', () => {
+  const post = vi.fn()
+  render(
+    <StrictMode>
+      <BuyInHandler post={post} />
+    </StrictMode>,
+  )
+  console.log('купівля в обробнику, показ | запитів: ' + post.mock.calls.length)
+  fireEvent.click(screen.getByText('купити'))
+  console.log('купівля в обробнику, клацання | запитів: ' + post.mock.calls.length)
+})
 ```
 
 ```text
@@ -598,7 +1007,28 @@ function BuyInEffect({ post }: { post: (u: string) => void }) {
 
 Лекція «Мережа» пояснила гонку й скасування без React. Тепер поставимо їх в ефект. Картка слова показує значення
 слова, яке вибрала людина. Функція `fetchWord` замінює справжній `fetch`: для слова «кіт» відповідь іде 800 мс, для
-слова «пес» 100 мс.
+слова «пес» 100 мс. Другий параметр цієї функції приймає сигнал скасування, про який ідеться нижче:
+
+```tsx
+type Entry = { word: string; meaning: string }
+
+const MEANINGS: Record<string, string> = { кіт: 'тварина, яка нявкає', пес: 'тварина, яка гавкає' }
+const DELAYS: Record<string, number> = { кіт: 800, пес: 100 }
+let requests = 0 // скільки запитів пішло
+
+function fetchWord(word: string, signal?: AbortSignal): Promise<Entry> {
+  requests++
+  return new Promise((resolve, reject) => {
+    const timerId = setTimeout(() => resolve({ word, meaning: MEANINGS[word] }), DELAYS[word])
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timerId)
+      reject(new DOMException('Запит скасовано', 'AbortError'))
+    })
+  })
+}
+```
+
+Ось перша версія картки:
 
 ```tsx
 function WordNoCleanup({ word }: { word: string }) {
@@ -611,7 +1041,22 @@ function WordNoCleanup({ word }: { word: string }) {
 ```
 
 Ця картка виглядає правильно, бо ефект запускається при кожній зміні слова. Людина вибирає «кіт», а через 50 мс
-вибирає «пес»:
+вибирає «пес». Функція `race` проводить цей сценарій на штучних таймерах і читає екран двічі:
+
+```tsx
+async function race(title: string, Card: (props: { word: string }) => ReactNode) {
+  vi.useFakeTimers()
+  const { rerender } = render(<Card word="кіт" />)
+  await wait(50)
+  rerender(<Card word="пес" />)
+  await wait(100)
+  console.log(title + ' | 150 мс: ' + screen.getByRole('status').textContent)
+  await wait(1000)
+  console.log(title + ' | 1150 мс: ' + screen.getByRole('status').textContent)
+}
+
+test('без прибирання', () => race('без прибирання', WordNoCleanup))
+```
 
 ```text
 без прибирання | 150 мс: пес: тварина, яка гавкає
@@ -626,8 +1071,62 @@ function WordNoCleanup({ word }: { word: string }) {
 | 800 мс | прийшла відповідь про кота, і `setEntry` її записав | `пес: тварина, яка нявкає` |
 
 Останній рядок є гонкою: на екрані залишаються дані не того слова, і нічого вже не виправить їх, поки людина не вибере
-щось інше. Ми запустили таку саму гонку зі справжнім `fetch` у Chrome без вікна, а сервер відповідав із такими самими
-затримками. У журналі після відповіді про пса теж прийшла відповідь про кота, яка перезаписала стан.
+щось інше.
+
+Ми запустили таку саму гонку у справжньому браузері зі справжнім `fetch`. Для цього потрібен сервер, який відповідає з
+такими самими затримками. Файл `words-server.mjs` запускає команда `node words-server.mjs`:
+
+```js
+import { createServer } from 'node:http'
+
+const MEANINGS = { кіт: 'тварина, яка нявкає', пес: 'тварина, яка гавкає' }
+const DELAYS = { кіт: 800, пес: 100 }
+
+createServer((req, res) => {
+  const word = new URL(req.url, 'http://localhost').searchParams.get('word')
+  console.log('сервер отримав: ' + word)
+  setTimeout(() => {
+    res.setHeader('Access-Control-Allow-Origin', '*') // сторінка живе на іншому порту
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify({ word, meaning: MEANINGS[word] }))
+  }, DELAYS[word])
+}).listen(4000)
+```
+
+У браузері функція `fetchWord` звертається до цього сервера, а файл `src/main.tsx` показує картку без `<StrictMode>`:
+
+```tsx
+async function fetchWord(word: string, signal?: AbortSignal): Promise<Entry> {
+  const url = 'http://localhost:4000/?word=' + encodeURIComponent(word)
+  const response = await fetch(url, { signal })
+  const entry: Entry = await response.json()
+  console.log('відповідь: ' + entry.word)
+  return entry
+}
+
+// Показує слово «кіт», а через 50 мс вибирає слово «пес».
+function Race({ Card }: { Card: (props: { word: string }) => ReactNode }) {
+  const [word, setWord] = useState('кіт')
+  useEffect(() => {
+    const timerId = setTimeout(() => setWord('пес'), 50)
+    return () => {
+      clearTimeout(timerId)
+    }
+  }, [])
+  return <Card word={word} />
+}
+
+createRoot(document.getElementById('root')!).render(<Race Card={WordNoCleanup} />)
+```
+
+Консоль Chrome без вікна показала:
+
+```text
+відповідь: пес
+відповідь: кіт
+```
+
+Після відповіді про пса прийшла відповідь про кота, і картка записала її в стан так само, як у тесті.
 
 ### Прапорець `ignore`
 
@@ -664,6 +1163,12 @@ function WordIgnore({ word }: { word: string }) {
 - `ignore = true` виконує прибирання. Воно змінює ту змінну, яку замкнула саме ця функція `load`, а інших запусків не
   чіпає.
 
+Тест проводить цю картку через той самий сценарій:
+
+```tsx
+test('прапорець', () => race('прапорець ignore', WordIgnore))
+```
+
 ```text
 прапорець ignore | 150 мс: пес: тварина, яка гавкає
 прапорець ignore | 1150 мс: пес: тварина, яка гавкає
@@ -671,7 +1176,22 @@ function WordIgnore({ word }: { word: string }) {
 
 Відповідь про кота так само прийшла на 800 мс, але її запуск ефекту вже мав `ignore === true`, тому `setEntry` не
 виконався. Сторінка React робить ще одне зауваження: у розробці ви побачите два запити у вкладці Network, і це
-нормально, бо це наслідок тієї самої перевірки `<StrictMode>`:
+нормально, бо це наслідок тієї самої перевірки `<StrictMode>`. Лічильник `requests` у функції `fetchWord` це показує:
+
+```tsx
+vi.useFakeTimers()
+requests = 0
+render(
+  <StrictMode>
+    <WordIgnore word="пес" />
+  </StrictMode>,
+)
+await wait(200)
+console.log(
+  'StrictMode, ignore | запитів: ' + requests +
+    ' | на екрані: ' + screen.getByRole('status').textContent,
+)
+```
 
 ```text
 StrictMode, ignore | запитів: 2 | на екрані: пес: тварина, яка гавкає
@@ -708,6 +1228,15 @@ function WordAbort({ word }: { word: string }) {
 }
 ```
 
+Тест проводить цю картку через той самий сценарій і друкує журнал:
+
+```tsx
+test('контролер', async () => {
+  await race('AbortController', WordAbort)
+  console.log('AbortController | журнал: ' + log.join(', '))
+})
+```
+
 ```text
 AbortController | 150 мс: пес: тварина, яка гавкає
 AbortController | 1150 мс: пес: тварина, яка гавкає
@@ -715,13 +1244,60 @@ AbortController | журнал: скасовано: кіт
 ```
 
 Обробник `.catch` тут обов'язковий. Скасування для промісу є звичайним відхиленням, тому без обробника браузер
-повідомляє про невідхоплену помилку. Це ми перевірили в Chrome: компонент зі скасуванням без `.catch` у розробці дав
-подію `unhandledrejection` з помилкою `AbortError`, бо перевірка `<StrictMode>` скасувала перший запит одразу.
-Справжню помилку мережі, навпаки, ховати не можна, тому обробник відрізняє скасування від неї за назвою.
+повідомляє про невідхоплену помилку. Це ми перевірили в Chrome на сервері розробки зі справжнім `fetch` і сервером
+`words-server.mjs`. Файл `src/main.tsx` показує компонент, у якого немає `.catch`:
 
-Лекція «Мережа» попереджала, що скасування не відкочує зробленого на сервері. У нашому запуску в Chrome сервер отримав
-запит про кота, хоча клієнт скасував його через 50 мс. Для читання це не страшно, а для запиту, що змінює дані, ця
-обставина вирішальна.
+```tsx
+function WordAbortNoCatch({ word }: { word: string }) {
+  const [entry, setEntry] = useState<Entry | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchWord(word, controller.signal).then(setEntry) // відхилення промісу ніхто не обробляє
+    return () => {
+      controller.abort()
+    }
+  }, [word])
+  return <p role="status">{word}: {entry ? entry.meaning : 'завантаження'}</p>
+}
+
+// Браузер викликає цю функцію, коли проміс відхилено, а обробника немає.
+window.addEventListener('unhandledrejection', (event) => {
+  console.log('unhandledrejection: ' + event.reason.name)
+})
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <WordAbortNoCatch word="пес" />
+  </StrictMode>,
+)
+```
+
+```text
+unhandledrejection: AbortError
+відповідь: пес
+```
+
+Перший рядок з'явився тому, що перевірка `<StrictMode>` одразу скасувала перший запит. Другий рядок дала відповідь на
+другий запуск ефекту. Крім цих рядків, консоль показала саму помилку словами
+`AbortError: signal is aborted without reason`. Справжню помилку мережі, навпаки, ховати не можна, тому обробник
+відрізняє скасування від неї за назвою.
+
+Лекція «Мережа» попереджала, що скасування не відкочує зробленого на сервері. Перевіримо це: файл `src/main.tsx` тепер
+показує `<Race Card={WordAbort} />` із розділу про гонку, а `log.push` у картці ми замінили на `console.log`. Консоль
+браузера й термінал сервера надрукували:
+
+```text
+скасовано: кіт
+відповідь: пес
+```
+
+```text
+сервер отримав: кіт
+сервер отримав: пес
+```
+
+Клієнт скасував запит про кота через 50 мс, а сервер усе одно його отримав. Для читання це не страшно, а для запиту,
+що змінює дані, ця обставина вирішальна.
 
 ### Чому самого контролера недостатньо
 
@@ -751,6 +1327,46 @@ function WordAbortChain({ word }: { word: string }) {
 Людина вибирає «кіт», чекає 850 мс, поки сервер уже відповів, і вибирає «пес», поки для кота ще підбираються приклади.
 Поруч стоїть такий самий ланцюжок із прапорцем замість контролера:
 
+```tsx
+// Другий крок не отримує сигналу. Для кота він триває 1000 мс, для пса 100 мс.
+function addExamples(entry: Entry): Promise<Entry> {
+  const withExamples = { ...entry, meaning: entry.meaning + ' (з прикладами)' }
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(withExamples), entry.word === 'кіт' ? 1000 : 100)
+  })
+}
+
+function WordIgnoreChain({ word }: { word: string }) {
+  const [entry, setEntry] = useState<Entry | null>(null)
+  useEffect(() => {
+    let ignore = false
+    fetchWord(word)
+      .then(addExamples)
+      .then((found) => {
+        if (!ignore) setEntry(found)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [word])
+  return <p role="status">{word}: {entry ? entry.meaning : 'завантаження'}</p>
+}
+
+async function chainRace(title: string, Card: (props: { word: string }) => ReactNode) {
+  vi.useFakeTimers()
+  const { rerender } = render(<Card word="кіт" />)
+  await wait(850)
+  rerender(<Card word="пес" />)
+  await wait(250)
+  console.log(title + ' | 1100 мс: ' + screen.getByRole('status').textContent)
+  await wait(1000)
+  console.log(title + ' | 2100 мс: ' + screen.getByRole('status').textContent)
+}
+
+test('ланцюжок, контролер', () => chainRace('другий крок, лише AbortController', WordAbortChain))
+test('ланцюжок, прапорець', () => chainRace('другий крок, прапорець ignore', WordIgnoreChain))
+```
+
 ```text
 другий крок, лише AbortController | 1100 мс: пес: тварина, яка гавкає (з прикладами)
 другий крок, лише AbortController | 2100 мс: пес: тварина, яка нявкає (з прикладами)
@@ -777,15 +1393,33 @@ function WordAbortChain({ word }: { word: string }) {
 
 Є ще одна пастка, яку прапорець не розв'язує. Прапорець не дає пізній відповіді перезаписати нову, але в стані й далі
 лежить попередня відповідь. Вона лежить там увесь час, поки нова ще йде. Ось сценарій: людина дивиться на картку пса,
-вибирає кота, а його відповідь іде 800 мс. Рядок записує, що було на екрані через 100 мс після перемикання:
+вибирає кота, а його відповідь іде 800 мс. Тест записує, що було на екрані через 100 мс після перемикання:
+
+```tsx
+async function switchWord(title: string, Card: (props: { word: string }) => ReactNode) {
+  vi.useFakeTimers()
+  const text = () => screen.getByRole('status').textContent
+  const { rerender } = render(<Card word="пес" />)
+  await wait(200) // прийшла відповідь про пса
+  const before = text()
+  rerender(<Card word="кіт" />)
+  await wait(100)
+  const during = text()
+  await wait(800) // прийшла відповідь про кота
+  console.log(
+    title + ' | відповідь на екрані: ' + before + ' | через 100 мс після перемикання: ' + during +
+      ' | коли прийшла нова: ' + text(),
+  )
+}
+
+test('лише прапорець', () => switchWord('лише ignore', WordIgnore))
+```
 
 ```text
 лише ignore | відповідь на екрані: пес: тварина, яка гавкає | через 100 мс після перемикання: кіт: тварина, яка гавкає | коли прийшла нова: кіт: тварина, яка нявкає
-порівняння зі словом | відповідь на екрані: пес: тварина, яка гавкає | через 100 мс після перемикання: кіт: завантаження | коли прийшла нова: кіт: тварина, яка нявкає
-key | відповідь на екрані: пес: тварина, яка гавкає | через 100 мс після перемикання: кіт: завантаження | коли прийшла нова: кіт: тварина, яка нявкає
 ```
 
-Перший рядок показує кота, який гавкає. Жодна гонка тут не сталася, і запис `ignore` стоїть правильно, проте екран
+Цей рядок показує кота, який гавкає. Жодна гонка тут не сталася, і запис `ignore` стоїть правильно, проте екран
 показує чужі дані вже 800 мс. Перевірка вашого дня саме про це: під час швидкого перемикання на екрані не мають
 з'являтися дані іншої кімнати. Є два способи це виправити, і обидва вже відомі.
 
@@ -794,7 +1428,20 @@ key | відповідь на екрані: пес: тварина, яка га�
 
 ```tsx
 const shown = entry !== null && entry.word === word ? entry : null
+return <p role="status">{word}: {shown ? shown.meaning : 'завантаження'}</p>
 ```
+
+Компонент `WordCompared` є копією `WordIgnore`, у якій змінено лише ці два останні рядки. Той самий тест дає:
+
+```tsx
+test('порівняння', () => switchWord('порівняння зі словом', WordCompared))
+```
+
+```text
+порівняння зі словом | відповідь на екрані: пес: тварина, яка гавкає | через 100 мс після перемикання: кіт: завантаження | коли прийшла нова: кіт: тварина, яка нявкає
+```
+
+Попередня відповідь лежить у стані й далі, але її поле `word` містить «пес», тому рендер її не показує.
 
 Другий спосіб передає слово як ключ, щоб кожне слово мало окремий компонент із порожнім станом. Це той самий прийом,
 що в лекції «Спільний стан і скидання стану»:
@@ -803,15 +1450,37 @@ const shown = entry !== null && entry.word === word ? entry : null
 function WordPage({ word }: { word: string }) {
   return <WordIgnore key={word} word={word} />
 }
+
+test('ключ', () => switchWord('key', WordPage))
+```
+
+```text
+key | відповідь на екрані: пес: тварина, яка гавкає | через 100 мс після перемикання: кіт: завантаження | коли прийшла нова: кіт: тварина, яка нявкає
 ```
 
 Під час зміни ключа старий компонент зникає, тому React викликає його прибирання, і прапорець у ньому стає `true`.
 
 Запис стану прямо в тілі ефекту для цього не підходить. Спокуса велика: написати `setLoading(true)` на початку ефекту.
-Лінт вашого проєкту таке не пропускає, а сторінка правила `set-state-in-effect` прямо називає цей запис помилкою:
+Лінт вашого проєкту таке не пропускає, а сторінка правила `set-state-in-effect` прямо називає цей запис помилкою. Ось
+файл `src/WordLoading.tsx`:
+
+```tsx
+import { useEffect, useState } from 'react'
+
+export function WordLoading({ word }: { word: string }) {
+  const [loading, setLoading] = useState(false)
+  useEffect(() => {
+    setLoading(true) // запис стану прямо в тілі ефекту
+  }, [word])
+  return <p role="status">{word}: {loading ? 'завантаження' : ''}</p>
+}
+```
+
+Команда `npx eslint src/WordLoading.tsx` друкує серед іншого такий рядок. Числа на його початку є номером рядка й
+номером стовпчика файлу:
 
 ```text
-7:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+6:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
 ```
 
 Запис стану пізніше, у `.then` чи після `await`, правило дозволяє: він спричинений відповіддю зовнішньої системи. У
@@ -840,22 +1509,66 @@ run build`, то побачите старий журнал і вирішите,
 
 **Окрема сторінка уроку не потрапляє в збірку.** За замовчуванням `vite build` збирає лише `index.html`. Практики
 цього плану мають окремі сторінки на зразок `/f1-d15.html`, і сервер розробки їх віддає, а збірка ні. Ми це
-перевірили: додали до тестового проєкту другий файл сторінки, зібрали проєкт і відкрили цю адресу через `vite
-preview`. У теці `dist` лежав лише один файл сторінки:
+перевірили: додали до тестового проєкту другий файл сторінки `second.html` із заголовком `Друга сторінка`, зібрали
+проєкт і відкрили цю адресу через `vite preview`:
+
+```bash
+npm run build
+find dist -name '*.html' # які файли сторінок лежать у збірці
+npm run preview &
+curl -s http://localhost:4173/second.html | grep '<title>' # що віддає сервер за цією адресою
+```
 
 ```text
 dist/index.html
+    <title>spa</title>
 ```
 
-Сервер не повідомив про помилку, а віддав замість сторінки уроку вміст `index.html`. Журнал тоді належав би зовсім
-іншому коду. Документація Vite у розділі `Multi-Page App` описує налаштування `build.rolldownOptions.input`, яке
-перелічує всі сторінки для збірки. Ми перевірили його на версії Vite 8, і другий файл з'явився в `dist`. Інший шлях є
-простішим: на час порівняння показати компонент дня зі звичайної точки входу `src/main.tsx`. У будь-якому разі
-перевірте, що на екрані справді ваш компонент.
+Перший рядок каже, що в теці `dist` лежить лише один файл сторінки. Другий рядок належить `index.html`: сервер не
+повідомив про помилку, а віддав цей файл замість сторінки уроку. Журнал тоді належав би зовсім іншому коду.
+Документація Vite у розділі `Multi-Page App` описує налаштування `build.rolldownOptions.input`, яке перелічує всі
+сторінки для збірки. Ми перевірили його на версії Vite 8, дописавши у файл `vite.config.ts` рядок
+`build: { rolldownOptions: { input: ['index.html', 'second.html'] } },` і запустивши ті самі команди:
 
-Журнал дивіться в консолі браузера, а запити у вкладці Network, яку показала лекція «Інструменти браузера». У нашому
-запуску в Chrome тестова сторінка з чотирма компонентами, які роблять запити, у розробці надіслала на сервер 10
-запитів, а в збірці 7. Різницю дала перевірка `<StrictMode>`, яка запустила перші запити ще раз.
+```text
+dist/index.html
+dist/second.html
+    <title>Друга сторінка</title>
+```
+
+Інший шлях є простішим: на час порівняння показати компонент дня зі звичайної точки входу `src/main.tsx`. У будь-якому
+разі перевірте, що на екрані справді ваш компонент.
+
+Журнал дивіться в консолі браузера, а запити у вкладці Network, яку показала лекція «Інструменти браузера». Ми
+показали в Chrome дві картки зі справжнім `fetch` і сервером `words-server.mjs`:
+
+```tsx
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <WordIgnore word="кіт" />
+    <WordIgnore word="пес" />
+  </StrictMode>,
+)
+```
+
+Термінал сервера надрукував таке на сервері розробки:
+
+```text
+сервер отримав: кіт
+сервер отримав: пес
+сервер отримав: пес
+сервер отримав: кіт
+```
+
+Для зібраного застосунку термінал сервера надрукував:
+
+```text
+сервер отримав: кіт
+сервер отримав: пес
+```
+
+На сервері розробки запитів чотири, а в збірці два. Різницю дала перевірка `<StrictMode>`, яка в розробці запустила
+кожен ефект ще раз. Отже, зайві запити в розробці не означають, що їх побачать люди після збірки.
 
 ## Ефекти й рецепт
 
