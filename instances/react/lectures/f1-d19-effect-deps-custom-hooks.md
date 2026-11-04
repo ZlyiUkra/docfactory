@@ -12,7 +12,7 @@
 Практика дня просить прибрати об'єкт чи функцію зі списку залежностей у заготовці дня й написати хуки
 `useOnlineStatus` і `useDebouncedValue`. Щоб не показувати готового розв'язку, лекція бере той самий канал служби доставки, що й
 попередня лекція, а хуки пише інші: ширину вікна, зворотний відлік і читання каналу. Для відкладеного значення лекція
-показує лише поведінку без коду.
+показує лише тест і поведінку, а коду самого хука не показує.
 
 **Після лекції ви зможете пояснити:**
 
@@ -27,6 +27,96 @@
 - чому хук `useMount` є поганою ідеєю і як лінт перевіряє власні хуки.
 
 ## Канал, який відкривається від кожної літери
+
+Служба доставки, як і в попередній лекції, існує поза React, а справжньої мережі в прикладах немає. Усі досліди беруть
+її функції з одного файлу. Функція `createTracking` створює канал, метод `open` відкриває його, `close` закриває, а
+`onPosition` задає функцію, яку канал викличе при новій відстані. Функція `step` виконує одну дію тесту й друкує все,
+що за цю дію потрапило в журнал. Функція `reportOpened` друкує, скільки разів канал відкрито від початку тесту.
+
+```ts
+// src/tracking.ts
+export const SERVER = 'wss://delivery.example'
+
+export type Options = { server: string; orderId: string }
+type Listener = (km: number) => void
+
+// Журнал збирає дії одного кроку тесту, а лічильник рахує відкриття каналу.
+let journal: string[] = []
+let openedCount = 0
+
+export function say(line: string) {
+  journal.push(line)
+}
+
+// Тут лежать усі канали, відкриті зараз.
+const openChannels = new Set<Listener>()
+
+export function createTracking({ orderId }: Options) {
+  let listener: Listener = () => {}
+  const deliver: Listener = (km) => listener(km)
+  return {
+    onPosition(callback: Listener) {
+      listener = callback
+    },
+    open() {
+      openedCount += 1
+      openChannels.add(deliver)
+      say(`відкрито ${orderId}`)
+    },
+    close() {
+      openChannels.delete(deliver)
+      say(`закрито ${orderId}`)
+    },
+  }
+}
+
+// Служба надсилає нову відстань усім відкритим каналам.
+export function sendPosition(km: number) {
+  openChannels.forEach((deliver) => deliver(km))
+}
+
+// Очищає журнал, виконує дію, друкує рядок і повертає результат дії.
+export function step<T>(name: string, action: () => T): T {
+  journal = []
+  const result = action()
+  console.log(`${name} | ${journal.join(', ')}`)
+  return result
+}
+
+export function resetOpened() {
+  openedCount = 0
+}
+
+export function reportOpened(name: string) {
+  console.log(`${name} | відкрито разів: ${openedCount}`)
+}
+```
+
+Компоненти й тести лекції лежать в одному файлі `src/deps.test.tsx`, а всі наступні приклади дописуються в нього ж.
+Файл починається так:
+
+```tsx
+// src/deps.test.tsx
+// @vitest-environment jsdom
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { afterEach, beforeEach, test, vi } from 'vitest'
+import {
+  createTracking, reportOpened, resetOpened, say, sendPosition, SERVER, step, type Options,
+} from './tracking'
+
+// Прибирає компонент після кожного тесту, тому його канал не отримає чужих відстаней.
+afterEach(cleanup)
+// Кожен тест рахує відкриття каналу з нуля.
+beforeEach(resetOpened)
+```
+
+Другий рядок файлу просить Vitest запускати його під jsdom. Команда
+`npx vitest run src/deps.test.tsx --disable-console-intercept` запускає файл, а прапорець у кінці прибирає службові
+рядки навколо `console.log`.
+
+Перевірка дня шукає в теці `src` коментарі `eslint-disable`, а ця лекція показує такі коментарі навмисно. Тому
+запускайте приклади лекції в окремій копії проєкту, а не в `spa`, де лежить ваша практика.
 
 На сторінці кур'єра з'явилося поле нотатки. Канал тепер приймає об'єкт із налаштуваннями, тому зручно зібрати цей
 об'єкт перед ефектом:
@@ -49,12 +139,38 @@ function ObjectDep({ orderId }: { orderId: string }) {
 Список тут збігається з кодом: ефект читає `options`, і `options` стоїть у списку. Тест показує компонент і вводить у
 поле три символи:
 
+```tsx
+// Вводить у поле нотатки три символи, кожен окремою подією.
+function typeThree() {
+  for (const value of ['к', 'ко', 'код']) {
+    fireEvent.change(screen.getByLabelText('нотатка'), { target: { value } })
+  }
+}
+
+test('об’єкт у залежностях', () => {
+  render(<ObjectDep orderId="A-17" />)
+  typeThree()
+  reportOpened('об’єкт у залежностях, показ і три символи')
+})
+```
+
 ```text
 об’єкт у залежностях, показ і три символи | відкрито разів: 4
 ```
 
-Канал відкрито чотири рази, а замовлення не змінювалося. Лекція «Значення й посилання» пояснила причину. Функція
-`Object.is` порівнює об'єкти за посиланням, тобто за тим, чи це той самий об'єкт, а не за вмістом:
+Канал відкрито чотири рази: один раз під час показу й по одному разу після кожного символу. Замовлення при цьому не
+змінювалося. Лекція «Значення й посилання» пояснила причину. Функція `Object.is` порівнює об'єкти за посиланням, тобто
+за тим, чи це той самий об'єкт, а не за вмістом. Цей тест порівнює два об'єкти з однаковими полями й два однакові
+рядки:
+
+```tsx
+test('порівняння', () => {
+  const first = { server: SERVER, orderId: 'A-17' }
+  const second = { server: SERVER, orderId: 'A-17' }
+  console.log('той самий вміст, Object.is:', Object.is(first, second))
+  console.log('той самий рядок, Object.is:', Object.is('A-17', 'A-17'))
+})
+```
 
 ```text
 той самий вміст, Object.is: false
@@ -65,16 +181,48 @@ function ObjectDep({ orderId }: { orderId: string }) {
 `const options = ...` створює новий об'єкт. Для React це змінена залежність. Те саме стосується функції, яку оголошено
 в тілі компонента, бо функція теж є об'єктом:
 
+```tsx
+function FunctionDep({ orderId }: { orderId: string }) {
+  const [note, setNote] = useState('')
+  function buildOptions() {
+    return { server: SERVER, orderId }
+  }
+
+  useEffect(() => {
+    const tracking = createTracking(buildOptions())
+    tracking.open()
+    return () => tracking.close()
+  }, [buildOptions])
+
+  return <input aria-label="нотатка" value={note} onChange={(e) => setNote(e.target.value)} />
+}
+
+test('функція в залежностях', () => {
+  render(<FunctionDep orderId="A-17" />)
+  typeThree()
+  reportOpened('функція в залежностях, показ і три символи')
+})
+```
+
 ```text
 функція в залежностях, показ і три символи | відкрито разів: 4
 ```
 
-Лінт це помічає, але лише як попередження, і воно дуже точне:
+Число те саме, що й для об'єкта: кожен рендер створив нову функцію `buildOptions`, і React побачив змінену залежність.
+
+Лінт це помічає, але лише як попередження, і воно дуже точне. Покладіть компонент `ObjectDep` в окремий файл
+`src/lint/ObjectDep.tsx`. Перед словом `function` допишіть `export`, а над компонентом поставте два рядки імпорту:
+перший бере `useEffect` і `useState` з `react`, другий бере `createTracking` і `SERVER` з `../tracking`. Команда
+`npx eslint src/lint/ObjectDep.tsx; echo "код завершення $?"` друкує шлях до файлу, а під ним такі рядки:
 
 ```text
-4:9  warning  The 'options' object makes the dependencies of useEffect Hook (at line 9) change on every render. Move it inside the useEffect callback. Alternatively, wrap the initialization of 'options' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  6:9  warning  The 'options' object makes the dependencies of useEffect Hook (at line 12) change on every render. Move it inside the useEffect callback. Alternatively, wrap the initialization of 'options' in its own useMemo() Hook  react-hooks/exhaustive-deps
+✖ 1 problem (0 errors, 1 warning)
 код завершення 0
 ```
+
+Код завершення 0 означає, що для оболонки команда пройшла успішно. Отже, звичайний запуск лінту такий код не зупинить,
+і попередження треба читати самому.
 
 ## Список описує код
 
@@ -113,21 +261,79 @@ function SignupEffect({ theme }: { theme: string }) {
 }
 ```
 
-Лінт більше не скаржиться, а користувач клацнув один раз і двічі змінив тему:
+Лінт більше не скаржиться. Другий компонент тримає той самий код у функції `handleClick`, яку викликає кнопка. Тест
+клацає кнопку в кожному компоненті один раз, а потім двічі змінює тему:
+
+```tsx
+function SignupHandler({ theme }: { theme: string }) {
+  function handleClick() {
+    say(`надіслано, сповіщення в темі ${theme}`)
+  }
+  return <button onClick={handleClick}>надіслати</button>
+}
+
+function clickAndSwitch(Form: typeof SignupHandler, name: string) {
+  const view = render(<Form theme="світла" />)
+  step(name, () => {
+    fireEvent.click(screen.getByRole('button'))
+    view.rerender(<Form theme="темна" />)
+    view.rerender(<Form theme="світла" />)
+  })
+}
+
+test('заявка', () => {
+  clickAndSwitch(SignupEffect, 'логіка в ефекті, клік і два перемикання теми')
+  cleanup()
+  clickAndSwitch(SignupHandler, 'логіка в обробнику, клік і два перемикання теми')
+})
+```
 
 ```text
 логіка в ефекті, клік і два перемикання теми | надіслано, сповіщення в темі світла, надіслано, сповіщення в темі темна, надіслано, сповіщення в темі світла
 логіка в обробнику, клік і два перемикання теми | надіслано, сповіщення в темі світла
 ```
 
-Заявку надіслано тричі. Другий рядок показує той самий код у функції `handleClick`, яку викликає кнопка: там немає
-списку, бо обробник не реактивний. Тема «Коли ефект не потрібен» уже вчила переносити реакцію на клік в обробник, а
-цей запуск показує ще одну причину.
+У першому рядку заявку надіслано тричі: один раз після кліку й двічі після зміни теми. Другий рядок показує функцію
+`handleClick`, яка спрацювала один раз: там немає списку, бо обробник не реактивний. Тема «Коли ефект не потрібен» уже
+вчила переносити реакцію на клік в обробник, а цей запуск показує ще одну причину.
 
 ### Два ефекти замість одного
 
 Каталог завантажує товари категорії й відгуки вибраного товару. Якщо обидва запити лежать в одному ефекті, список
-містить обидва значення. Тест змінює лише товар:
+містить обидва значення. Другий компонент розділяє запити на два ефекти. Тест змінює лише товар:
+
+```tsx
+type CatalogProps = { category: string; productId: number }
+
+function OneEffect({ category, productId }: CatalogProps) {
+  useEffect(() => {
+    say(`/products?category=${category}`)
+    say(`/reviews?product=${productId}`)
+  }, [category, productId])
+  return null
+}
+
+function TwoEffects({ category, productId }: CatalogProps) {
+  useEffect(() => {
+    say(`/products?category=${category}`)
+  }, [category])
+  useEffect(() => {
+    say(`/reviews?product=${productId}`)
+  }, [productId])
+  return null
+}
+
+function changeProduct(Catalog: typeof OneEffect, name: string) {
+  const view = render(<Catalog category="книжки" productId={1} />)
+  step(name, () => view.rerender(<Catalog category="книжки" productId={2} />))
+}
+
+test('запити каталогу', () => {
+  changeProduct(OneEffect, 'один ефект, змінився товар')
+  cleanup()
+  changeProduct(TwoEffects, 'два ефекти, змінився товар')
+})
+```
 
 ```text
 один ефект, змінився товар | /products?category=книжки, /reviews?product=2
@@ -158,8 +364,27 @@ function HistoryRead({ orderId }: { orderId: string }) {
 }
 ```
 
-Кожне нове число змінює `history`, а отже, перезапускає канал. Спробуємо прибрати `history` зі списку, вимкнувши лінт,
-а тоді зробимо правильно, передавши оновлювач:
+Кожне нове число змінює `history`, а отже, перезапускає канал. Спробуємо прибрати `history` зі списку, вимкнувши лінт:
+
+```tsx
+function HistoryStale({ orderId }: { orderId: string }) {
+  const [history, setHistory] = useState<number[]>([])
+
+  useEffect(() => {
+    const tracking = createTracking({ server: SERVER, orderId })
+    tracking.onPosition((km) => {
+      setHistory([...history, km])
+    })
+    tracking.open()
+    return () => tracking.close()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId])
+
+  return <p role="status">{history.join(' ')}</p>
+}
+```
+
+Тепер зробимо правильно, передавши оновлювач:
 
 ```tsx
 function HistoryUpdater({ orderId }: { orderId: string }) {
@@ -178,7 +403,22 @@ function HistoryUpdater({ orderId }: { orderId: string }) {
 }
 ```
 
-Тест надсилає три відстані: 5, 4 і 3.
+Тест показує кожен із трьох компонентів і надсилає три відстані: 5, 4 і 3.
+
+```tsx
+function sendThree(History: typeof HistoryRead, name: string) {
+  render(<History orderId="A-17" />)
+  for (const km of [5, 4, 3]) {
+    act(() => sendPosition(km))
+  }
+  console.log(`${name} | на екрані:`, screen.getByRole('status').textContent)
+  reportOpened(name)
+}
+
+test('стан у залежностях', () => sendThree(HistoryRead, 'стан у залежностях'))
+test('стан без залежності', () => sendThree(HistoryStale, 'стан без залежності'))
+test('оновлювач', () => sendThree(HistoryUpdater, 'оновлювач'))
+```
 
 ```text
 стан у залежностях | на екрані: 5 4 3
@@ -194,14 +434,52 @@ function HistoryUpdater({ orderId }: { orderId: string }) {
 яку ви передаєте у `set` і яка отримує попереднє значення. Ефект його більше не читає, тому залежність зникає.
 
 Коли стан у списку ще й змінюється самим ефектом, виходить нескінченний цикл: ефект ставить стан, стан запускає
-рендер, рендер змінює залежність, і ефект запускається знову. Із записом `setN(n + 1)` у такому ефекті наш тест не
-завершився навіть за три хвилини, і ми його зупинили. Коли ми обмежили цикл двома сотнями кроків, React надрукував
-застереження, але не зупинив його:
+рендер, рендер змінює залежність, і ефект запускається знову. Щоб дочекатися кінця тесту, цей компонент обмежує цикл
+двома сотнями кроків:
+
+```tsx
+let loopCalls = 0
+
+function Loop() {
+  const [n, setN] = useState(0)
+  loopCalls += 1
+
+  useEffect(() => {
+    // Умова потрібна лише для того, щоб тест закінчився.
+    if (n < 200) {
+      setN(n + 1)
+    }
+  }, [n])
+
+  return null
+}
+
+test('цикл', () => {
+  // Перехоплює застереження React, щоб надрукувати лише його початок.
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+  let thrown = 'нічого'
+  try {
+    render(<Loop />)
+  } catch (error) {
+    thrown = String(error)
+  }
+  console.log(`цикл із межею 200 | викликів компонента: ${loopCalls} | кинуто: ${thrown}`)
+  console.log('цикл із межею 200 | console.error:', String(errors.mock.calls[0]?.[0]).slice(0, 60))
+  errors.mockRestore()
+})
+```
 
 ```text
 цикл із межею 200 | викликів компонента: 201 | кинуто: нічого
 цикл із межею 200 | console.error: Maximum update depth exceeded. This can happen when a compon
 ```
+
+Перший рядок показує, що React викликав компонент 201 раз і не кинув помилки: один виклик дав перший показ, а двісті
+дав цикл. Другий рядок показує початок застереження, яке React надрукував, не зупиняючи цикл. Якщо прибрати умову
+`if (n < 200)`, межі в циклу немає, і тест сам не завершується. У нашому запуску процес мав обмеження пам'яті 1,5
+гігабайта, бо запускався з `NODE_OPTIONS=--max-old-space-size=1500`, і приблизно за хвилину впав з помилкою
+`JavaScript heap out of memory`. Отже, застереження React від цього циклу не рятує, і такий ефект треба виправляти в
+коді.
 
 Лінт ловить такий код раніше правилом `react-hooks/set-state-in-effect`, про яке йшлося в темі «Коли ефект не
 потрібен». У браузері цього ми не запускали. Сторінка React описує ту саму помилку як нескінченний цикл.
@@ -233,6 +511,13 @@ function ObjectInside({ orderId }: { orderId: string }) {
 
   return <input aria-label="нотатка" value={note} onChange={(e) => setNote(e.target.value)} />
 }
+
+test('об’єкт в ефекті', () => {
+  const view = render(<ObjectInside orderId="A-17" />)
+  typeThree()
+  reportOpened('об’єкт в ефекті, показ і три символи')
+  step('об’єкт в ефекті, перехід на B-42', () => view.rerender(<ObjectInside orderId="B-42" />))
+})
 ```
 
 ```text
@@ -246,14 +531,49 @@ function ObjectInside({ orderId }: { orderId: string }) {
 
 **Об'єкт не залежить ні від чого.** Винесіть його поза компонент, і тоді рендер його не створює наново:
 
+```tsx
+const FIXED_OPTIONS = { server: SERVER, orderId: 'A-17' }
+
+function ObjectOutside() {
+  const [note, setNote] = useState('')
+
+  useEffect(() => {
+    const tracking = createTracking(FIXED_OPTIONS)
+    tracking.open()
+    return () => tracking.close()
+  }, [])
+
+  return <input aria-label="нотатка" value={note} onChange={(e) => setNote(e.target.value)} />
+}
+
+test('об’єкт поза компонентом', () => {
+  render(<ObjectOutside />)
+  typeThree()
+  reportOpened('об’єкт поза компонентом, показ і три символи')
+})
+```
+
 ```text
 об’єкт поза компонентом, показ і три символи | відкрито разів: 1
 ```
 
+Канал відкрито один раз, бо ефект не читає жодного реактивного значення, і список порожній.
+
 **Об'єкт приходить пропсом.** Батько може створювати його під час свого рендеру, і дочірній компонент на це не
-впливає. Тоді дістаньте прості значення до ефекту й запишіть у список саме їх:
+впливає. Перший компонент нижче записує в список сам об'єкт. Другий компонент дістає прості значення до ефекту й
+записує в список саме їх:
 
 ```tsx
+function PropObject({ options }: { options: Options }) {
+  useEffect(() => {
+    const tracking = createTracking(options)
+    tracking.open()
+    return () => tracking.close()
+  }, [options])
+
+  return null
+}
+
 function PropFields({ options }: { options: Options }) {
   const { server, orderId } = options
 
@@ -265,6 +585,27 @@ function PropFields({ options }: { options: Options }) {
 
   return null
 }
+
+// Кожен запис options={{ ... }} створює новий об'єкт, як це робить батько під час рендеру.
+function threeRenders(Child: typeof PropObject) {
+  const view = render(<Child options={{ server: SERVER, orderId: 'A-17' }} />)
+  view.rerender(<Child options={{ server: SERVER, orderId: 'A-17' }} />)
+  view.rerender(<Child options={{ server: SERVER, orderId: 'A-17' }} />)
+  return view
+}
+
+test('об’єкт із пропса', () => {
+  threeRenders(PropObject)
+  reportOpened('об’єкт із пропса, три рендери батька')
+})
+
+test('поля з пропса', () => {
+  const view = threeRenders(PropFields)
+  reportOpened('поля з пропса, три рендери батька')
+  step('поля з пропса, справді інше замовлення', () =>
+    view.rerender(<PropFields options={{ server: SERVER, orderId: 'B-42' }} />),
+  )
+})
 ```
 
 ```text
@@ -279,6 +620,27 @@ function PropFields({ options }: { options: Options }) {
 
 **А як щодо `useMemo`?** Попередження лінту пропонує загорнути об'єкт у цей хук. Він запам'ятовує об'єкт, поки його
 вхідні значення не зміняться, і наш запуск справді дав один запуск ефекту:
+
+```tsx
+function ObjectMemo({ orderId }: { orderId: string }) {
+  const [note, setNote] = useState('')
+  const options = useMemo(() => ({ server: SERVER, orderId }), [orderId])
+
+  useEffect(() => {
+    const tracking = createTracking(options)
+    tracking.open()
+    return () => tracking.close()
+  }, [options])
+
+  return <input aria-label="нотатка" value={note} onChange={(e) => setNote(e.target.value)} />
+}
+
+test('useMemo', () => {
+  render(<ObjectMemo orderId="A-17" />)
+  typeThree()
+  reportOpened('useMemo, показ і три символи')
+})
+```
 
 ```text
 useMemo, показ і три символи | відкрито разів: 1
@@ -309,7 +671,26 @@ function Elapsed({ step }: { step: number }) {
 ```
 
 Автор хотів один інтервал, тому поставив порожній масив і заглушив лінт. Тест чекає п'ять секунд, змінює крок на 10 і
-чекає ще п'ять:
+чекає ще п'ять. Функція `vi.useFakeTimers` підміняє таймери, тому тест пересуває час вручну й не чекає насправді:
+
+```tsx
+function tenSeconds(Counter: typeof Elapsed, name: string) {
+  vi.useFakeTimers()
+  const view = render(<Counter step={1} />)
+  act(() => {
+    vi.advanceTimersByTime(5000)
+  })
+  console.log(`${name} | через 5 секунд на екрані:`, screen.getByRole('status').textContent)
+  view.rerender(<Counter step={10} />)
+  act(() => {
+    vi.advanceTimersByTime(5000)
+  })
+  console.log(`${name} | ще через 5 секунд із кроком 10:`, screen.getByRole('status').textContent)
+  vi.useRealTimers()
+}
+
+test('вимкнений лінт', () => tenSeconds(Elapsed, 'вимкнений лінт'))
+```
 
 ```text
 вимкнений лінт | через 5 секунд на екрані: 1
@@ -345,6 +726,8 @@ function ElapsedFixed({ step }: { step: number }) {
 
   return <p role="status">{total}</p>
 }
+
+test('подія ефекту', () => tenSeconds(ElapsedFixed, 'подія ефекту'))
 ```
 
 ```text
@@ -352,40 +735,87 @@ function ElapsedFixed({ step }: { step: number }) {
 подія ефекту | ще через 5 секунд із кроком 10: 55
 ```
 
-Лінт не знаходить у цьому коді проблем. Сторінка React радить ставитися до цього попередження так, як до помилки
-компіляції.
+За перші п'ять секунд сума дійшла до 5, а наступні п'ять секунд додали по 10, тому вийшло 55. Отже, інтервал лишився
+один, а функція щоразу бачить свіжий крок. Лінт не знаходить у цьому коді проблем. Сторінка React радить ставитися до
+цього попередження так, як до помилки компіляції.
 
 ### Друга шкода коментаря
 
 Коментар дає і другу шкоду. Він вимикає правило для рядка зі списком цього ефекту, тому нове значення, яке хтось
-допише сюди через місяць, теж лишиться без попередження. Тому перевірка дня просить знайти в проєкті такі коментарі
-пошуком:
+допише сюди через місяць, теж лишиться без попередження. Ось такий випадок: ефект читає `orderId`, а список порожній.
 
-```text
-ts/lint/suppress.tsx:5:    // eslint-disable-next-line react-hooks/exhaustive-deps
+```tsx
+// src/lint/Suppressed.tsx
+import { useEffect } from 'react'
+import { createTracking, SERVER } from '../tracking'
+
+export function Suppressed({ orderId }: { orderId: string }) {
+  useEffect(() => {
+    const tracking = createTracking({ server: SERVER, orderId })
+    tracking.open()
+    return () => tracking.close()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return null
+}
 ```
 
-Такий рядок виводить команда `grep -rn "eslint-disable" src`, якщо в проєкті є коментар. Є ще два корисні запуски
-ESLint. Параметр `--no-inline-config` ігнорує всі такі коментарі й показує приховані попередження:
+Команда `npx eslint src/lint/Suppressed.tsx` нічого не друкує, бо коментар вимкнув правило для цього рядка. Тому
+перевірка дня просить знайти в проєкті такі коментарі пошуком. Команда `grep -rn "eslint-disable" src/lint` друкує
+файл, номер рядка й сам коментар:
 
 ```text
-6:6  warning  React Hook useEffect has a missing dependency: 'orderId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+src/lint/Suppressed.tsx:10:    // eslint-disable-next-line react-hooks/exhaustive-deps
+```
+
+Є ще два корисні запуски ESLint. Параметр `--no-inline-config` ігнорує всі такі коментарі й показує приховані
+попередження. Команда `npx eslint src/lint/Suppressed.tsx --no-inline-config` друкує шлях до файлу, а під ним такі
+рядки:
+
+```text
+  11:6  warning  React Hook useEffect has a missing dependency: 'orderId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+✖ 1 problem (0 errors, 1 warning)
 ```
 
 А коментар, який більше нічого не приховує, сам дає попередження, бо ESLint за замовчуванням повідомляє про непотрібні
-директиви:
+директиви. У цьому файлі `orderId` уже стоїть у списку, тому коментарю нічого приховувати:
+
+```tsx
+// src/lint/Unused.tsx
+import { useEffect } from 'react'
+import { createTracking, SERVER } from '../tracking'
+
+export function Unused({ orderId }: { orderId: string }) {
+  useEffect(() => {
+    const tracking = createTracking({ server: SERVER, orderId })
+    tracking.open()
+    return () => tracking.close()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId])
+
+  return null
+}
+```
+
+Команда `npx eslint src/lint/Unused.tsx` друкує шлях до файлу, а під ним такі рядки:
 
 ```text
-5:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  10:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+✖ 1 problem (0 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
 ```
 
 Усі ці попередження не зупиняють команду: вона завершується кодом 0. Параметр `--max-warnings 0` перетворює
-попередження на провал команди:
+попередження на провал команди. Команда `npx eslint src/lint/Unused.tsx --max-warnings 0; echo "код завершення $?"`
+наприкінці друкує такі рядки:
 
 ```text
 ESLint found too many warnings (maximum: 0).
 код завершення 1
 ```
+
+Отже, у перевірці запускайте лінт із цим параметром, інакше жодне попередження її не зупинить.
 
 ## Власний хук
 
@@ -419,7 +849,34 @@ function Layout() {
 
 Код компонента тепер каже, що він хоче, а не як це робиться: він хоче ширину, а про підписку знає лише хук. Подія
 `resize` є браузерною подією зміни розміру вікна. Функцію `handleResize` оголошено всередині ефекту, тому вона не
-стоїть у списку, а саме цей прийом ви щойно бачили на об'єкті. Запуск:
+стоїть у списку, а саме цей прийом ви щойно бачили на об'єкті. Тест показує обидва компоненти, змінює ширину вікна й
+прибирає компоненти:
+
+```tsx
+// Збирає текст усіх елементів із role="status" в один рядок.
+function statusTexts() {
+  return screen.getAllByRole('status').map((element) => element.textContent).join(' | ')
+}
+
+test('ширина вікна', () => {
+  // Функція vi.spyOn записує кожен виклик методу вікна, а сам метод працює, як і раніше.
+  const added = vi.spyOn(window, 'addEventListener')
+  const removed = vi.spyOn(window, 'removeEventListener')
+  const countResize = (calls: unknown[][]) => calls.filter((call) => call[0] === 'resize').length
+
+  const view = render(<><Ruler /><Layout /></>)
+  console.log('підписок на resize:', countResize(added.mock.calls))
+  console.log('показ |', statusTexts())
+
+  window.innerWidth = 500
+  fireEvent(window, new Event('resize'))
+  console.log('після зміни вікна |', statusTexts())
+
+  view.unmount()
+  console.log('після зникнення, відписок від resize:', countResize(removed.mock.calls))
+  vi.restoreAllMocks()
+})
+```
 
 ```text
 підписок на resize: 2
@@ -434,12 +891,34 @@ function Layout() {
 ### Чому назва важлива
 
 Назва на `use` є домовленістю, яку перевіряє лінт. Вона каже читачеві, що всередині може бути стан чи ефект, а отже,
-цю функцію не можна викликати в умові чи циклі. Перейменуємо хук на `getWindowWidth` і подивимося також на маленьку
-літеру:
+цю функцію не можна викликати в умові чи циклі. Перейменуємо хук на `getWindowWidth`, подивимося також на маленьку
+літеру й додамо функцію `useSorted`, яка не викликає хуків:
+
+```ts
+// src/lint/names.ts
+import { useState } from 'react'
+
+export function getWindowWidth() {
+  const [width] = useState(window.innerWidth)
+  return width
+}
+
+export function usewidth() {
+  const [width] = useState(window.innerWidth)
+  return width
+}
+
+export function useSorted(items: number[]) {
+  return [...items].sort((a, b) => a - b)
+}
+```
+
+Команда `npx eslint src/lint/names.ts` друкує шлях до файлу, а під ним такі рядки:
 
 ```text
-3:29  error  React Hook "useState" is called in function "getWindowWidth" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"
-12:10  error  React Hook "useState" is called in function "usewidth" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"
+   5:19  error  React Hook "useState" is called in function "getWindowWidth" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"  react-hooks/rules-of-hooks
+  10:19  error  React Hook "useState" is called in function "usewidth" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use"        react-hooks/rules-of-hooks
+✖ 2 problems (2 errors, 0 warnings)
 ```
 
 Правило справді вимагає великої літери після `use`, тому `usewidth` воно не приймає. Обернене правило лінт не
@@ -469,7 +948,22 @@ function Offer({ name, seconds }: { name: string; seconds: number }) {
   const left = useCountdown(seconds)
   return <p role="status">{name}: {left}</p>
 }
+
+test('відлік', () => {
+  vi.useFakeTimers()
+  const view = render(<><Offer name="знижка" seconds={10} /><Offer name="доставка" seconds={30} /></>)
+  console.log('на старті |', statusTexts())
+  act(() => {
+    vi.advanceTimersByTime(4000)
+  })
+  console.log('через 4 секунди |', statusTexts())
+  view.rerender(<><Offer name="знижка" seconds={60} /><Offer name="доставка" seconds={60} /></>)
+  console.log('новий аргумент 60 |', statusTexts())
+  vi.useRealTimers()
+})
 ```
+
+Перші два рядки виводу такі:
 
 ```text
 на старті | знижка: 10 | доставка: 30
@@ -480,7 +974,7 @@ function Offer({ name, seconds }: { name: string; seconds: number }) {
 та сама поведінка, що й до винесення. Хук ділиться кодом, а не даними. Якщо компонентам потрібен один стан, його
 піднімають до спільного батька, як пояснила лекція «Спільний стан і скидання стану», або передають через контекст.
 
-Цей запуск показує ще одну межу. Змінимо аргумент хука на 60:
+Цей запуск показує ще одну межу. Останній крок тесту змінює аргумент хука на 60, і третій рядок виводу такий:
 
 ```text
 новий аргумент 60 | знижка: 6 | доставка: 26
@@ -493,7 +987,27 @@ function Offer({ name, seconds }: { name: string; seconds: number }) {
 
 ### Хук виконується разом із компонентом
 
-Тіло власного хука є частиною тіла компонента:
+Тіло власного хука є частиною тіла компонента. Цей тест записує в журнал кожне виконання обох тіл:
+
+```tsx
+function useTrace(value: string) {
+  say(`тіло хука: ${value}`)
+  return value
+}
+
+function Traced({ value }: { value: string }) {
+  say('тіло компонента')
+  useTrace(value)
+  return null
+}
+
+test('тіло хука', () => {
+  step('два рендери', () => {
+    const view = render(<Traced value="а" />)
+    view.rerender(<Traced value="аб" />)
+  })
+})
+```
 
 ```text
 два рендери | тіло компонента, тіло хука: а, тіло компонента, тіло хука: аб
@@ -540,6 +1054,25 @@ function Page({ units }: { units: string }) {
   useTracking('A-17', (km) => say(`${km} ${units}`))
   return null
 }
+function PageBad({ units }: { units: string }) {
+  useTrackingBad('A-17', (km) => say(`${km} ${units}`))
+  return null
+}
+
+test('хук без події ефекту', () => {
+  const view = render(<PageBad units="км" />)
+  view.rerender(<PageBad units="км" />)
+  view.rerender(<PageBad units="милі" />)
+  reportOpened('хук без події ефекту, три рендери')
+})
+
+test('хук із подією ефекту', () => {
+  const view = render(<Page units="км" />)
+  view.rerender(<Page units="км" />)
+  view.rerender(<Page units="милі" />)
+  reportOpened('хук із подією ефекту, три рендери')
+  step('хук із подією ефекту, позиція', () => act(() => sendPosition(5)))
+})
 ```
 
 ```text
@@ -555,9 +1088,25 @@ function Page({ units }: { units: string }) {
 
 Хук є звичайною функцією TypeScript, тому параметри типізують як завжди. Результат TypeScript виводить сам, а явний
 запис `: number` зручний, бо робить результат частиною контракту, тобто описом того, що хук обіцяє. Якщо хук працює з
-різними типами, допомагає дженерик, який пояснила лекція «TypeScript: дженерики»:
+різними типами, допомагає дженерик, який пояснила лекція «TypeScript: дженерики». Функції `subscribeChannel` і
+`sendToChannel` нижче імітують окремий канал повідомлень, який передає рядки:
 
 ```tsx
+const channelListeners = new Map<string, Set<(raw: string) => void>>()
+
+function subscribeChannel(channelId: string, listener: (raw: string) => void) {
+  const listeners = channelListeners.get(channelId) ?? new Set()
+  channelListeners.set(channelId, listeners)
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+function sendToChannel(channelId: string, raw: string) {
+  channelListeners.get(channelId)?.forEach((listener) => listener(raw))
+}
+
 function useChannelValue<T>(channelId: string, parse: (raw: string) => T): T | null {
   const [value, setValue] = useState<T | null>(null)
   const onMessage = useEffectEvent((raw: string) => {
@@ -575,6 +1124,13 @@ function Prices() {
   const tags = useChannelValue('ціна', (raw) => raw.split('.'))
   return <p role="status">{price === null ? 'немає' : price.toFixed(2)} {tags?.length}</p>
 }
+
+test('дженерик', () => {
+  render(<Prices />)
+  console.log('дженерик, показ |', screen.getByRole('status').textContent)
+  act(() => sendToChannel('ціна', '19.5'))
+  console.log('дженерик, повідомлення |', screen.getByRole('status').textContent)
+})
 ```
 
 ```text
@@ -582,20 +1138,43 @@ function Prices() {
 дженерик, повідомлення | 19.50 2
 ```
 
+Спершу значення немає, тому `price` дорівнює `null`, а `tags?.length` не дає тексту. Після повідомлення `19.5` перший
+виклик хука повертає число, а другий повертає масив із двох частин.
+
 Компілятор вивів `T` із функції `parse`: для `Number` результат має тип `number | null`, а для другого виклику
-`string[] | null`. Запис на кшталт `const wrong: string | null = price` або виклик `price.toFixed(2)` без перевірки
-дають помилки:
+`string[] | null`. Допишіть у тіло `Prices` рядок `const wrong: string | null = price` або виклик `price.toFixed(2)`
+без перевірки, і команда `npx tsc --noEmit -p tsconfig.app.json` після шляху до файлу надрукує такі помилки:
 
 ```text
 error TS2322: Type 'number | null' is not assignable to type 'string | null'.
+  Type 'number' is not assignable to type 'string'.
 error TS18047: 'price' is possibly 'null'.
 ```
 
 Ще одна пастка стосується хуків, які повертають масив на кшталт `useState`. Запис `return [on, toggle]` дає тип
 масиву, де кожен елемент може бути і прапорцем, і функцією:
 
+```tsx
+// src/lint/toggle.tsx
+import { useState } from 'react'
+
+function useToggle() {
+  const [on, setOn] = useState(false)
+  const toggle = () => setOn((current) => !current)
+  return [on, toggle]
+}
+
+export function Switch() {
+  const [on, toggle] = useToggle()
+  return <button onClick={toggle}>{on ? 'увімкнено' : 'вимкнено'}</button>
+}
+```
+
+Команда `npx tsc --noEmit -p tsconfig.app.json` після шляху до файлу друкує таку помилку:
+
 ```text
 error TS2322: Type 'boolean | (() => void)' is not assignable to type 'MouseEventHandler<HTMLButtonElement> | undefined'.
+  Type 'boolean' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
 ```
 
 Запис `return [on, toggle] as const` виправляє це, бо дає кортеж, тобто масив із відомим типом кожної позиції.
@@ -608,8 +1187,53 @@ error TS2322: Type 'boolean | (() => void)' is not assignable to type 'MouseEven
 шукати варто не після кожної літери, а коли людина перестала друкувати. Англійською таку поведінку називають debounce.
 
 Ми написали власну реалізацію для перевірки, але не показуємо її, бо це ваше завдання. Людина вводить `к` на 0-й
-мілісекунді, `ки` на 100-й і `киї` на 200-й, а затримка становить 300 мілісекунд. Ось два журнали того, що побачив
-екран, а різниця між реалізаціями полягає лише в прибиранні в ефекті:
+мілісекунді, `ки` на 100-й і `киї` на 200-й, а затримка становить 300 мілісекунд. Тест кожні 100 мілісекунд дивиться на
+екран і записує в журнал кожне нове значення. Цей тест не показує, як написано хук. Коли ви напишете власний хук,
+покладіть його в копію проєкту поруч із тестом, і тест надрукує такий самий журнал:
+
+```tsx
+// src/debounce.test.tsx
+// @vitest-environment jsdom
+import { act, cleanup, render, screen } from '@testing-library/react'
+import { afterEach, test, vi } from 'vitest'
+import { useDebouncedValue } from './useDebouncedValue'
+
+// Назва реалізації, яка стоїть на початку рядка журналу.
+const LABEL = 'із прибиранням'
+const TYPED = new Map([[0, 'к'], [100, 'ки'], [200, 'киї']])
+
+afterEach(cleanup)
+
+function Shown({ value, delayMs }: { value: string; delayMs: number }) {
+  const shown = useDebouncedValue(value, delayMs)
+  return <p role="status">{shown}</p>
+}
+
+test('журнал екрана', () => {
+  vi.useFakeTimers()
+  const view = render(<Shown value="" delayMs={300} />)
+  const journal: string[] = []
+  let last = ''
+  for (let ms = 0; ms <= 600; ms += 100) {
+    const typed = TYPED.get(ms)
+    if (typed) {
+      view.rerender(<Shown value={typed} delayMs={300} />)
+    }
+    const text = screen.getByRole('status').textContent
+    if (text !== last) {
+      journal.push(`${ms} мс «${text}»`)
+      last = text ?? ''
+    }
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+  }
+  console.log(`${LABEL} | ${journal.join(', ')}`)
+  vi.useRealTimers()
+})
+```
+
+Ми запустили цей тест для двох власних реалізацій, і різниця між ними полягає лише в прибиранні в ефекті:
 
 ```text
 із прибиранням | 500 мс «киї»
@@ -621,12 +1245,34 @@ error TS2322: Type 'boolean | (() => void)' is not assignable to type 'MouseEven
 «Синхронізація ефектами» пояснює, коли React викликає прибирання. Вправа `Implement a staggering movement` на сторінці
 React навмисно потребує саме другої поведінки, тому її розв'язок не підходить для вашого завдання.
 
-Два компоненти з різними значеннями й затримками 300 і 800 мілісекунд поводяться незалежно:
+Два компоненти з різними значеннями й затримками 300 і 800 мілісекунд поводяться незалежно. Наступний тест лежить у
+тому самому файлі й показує обидва значення окремими елементами:
+
+```tsx
+test('два виклики', () => {
+  vi.useFakeTimers()
+  const view = render(<><Shown value="" delayMs={300} /><Shown value="" delayMs={800} /></>)
+  view.rerender(<><Shown value="кава" delayMs={300} /><Shown value="чай" delayMs={800} /></>)
+  const texts = () => screen.getAllByRole('status').map((element) => element.textContent).join(' | ')
+  act(() => {
+    vi.advanceTimersByTime(300)
+  })
+  console.log('через 300 мс |', texts())
+  act(() => {
+    vi.advanceTimersByTime(500)
+  })
+  console.log('через 800 мс |', texts())
+  vi.useRealTimers()
+})
+```
 
 ```text
 через 300 мс | кава | 
 через 800 мс | кава | чай
 ```
+
+Через 300 мілісекунд перший компонент уже показує `кава`, а другий ще чекає своєї паузи. Отже, кожен виклик хука має
+власний таймер, і компоненти один одному не заважають.
 
 ### Хук `useMount` і межі лінту
 
@@ -634,7 +1280,10 @@ React навмисно потребує саме другої поведінки
 ефект добре виглядає всередині хука. Ім'я хука має називати конкретну справу: `useWindowWidth`, `useChatRoom`. Назви
 `useMount` чи `useEffectOnce` описують лише час запуску, і саме про такі хуки сторінка попереджає окремо:
 
-```tsx
+```ts
+// src/lint/mount.ts
+import { useEffect } from 'react'
+
 export function useMount(fn: () => void) {
   useEffect(() => {
     fn()
@@ -643,29 +1292,75 @@ export function useMount(fn: () => void) {
 ```
 
 Лінт бачить проблему всередині хука, а компонент, який викликає такий хук і читає в ньому пропс, лишається без жодного
-попередження:
+попередження. Ось такий компонент:
+
+```tsx
+// src/lint/MountUser.tsx
+import { say } from '../tracking'
+import { useMount } from './mount'
+
+export function MountUser({ orderId }: { orderId: string }) {
+  useMount(() => say(`візит ${orderId}`))
+  return null
+}
+```
+
+Команда `npx eslint src/lint/mount.ts src/lint/MountUser.tsx` друкує шлях лише до файлу `mount.ts`, а під ним такі
+рядки:
 
 ```text
-ts/lint/mount.ts
-5:6  warning  React Hook useEffect has a missing dependency: 'fn'. Either include it or remove the dependency array. If 'fn' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+  7:6  warning  React Hook useEffect has a missing dependency: 'fn'. Either include it or remove the dependency array. If 'fn' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+✖ 1 problem (0 errors, 1 warning)
 ```
 
 Отже, через `useMount` компонент повторює помилку з порожнім масивом, а лінт про неї не знає. Причина в тому, що
-правило `exhaustive-deps` перевіряє лише відомі йому хуки: `useEffect`, `useMemo`, `useCallback` та інші. Хук зі
-списком залежностей другим аргументом можна додати в перевірку налаштуванням:
+правило `exhaustive-deps` перевіряє лише відомі йому хуки: `useEffect`, `useMemo`, `useCallback` та інші. Ось хук зі
+списком залежностей другим аргументом і компонент, який його викликає:
+
+```ts
+// src/lint/delayed.ts
+import { useEffect, type DependencyList } from 'react'
+
+export function useDelayedEffect(effect: () => void, deps: DependencyList) {
+  useEffect(() => {
+    const id = setTimeout(effect, 100)
+    return () => clearTimeout(id)
+  }, deps)
+}
+```
+
+```tsx
+// src/lint/DelayedUser.tsx
+import { say } from '../tracking'
+import { useDelayedEffect } from './delayed'
+
+export function DelayedUser({ orderId }: { orderId: string }) {
+  useDelayedEffect(() => {
+    say(`візит ${orderId}`)
+  }, [])
+  return null
+}
+```
+
+Команда `npx eslint src/lint/DelayedUser.tsx` нічого не друкує, хоча ефект читає `orderId`. Такий хук можна додати в
+перевірку налаштуванням. Допишіть у масив файлу `eslint.config.js` ще один об'єкт:
 
 ```js
-rules: {
-  'react-hooks/exhaustive-deps': ['warn', {
-    additionalHooks: '(useDelayedEffect)',
-  }],
+{
+  files: ['**/*.{ts,tsx}'],
+  rules: {
+    'react-hooks/exhaustive-deps': ['warn', {
+      additionalHooks: '(useDelayedEffect)',
+    }],
+  },
 },
 ```
 
-Запуск показав, що лінт почав перевіряти компонент, який викликає такий хук:
+Та сама команда тепер показує, що лінт почав перевіряти компонент, який викликає такий хук:
 
 ```text
-5:6  warning  React Hook useDelayedEffect has a missing dependency: 'orderId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  8:6  warning  React Hook useDelayedEffect has a missing dependency: 'orderId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+✖ 1 problem (0 errors, 1 warning)
 ```
 
 README плагіна радить вживати цей параметр дуже рідко й краще взагалі не робити власних хуків зі списком залежностей.
@@ -677,10 +1372,16 @@ Testing Library має функцію `renderHook`, яка викликає ху
 `result.current` містить результат останнього рендеру:
 
 ```tsx
-const { result, unmount } = renderHook(() => useCountdown(3))
-console.log('renderHook | на старті:', result.current)
-act(() => { vi.advanceTimersByTime(2000) })
-console.log('renderHook | через 2 секунди:', result.current)
+test('renderHook', () => {
+  vi.useFakeTimers()
+  const { result } = renderHook(() => useCountdown(3))
+  console.log('renderHook | на старті:', result.current)
+  act(() => { vi.advanceTimersByTime(2000) })
+  console.log('renderHook | через 2 секунди:', result.current)
+  act(() => { vi.advanceTimersByTime(5000) })
+  console.log('renderHook | через 7 секунд:', result.current)
+  vi.useRealTimers()
+})
 ```
 
 ```text
@@ -689,8 +1390,25 @@ renderHook | через 2 секунди: 1
 renderHook | через 7 секунд: 0
 ```
 
+Відлік зупинився на нулі, бо функція в хуку не дає значенню стати меншим за нуль. Отже, такий тест перевіряє межі хука
+без окремого компонента.
+
 Для вашого хука про мережу знайте про межу jsdom. Там `navigator.onLine` завжди `true`, а подія `offline`, надіслана
 вручну, це значення не змінює:
+
+```tsx
+test('мережа в jsdom', () => {
+  console.log('jsdom | navigator.onLine:', navigator.onLine)
+  let received = 0
+  const onOffline = () => {
+    received += 1
+  }
+  window.addEventListener('offline', onOffline)
+  window.dispatchEvent(new Event('offline'))
+  window.removeEventListener('offline', onOffline)
+  console.log(`jsdom | подію offline отримано разів: ${received} | navigator.onLine після неї: ${navigator.onLine}`)
+})
+```
 
 ```text
 jsdom | navigator.onLine: true
