@@ -110,6 +110,13 @@ function WeatherPage() {
 лежить у змінних:
 
 ```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { render } from '@testing-library/react'
+import { test } from 'vitest'
+
+type ReadingProps = { label: string; value: string }
+
 let calls = 0
 
 function Reading({ label, value }: ReadingProps) {
@@ -130,6 +137,12 @@ test('три різні речі', () => {
   console.log('вузол:', container.firstChild?.nodeName, '|', container.innerHTML)
 })
 ```
+
+Компонент і тест лежать в одному файлі, ім'я якого закінчується на `.test.tsx`, наприклад `src/three.test.tsx`. Запускає
+цей файл команда `npx vitest run src/three.test.tsx --disable-console-intercept`. Прапорець у кінці просить Vitest одразу
+друкувати кожен `console.log`, бо без нього Vitest не показує друк тестів, які пройшли. Решта прикладів із React у цій
+лекції запускаються так само й починаються з таких самих рядків. Короткі блоки без `test` вставляйте в тіло тесту. Під
+прикладами ми показуємо лише те, що надрукував сам код, без службових рядків Vitest. Ось вивід цього тесту:
 
 ```text
 typeof Reading: function
@@ -175,6 +188,41 @@ Components and Hooks](https://react.dev/reference/rules/react-calls-components-a
 браузері, про який ішлося в лекції «Як браузер малює»: там браузер перетворює сторінку на пікселі. Додамо в кожен
 компонент прикладу про погоду по одному `console.log` і виконаємо `render(<WeatherPage />)`:
 
+```tsx
+function Reading({ label, value }: ReadingProps) {
+  console.log('    Reading', label) // пробіли на початку рядка показують глибину вкладення
+  return <p>{label}: {value}</p>
+}
+
+function Station({ city, wind, humidity }: StationProps) {
+  console.log('  Station', city)
+  return (
+    <section>
+      <h2>{city}</h2>
+      <Reading label="Вітер" value={`${wind} м/с`} />
+      <Reading label="Вологість" value={`${humidity} %`} />
+    </section>
+  )
+}
+
+function WeatherPage() {
+  console.log('WeatherPage')
+  return (
+    <div>
+      <Station city="Львів" wind={5} humidity={62} />
+      <Station city="Одеса" wind={9} humidity={71} />
+    </div>
+  )
+}
+
+test('порядок викликів', () => {
+  const element = <WeatherPage /> // цей запис лише створює об'єкт і не викликає жодної функції
+  console.log('елемент створено')
+  const { container } = render(element) // лише тут React починає викликати компоненти
+  console.log(container.innerHTML) // розмітка, яку React поставив у документ
+})
+```
+
 ```text
 елемент створено
 WeatherPage
@@ -187,7 +235,9 @@ WeatherPage
 <div><section><h2>Львів</h2><p>Вітер: 5 м/с</p><p>Вологість: 62 %</p></section><section><h2>Одеса</h2><p>Вітер: 9 м/с</p><p>Вологість: 71 %</p></section></div>
 ```
 
-Покроково це відбувається так:
+Рядок `елемент створено` стоїть першим, бо запис `<WeatherPage />` ще не викликає функцію. Останній рядок виводу
+надрукував останній `console.log` тесту: це розмітка, яку React поставив у документ. Рядки між ними надрукували самі
+компоненти, коли React їх викликав. Покроково це відбувається так:
 
 | Крок | Хто діє | Що відбувається | Викликів усього |
 |------|---------|-----------------|-----------------|
@@ -211,10 +261,26 @@ WeatherPage
 
 Одне застереження про перегляд у браузері. Шаблон проєкту у файлі `src/main.tsx` загортає застосунок у `<StrictMode>`.
 Цей компонент у режимі розробки навмисно викликає кожен компонент двічі, щоб виявити певні помилки. Тому під час
-`npm run dev` ви можете побачити кожен `console.log` двічі. **Запуском у браузері ми це не перевіряли.** Підтверджено
-лише те, що під jsdom один `render` усередині `<StrictMode>` надрукував рядок компонента двічі. Подивитися на це в
-браузері ви зможете самі, якщо додасте `console.log` у компонент і відкриєте консоль. Докладно про `<StrictMode>`
-розповідає день 5 цієї фази.
+`npm run dev` ви можете побачити кожен `console.log` двічі. **Запуском у браузері ми це не перевіряли.** Під jsdom ми
+виконали такий тест із компонентом `Reading` попереднього прикладу:
+
+```tsx
+import { StrictMode } from 'react'
+
+test('один render усередині StrictMode', () => {
+  render(<StrictMode><Reading label="Вітер" value="5 м/с" /></StrictMode>)
+})
+```
+
+```text
+    Reading Вітер
+    Reading Вітер
+```
+
+Тест зробив один `render` і показав один тег `<Reading>`, а рядок надруковано двічі. Отже, `<StrictMode>` викликав
+функцію `Reading` двічі. Для вашого коду це означає таке: подвоєний рядок у консолі під час розробки ще не є помилкою.
+Подивитися на це в браузері ви зможете самі, якщо додасте `console.log` у компонент і відкриєте консоль. Докладно про
+`<StrictMode>` розповідає день 5 цієї фази.
 
 ## Велика літера вирішує, що це
 
@@ -243,8 +309,10 @@ type з великої: function Reading
 
 - **React** у режимі розробки пише в консоль:
   `The tag <reading> is unrecognized in this browser. If you meant to render a React component, start its name with an uppercase letter.`
-  Це повідомлення ми побачили під jsdom. У консолі справжнього браузера ми його не перевіряли запуском.
-- **TypeScript** не пропускає такий запис ще до запуску:
+  Цей рядок надрукував під jsdom той самий код вище, а ми винесли його сюди з виводу. У консолі справжнього браузера ми
+  його не перевіряли запуском.
+- **TypeScript** не пропускає такий запис ще до запуску. Команда `npx tsc --noEmit -p tsconfig.app.json` для цього коду
+  друкує:
   `error TS2339: Property 'reading' does not exist on type 'JSX.IntrinsicElements'.`
 
 ## Файли: компонент у своєму модулі
@@ -282,8 +350,114 @@ export function Sensor() {
 }
 ```
 
-Ось три помилки й те, що каже про них кожен інструмент. Той самий набір помилок у файлах `.mjs` ми запустили в Node, а
-`tsc` і Vitest перевірили на файлах вище.
+Покладемо обидва файли в теку `src/mix` і допишемо поруч файл `imports.test.tsx` із трьома помилками імпорту. Кожна
+помилка стоїть в окремому рядку `import`:
+
+```tsx
+// @vitest-environment jsdom
+import { render } from '@testing-library/react'
+import { test } from 'vitest'
+import { Title } from './parts' // помилка: Title експортовано типово, а тут дужки
+import Sensor from './only' // помилка: у only.tsx немає типового експорту, а тут немає дужок
+import Note from './parts' // помилка: без дужок сюди потрапить типовий експорт, а не Note
+
+test('іменований імпорт типового експорту', () => {
+  console.log('Title:', Title)
+  console.log((() => Title).toString()) // показує код, який Vitest виконує замість слова Title
+  render(<Title text="Сьогодні дощ" />)
+})
+
+test('типовий імпорт із файла без типового експорту', () => {
+  console.log('Sensor:', Sensor)
+  render(<Sensor />)
+})
+
+test('типовий імпорт замість іменованого', () => {
+  const { container } = render(<Note text="Сьогодні дощ" />)
+  console.log(container.innerHTML)
+})
+```
+
+Спершу запустимо цей файл у Vitest. Два тести падають, а третій проходить:
+
+```text
+Title: undefined
+() => __vite_ssr_import_2__.Title
+Sensor: undefined
+<h2>Сьогодні дощ</h2>
+FAIL  src/mix/imports.test.tsx > іменований імпорт типового експорту
+FAIL  src/mix/imports.test.tsx > типовий імпорт із файла без типового експорту
+Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.
+```
+
+Рядки `Title: undefined` і `Sensor: undefined` надрукували два перші тести: у цих змінних нічого немає. Тому `render`
+отримав `undefined` замість компонента, і React кинув помилку `Element type is invalid`. Vitest показує її один раз на
+обидва тести, бо текст однаковий. Рядок `<h2>Сьогодні дощ</h2>` надрукував третій тест, який пройшов, хоча показав не той
+тег.
+
+Тепер перевіримо ті самі файли командою `npx tsc --noEmit -p tsconfig.app.json`. Команда `tsc` лише перевіряє типи й
+нічого не запускає. Довгий шлях до теки проєкту в її виводі ми замінили трьома крапками:
+
+```text
+src/mix/imports.test.tsx(4,10): error TS2614: Module '"./parts"' has no exported member 'Title'. Did you mean to use 'import Title from "./parts"' instead?
+src/mix/imports.test.tsx(5,8): error TS2613: Module '"…/src/mix/only"' has no default export. Did you mean to use 'import { Sensor } from "…/src/mix/only"' instead?
+```
+
+`tsc` знайшов дві перші помилки, а про третю не сказав нічого, бо пропси `Title` і `Note` однакові. Третю помилку він
+побачить лише тоді, коли пропси не збігаються. Перевіримо це таким файлом `mismatch.tsx`:
+
+```tsx
+import Note from './parts'
+
+export const wrong = <Note tone="дощ" />
+```
+
+```text
+src/mix/mismatch.tsx(3,28): error TS2322: Type '{ tone: string; }' is not assignable to type 'IntrinsicAttributes & { text: string; }'.
+  Property 'tone' does not exist on type 'IntrinsicAttributes & { text: string; }'.
+```
+
+Останній інструмент — Node. Він не розуміє JSX, тому ті самі три помилки ми записали у файлах `.mjs`, де функції просто
+повертають текст:
+
+```js
+// файл parts.mjs
+export default function Title() {
+  return 'це функція Title'
+}
+export function Note() {
+  return 'це функція Note'
+}
+
+// файл only.mjs
+export function Sensor() {
+  return 'це функція Sensor'
+}
+
+// файл case1.mjs
+import { Title } from './parts.mjs'
+console.log(Title())
+
+// файл case2.mjs
+import Sensor from './only.mjs'
+console.log(Sensor())
+
+// файл case3.mjs
+import Note from './parts.mjs'
+console.log(Note())
+```
+
+Команди `node case1.mjs`, `node case2.mjs` і `node case3.mjs` друкують таке. У виводі двох перших Node показує ще шлях до
+файла й стек викликів, а ми залишили рядок із текстом помилки:
+
+```text
+SyntaxError: The requested module './parts.mjs' does not provide an export named 'Title'
+SyntaxError: The requested module './only.mjs' does not provide an export named 'default'
+це функція Title
+```
+
+У двох перших випадках модуль не запустився зовсім, тому жоден `console.log` не спрацював. Третій випадок запустився і
+без жодної помилки викликав не ту функцію. Зведемо всі результати в одну таблицю:
 
 | Запис | `tsc` | Node | Vitest |
 |-------|-------|------|--------|
@@ -300,11 +474,11 @@ export function Sensor() {
 **Одна помилка виглядає по-різному.** Node зупиняє модуль ще до запуску, бо імпорт зв'язується з експортом на етапі
 завантаження. За специфікацією так само чинить браузер, тому під час `npm run dev` у консолі має з'явитися
 `SyntaxError`, а її текст залежить від браузера. **Цей випадок описано за специфікацією, у браузері ми його не
-запускали.** Vitest запускає код через власний завантажувач, який перетворює імпорт на читання поля об'єкта-модуля. Ми
-подивилися на код після такого перетворення у Vite: замість `Title` там стоїть `__vite_ssr_import_2__.Title`. Читання
-відсутнього поля дає `undefined`. Отже, `undefined` тут дає саме завантажувач Vitest, а сам JavaScript цю помилку не
-пропускає. Тому в тестах повідомлення приходить від React, і в ньому є підказка про змішані імпорти. Коли бачите
-`got: undefined`, насамперед перевірте рядок `import`.
+запускали.** Vitest запускає код через власний завантажувач, який перетворює імпорт на читання поля об'єкта-модуля. Це
+видно у виводі Vitest вище. Рядок `console.log((() => Title).toString())` надрукував текст функції після перетворення,
+і замість `Title` там стоїть `__vite_ssr_import_2__.Title`. Читання відсутнього поля дає `undefined`. Отже, `undefined`
+тут дає саме завантажувач Vitest, а сам JavaScript цю помилку не пропускає. Тому в тестах повідомлення приходить від
+React, і в ньому є підказка про змішані імпорти. Коли бачите `got: undefined`, насамперед перевірте рядок `import`.
 
 Є ще один вид імпорту, потрібний для типів. У шаблоні проєкту ввімкнено `verbatimModuleSyntax`, тому тип імпортують зі
 словом `type`. Причину пояснює лекція «Проєкт: Vite, лінт, TypeScript»: перетворювач бачить лише один файл і не може
@@ -400,8 +574,33 @@ function Room() {
 }
 ```
 
-Тест натискає кнопку термостата тричі, а потім кнопку світла. Другий варіант відрізняється лише одним: функцію
-`Thermostat` перенесено над `Room`, на рівень файла.
+Тест натискає кнопку термостата тричі, а потім кнопку світла. Перед кожним кроком він шукає кнопку в документі заново.
+Перший знайдений вузол тест зберігає у змінній `before`, щоб наприкінці порівняти його з новим вузлом:
+
+```tsx
+// На початку файла стоять такі рядки, далі йде компонент Room, а за ним цей тест.
+// @vitest-environment jsdom
+import { useState } from 'react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { test } from 'vitest'
+
+test('кімната', () => {
+  render(<Room />)
+  const before = screen.getByText(/Температура/)
+  fireEvent.click(before)
+  fireEvent.click(screen.getByText(/Температура/))
+  fireEvent.click(screen.getByText(/Температура/))
+  console.log('після трьох натискань:', screen.getByText(/Температура/).textContent)
+
+  fireEvent.click(screen.getByText(/Світло/))
+  const after = screen.getByText(/Температура/)
+  console.log('після світла:', after.textContent)
+  console.log('той самий вузол:', before === after, '| старий у документі:', document.contains(before))
+})
+```
+
+Функція `fireEvent.click` імітує натискання на вузол, а `screen.getByText` знаходить вузол за текстом. Другий варіант
+відрізняється лише одним: функцію `Thermostat` перенесено над `Room`, на рівень файла.
 
 Вивід варіанта, де `Thermostat` оголошено всередині `Room`:
 
@@ -466,7 +665,21 @@ function Catalog() {
 }
 ```
 
-Тест набирає `кава`:
+Тест набирає `кава` через бібліотеку `user-event`. Вона імітує окремі натискання клавіш, а після набору тест друкує вміст
+поля й назву вузла, який тримає фокус:
+
+```tsx
+import userEvent from '@testing-library/user-event'
+
+test('набір у полі пошуку', async () => {
+  render(<Catalog />)
+  const user = userEvent.setup()
+  await user.type(screen.getByLabelText('Пошук'), 'кава')
+  const box = screen.getByLabelText<HTMLInputElement>('Пошук') // поле в документі зараз
+  console.log(`у полі: "${box.value}"`)
+  console.log('фокус на:', document.activeElement?.tagName)
+})
+```
 
 ```text
 у полі: "к"
@@ -495,6 +708,8 @@ function Catalog() {
 }
 ```
 
+Той самий тест для цього варіанта друкує:
+
 ```text
 у полі: "кава"
 фокус на: INPUT
@@ -505,33 +720,42 @@ function Catalog() {
 React під час роботи не кидає помилки й нічого не пише в консоль, бо для нього `<Thermostat />` лише об'єкт, а де
 створено функцію з поля `type`, він не перевіряє. Тому тест без явної перевірки проходить. Ловить цю помилку лінтер,
 який ви налаштували в лекції «Проєкт: Vite, лінт, TypeScript». Правило `react-hooks/static-components` входить у
-пресет `recommended`. Ось його вивід для файла досліду з кімнатою, де номери рядків рахуються від початку цього файла:
+пресет `recommended`. Ось вивід команди `npx eslint src/room.test.tsx` для файла досліду з кімнатою. У цьому файлі стоять
+рядки імпорту, компонент `Room` і тест, а номери рядків рахуються від початку файла:
 
 ```text
-  18:8  error  Error: Cannot create components during render
+…/spa/src/room.test.tsx
+  17:8  error  Error: Cannot create components during render
 
 Components created during render will reset their state each time they are created. Declare components outside of render.
 
-  16 |   return (
-  17 |     <div>
-> 18 |       <Thermostat />
+…/spa/src/room.test.tsx:17:8
+  15 |   return (
+  16 |     <div>
+> 17 |       <Thermostat />
      |        ^^^^^^^^^^ This component is created during render
-  19 |       <button onClick={() => setLights(!lights)}>Світло: {lights ? 'так' : 'ні'}</button>
-  20 |     </div>
-  21 |   )
+  18 |       <button onClick={() => setLights(!lights)}>Світло: {lights ? 'так' : 'ні'}</button>
+  19 |     </div>
+  20 |   )
 
-   8 |   const [lights, setLights] = useState(false)
-   9 |
-> 10 |   function Thermostat() {                       // оголошено всередині Room
+…/spa/src/room.test.tsx:9:3
+   7 |   const [lights, setLights] = useState(false)
+   8 |
+>  9 |   function Thermostat() {                       // оголошено всередині Room
      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 11 |     const [degrees, setDegrees] = useState(20)
+> 10 |     const [degrees, setDegrees] = useState(20)
      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 12 |     console.log('Thermostat:', degrees)
+> 11 |     console.log('Thermostat:', degrees)
      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 13 |     return <button onClick={() => setDegrees(degrees + 1)}>Температура: {degrees}</button>
+> 12 |     return <button onClick={() => setDegrees(degrees + 1)}>Температура: {degrees}</button>
      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 14 |   }
+> 13 |   }
      | ^^^^ The component is created during render here
+  14 |
+  15 |   return (
+  16 |     <div>  react-hooks/static-components
+
+✖ 1 problem (1 error, 0 warnings)
 ```
 
 Зверніть увагу, що лінтер вказує насамперед на місце, де компонент **використано**, а оголошення показує лише другим.
@@ -539,7 +763,8 @@ Components created during render will reset their state each time they are creat
 ### Що всередині компонента оголошувати можна
 
 Заборона стосується тільки функцій, які ви вживаєте як тег. Звичайні функції всередині компонента цілком нормальні.
-Лінтер на цей код не скаржиться, а тест, який натискає термостат і потім світло, показує, що стан термостата зберігся:
+Команда `npx eslint` для цього файла не друкує нічого, а тест, який натискає термостат і потім світло, показує, що стан
+термостата зберігся:
 
 ```tsx
 function Thermostat() {
@@ -562,6 +787,14 @@ function Room() {
     </div>
   )
 }
+
+test('функції всередині компонента', () => {
+  render(<Room />)
+  fireEvent.click(screen.getByText(/Температура/))
+  fireEvent.click(screen.getByText(/Світло/))
+  console.log(screen.getByText(/Температура/).textContent)
+  console.log(screen.getByText(/Світло/).textContent)
+})
 ```
 
 ```text
@@ -599,6 +832,14 @@ export function Reading({ label, value }: ReadingProps) {
 }
 
 // файл examples.test.tsx
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest' // додає перевірку toBeInTheDocument
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, expect, test } from 'vitest'
+import { Reading } from './Reading'
+
+afterEach(cleanup) // прибирає компонент із документа після кожного прикладу
+
 test('Reading: показує назву й значення', () => {
   render(<Reading label="Вітер" value="5 м/с" />)
   expect(screen.getByText('Вітер: 5 м/с')).toBeInTheDocument()
@@ -616,7 +857,9 @@ test('Reading: інші пропси дають інший текст', () => {
 стоїть заглушка, обидва приклади падають, і сторінка порожня:
 
 ```text
-TestingLibraryElementError: Unable to find an element with the text: Вітер: 5 м/с. …
+TestingLibraryElementError: Unable to find an element with the text: Вітер: 5 м/с. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
 <body>
   <div />
 </body>
@@ -646,8 +889,53 @@ React зняв екземпляр, якому цей стан належав. В
 об'єкт функції.
 
 **«Якщо обгорнути внутрішній компонент у `useCallback`, проблема зникне».** Хук `useCallback` повертає ту саму функцію
-між рендерами, доки не зміняться його залежності, тому він сховає симптом лише до цього моменту. Функція й далі
-створюється під час рендеру, тому лінтер лишається червоним. Правильне виправлення одне: рівень файла й пропси.
+між рендерами, доки не зміняться його залежності, тому він сховає симптом лише до цього моменту. Перевіримо це на
+кімнаті. Файл починається тими самими рядками, що й дослід вище, лише до першого імпорту додано `useCallback`. Пропс
+`version` стоїть тут лише для того, щоб тест міг змінити залежність, а функція `rerender` показує той самий компонент із
+новими пропсами:
+
+```tsx
+function Room({ version }: { version: number }) {
+  const [lights, setLights] = useState(false)
+
+  const Thermostat = useCallback(function Thermostat() {
+    const [degrees, setDegrees] = useState(20)
+    return <button onClick={() => setDegrees(degrees + 1)}>Температура: {degrees}</button>
+  }, [version]) // нова функція з'явиться лише тоді, коли зміниться version
+
+  return (
+    <div>
+      <Thermostat />
+      <button onClick={() => setLights(!lights)}>Світло: {lights ? 'так' : 'ні'}</button>
+    </div>
+  )
+}
+
+test('useCallback ховає симптом', () => {
+  const { rerender } = render(<Room version={1} />)
+  fireEvent.click(screen.getByText(/Температура/))
+  fireEvent.click(screen.getByText(/Світло/))
+  console.log('після світла:', screen.getByText(/Температура/).textContent)
+  rerender(<Room version={2} />)
+  console.log('після зміни залежності:', screen.getByText(/Температура/).textContent)
+})
+```
+
+```text
+після світла: Температура: 21
+після зміни залежності: Температура: 20
+```
+
+Перший рядок показує, що кнопка світла вже не скидає число: `useCallback` повернув ту саму функцію, і `type` не змінився.
+Другий рядок показує, що число все одно скинулося, коли змінилася залежність: `useCallback` повернув нову функцію, і
+React зняв старий екземпляр. Функція й далі створюється під час рендеру, тому лінтер лишається червоним. Серед рядків,
+які `npx eslint` друкує для цього файла, стоїть та сама помилка:
+
+```text
+  16:8  error    Error: Cannot create components during render
+```
+
+Правильне виправлення одне: рівень файла й пропси.
 
 **«Vitest зелений, отже, імпорти правильні».** Vitest не перевіряє типів, а типовий імпорт чужого компонента взагалі
 не дає помилки. Запускайте ще й `tsc`, а в прикладах шукайте конкретний вміст сторінки.

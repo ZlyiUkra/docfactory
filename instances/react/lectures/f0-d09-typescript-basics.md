@@ -2,7 +2,8 @@
 
 Ця лекція пояснює з самого початку, що таке TypeScript, хто й коли перевіряє типи і чому дані з мережі все одно треба
 перевіряти власним кодом. Вона спирається лише на JavaScript із попередніх днів. Читання займе близько 30 хвилин.
-Вивід кожної команди наведено таким, яким він був насправді.
+Вивід кожної команди наведено таким, яким він був насправді. Лише коли програма падає, Node друкує ще шлях до файла й
+перелік викликів, і ці рядки тут пропущено.
 
 **Після лекції ви зможете пояснити:**
 
@@ -71,6 +72,8 @@ console.log(totalWithDelivery({ totl: 100 }, 50));
 $ npx tsc --noEmit --strict --target es2022 --pretty false order.ts
 order.ts(7,33): error TS2322: Type 'string' is not assignable to type 'number'.
 order.ts(8,33): error TS2561: Object literal may only specify known properties, but 'totl' does not exist in type 'Order'. Did you mean to write 'total'?
+$ echo $?
+2
 ```
 
 Запис `order.ts(7,33)` означає «файл, рядок 7, позиція 33». `TS2322` — номер помилки, за яким її легко шукати. Слова
@@ -80,6 +83,9 @@ order.ts(8,33): error TS2561: Object literal may only specify known properties, 
 Прапорець `--noEmit` просить лише перевірити код, не створюючи файла `.js`. Прапорець `--strict` вмикає всі суворі
 перевірки, `--target es2022` каже, яку версію JavaScript вважати відомою, а `--pretty false` друкує помилки простим
 текстом.
+
+Команда `echo $?` друкує код, з яким завершилася попередня команда. Код 0 означає успіх, а будь-який інший код означає
+невдачу. Тут `tsc` завершився з кодом 2, бо знайшов помилки.
 
 ## Перевірка й запуск — дві окремі дії
 
@@ -149,7 +155,32 @@ Node 24 запускає файли `.ts` напряму й типів не пе
 Компілятор міркує так: значення може виявитися будь-яким варіантом, тому операція має бути законною для кожного.
 
 Метод `toString` є і в рядка, і в числа, тому для `string | number` його викликати можна. Метод `toUpperCase` є лише в
-рядка, тому на такий виклик компілятор відповідає `Property 'toUpperCase' does not exist on type 'string | number'`.
+рядка, тому такий виклик компілятор не пропускає.
+
+Файл `union.ts`:
+
+```ts
+function label(value: string | number): string {
+  console.log(value.toString()); // метод є в обох варіантах
+  return value.toUpperCase(); // метод є лише в рядка
+}
+
+console.log(label(5));
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false union.ts
+union.ts(3,16): error TS2339: Property 'toUpperCase' does not exist on type 'string | number'.
+  Property 'toUpperCase' does not exist on type 'number'.
+$ node union.ts
+5
+TypeError: value.toUpperCase is not a function
+```
+
+Компілятор поскаржився лише на рядок 3, а рядок 2 пропустив. Рядок із відступом уточнює причину: цього методу немає у
+варіанта `number`. Запуск показує, що компілятор мав рацію: `node` надрукував `5` із рядка 2, а на рядку 3 програма
+впала, бо функція отримала саме число. Отже, повідомлення про об'єднання вказує на виклик, який справді може впасти в
+покупця, тому такий виклик треба спершу захистити перевіркою.
 
 Значення `null` і `undefined` теж стають варіантами об'єднання. З прапорцем `--strict` тип `string` їх не містить,
 тому можливу відсутність значення записують прямо: `string | null`.
@@ -179,6 +210,8 @@ console.log(discount(null), discount(15), discount("VIP"), discount("WELCOME"));
 ```text
 $ npx tsc --noEmit --strict --target es2022 --pretty false discount.ts
 (tsc нічого не надрукував: помилок немає)
+$ echo $?
+0
 $ node discount.ts
 0 15 20 5
 ```
@@ -291,7 +324,55 @@ $ node delivery.ts
 - Гілки `default` немає. Компілятор сам порахував, що три випадки охоплюють усі варіанти, тому не скаржиться, що
   функція може нічого не повернути.
 
-Цей опис забороняє цілий ряд помилок. Кожен рядок нижче перевірено компілятором:
+Цей опис забороняє цілий ряд помилок. Запишемо п'ять таких помилок в одному файлі й покажемо його компілятору.
+
+Файл `delivery-errors.ts`:
+
+```ts
+type Delivery =
+  | { stage: "packing" }
+  | { stage: "onTheWay"; courier: string }
+  | { stage: "delivered"; signedBy: string };
+
+// Читаємо поле кур'єра, не перевіривши етап.
+function courierName(delivery: Delivery): string {
+  return delivery.courier;
+}
+
+// У switch немає випадку "delivered".
+function describe(delivery: Delivery): string {
+  switch (delivery.stage) {
+    case "packing":
+      return "Пакуємо";
+    case "onTheWay":
+      return "Везе " + delivery.courier;
+  }
+}
+
+// Описка в назві етапу: мала літера w.
+const typo: Delivery = { stage: "onTheway", courier: "Ігор" };
+
+// Кур'єра забули вказати.
+const noCourier: Delivery = { stage: "onTheWay" };
+
+// Посилку ще пакують, а кур'єр уже є.
+const tooEarly: Delivery = { stage: "packing", courier: "Ігор" };
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false delivery-errors.ts
+delivery-errors.ts(8,19): error TS2339: Property 'courier' does not exist on type 'Delivery'.
+  Property 'courier' does not exist on type '{ stage: "packing"; }'.
+delivery-errors.ts(12,40): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+delivery-errors.ts(22,26): error TS2820: Type '"onTheway"' is not assignable to type '"packing" | "onTheWay" | "delivered"'. Did you mean '"onTheWay"'?
+delivery-errors.ts(25,7): error TS2322: Type '{ stage: "onTheWay"; }' is not assignable to type 'Delivery'.
+  Property 'courier' is missing in type '{ stage: "onTheWay"; }' but required in type '{ stage: "onTheWay"; courier: string; }'.
+delivery-errors.ts(28,48): error TS2353: Object literal may only specify known properties, and 'courier' does not exist in type '{ stage: "packing"; }'.
+```
+
+Кожній помилці в коді відповідає одне повідомлення, а рядки з відступом уточнюють причину. У першому повідомленні
+компілятор називає варіант `packing`, у якого немає кур'єра. Отже, описка, забуте поле чи забутий випадок зупиняють
+вас ще до запуску, і покупець їх не побачить. Таблиця збирає ці повідомлення скорочено:
 
 | Що написано | Що каже компілятор |
 |-------------|--------------------|
@@ -307,6 +388,40 @@ $ node delivery.ts
 `never`, «сюди не дійде жодне значення», і покласти в нього можна лише `never`. Тому в гілці `default` часто пишуть
 `const rest: never = delivery`. Якщо хтось додасть четвертий етап і забуде про нього в цьому `switch`, компілятор
 покаже на цей рядок і назве забутий варіант.
+
+Файл `delivery-never.ts`:
+
+```ts
+type Delivery =
+  | { stage: "packing" }
+  | { stage: "onTheWay"; courier: string }
+  | { stage: "delivered"; signedBy: string }
+  | { stage: "returned"; reason: string }; // новий етап, для якого немає case
+
+function describe(delivery: Delivery): string {
+  switch (delivery.stage) {
+    case "packing":
+      return "Пакуємо";
+    case "onTheWay":
+      return "Везе " + delivery.courier;
+    case "delivered":
+      return "Отримав " + delivery.signedBy;
+    default:
+      // Сюди доходить лише те, що не обробив жоден case.
+      const rest: never = delivery;
+      return rest;
+  }
+}
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false delivery-never.ts
+delivery-never.ts(17,13): error TS2322: Type '{ stage: "returned"; reason: string; }' is not assignable to type 'never'.
+```
+
+Компілятор показав на рядок 17 і в лапках назвав варіант `returned`, який ніхто не обробив. Якщо прибрати рядок із
+цим варіантом з опису типу, `tsc` не надрукує нічого, бо в гілці `default` не лишиться жодного можливого значення.
+Отже, новий етап сам покаже вам кожен `switch` із таким рядком, де про нього забули.
 
 ## `any`, `unknown` і `as`: що робити з даними ззовні
 
@@ -393,8 +508,54 @@ null -> відхилено
 "EUR" -> відхилено
 ```
 
-Компілятор читає ланцюжок умов зліва направо, і після кожної умови тип стає вужчим. Типи в таблиці взято з його
-власних повідомлень:
+Компілятор читає ланцюжок умов зліва направо, і після кожної умови тип стає вужчим. Це можна побачити самому за
+допомогою типу `never`. Покласти в `never` не можна нічого, тому кожен рядок `const ...: never = ...` у файлі нижче
+навмисно неправильний, а компілятор у повідомленні про нього називає тип, який бачить у цьому місці. Той самий
+ланцюжок тут записано вкладеними `if`, щоб після кожної умови стояв окремий рядок. Функцію ніхто не викликає, бо її
+читає лише `tsc`.
+
+Файл `rate-stages.ts`:
+
+```ts
+function stages(data: unknown) {
+  if (typeof data === "object") {
+    const a: never = data; // який тип має data?
+    if (data !== null) {
+      const b: never = data; // який тип має data?
+      if ("currency" in data) {
+        const c: never = data; // який тип має data?
+        if (typeof data.currency === "string") {
+          const d: never = data.currency; // який тип має поле?
+          if ("value" in data) {
+            const e: never = data; // який тип має data?
+            if (typeof data.value === "number") {
+              const f: never = data.value; // який тип має поле?
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false rate-stages.ts
+rate-stages.ts(3,11): error TS2322: Type 'object | null' is not assignable to type 'never'.
+  Type 'null' is not assignable to type 'never'.
+rate-stages.ts(5,13): error TS2322: Type 'object' is not assignable to type 'never'.
+rate-stages.ts(7,15): error TS2322: Type 'object & Record<"currency", unknown>' is not assignable to type 'never'.
+rate-stages.ts(9,17): error TS2322: Type 'string' is not assignable to type 'never'.
+rate-stages.ts(11,19): error TS2322: Type 'object & Record<"currency", unknown> & Record<"value", unknown>' is not assignable to type 'never'.
+rate-stages.ts(13,21): error TS2322: Type 'number' is not assignable to type 'never'.
+```
+
+Кожне повідомлення відповідає одному навмисно неправильному рядку, а в перших лапках стоїть тип у цьому місці. Перше
+повідомлення показує, що після `typeof` у значенні ще може бути `null`. Знак `&` означає «і те, і те», а запис
+`Record<"currency", unknown>` означає «об'єкт, у якому є поле `currency` зі значенням типу `unknown`». Отже, оператор
+`in` довів лише наявність поля, і перед використанням значення вам потрібна ще перевірка `typeof`.
+
+Типи в таблиці взято з цих повідомлень:
 
 | Умова | Яким став тип `data` | Який текст вона відхиляє |
 |-------|----------------------|--------------------------|
@@ -406,7 +567,19 @@ null -> відхилено
 | `typeof data.value === "number"` | поле `value` стало числом | `{"currency": "EUR", "value": "41.5"}` |
 
 Функція будує новий об'єкт, а не повертає `data`, і цьому є причина. Компілятор звузив окремі поля, а сам `data`
-лишився типу «об'єкт із полями невідомого типу», тому рядок `return data` він би не пропустив.
+лишився типу «об'єкт із полями невідомого типу», тому рядок `return data` він би не пропустив. Це легко перевірити:
+скопіюйте `rate.ts` у файл `rate-return.ts` і замініть у копії рядок `return { currency: data.currency, value:
+data.value };` на `return data;`.
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false rate-return.ts
+rate-return.ts(12,5): error TS2322: Type 'object & Record<"currency", unknown> & Record<"value", unknown>' is not assignable to type 'Rate'.
+  Types of property 'currency' are incompatible.
+    Type 'unknown' is not assignable to type 'string'.
+```
+
+Читайте це повідомлення з найглибшого рядка: значення типу `unknown` не можна покласти в поле типу `string`. Отже,
+функція перевірки повертає новий об'єкт, зібраний із полів, які вона вже перевірила.
 
 Таку перевірку ставлять один раз на межі програми, там, де дані заходять ззовні. Після неї решта коду працює зі
 справжнім типом і нічого не перевіряє. Пізніше в плані з'явиться бібліотека `zod`, яка будує такі перевірки з опису.
@@ -416,11 +589,55 @@ null -> відхилено
 **«`tsc` не знайшов помилок, отже, дані правильні».** Він перевірив код. Дані з мережі він не бачив, а `as` і `any`
 лише приховують це від нього.
 
-**«`as number` перетворить рядок на число».** Перетворення робить лише код, наприклад `Number(text)`. Значення `"41.5"
-as unknown as number` після запуску лишається рядком: `typeof` дасть `"string"`, а `+ 1` дасть `"41.51"`.
+**«`as number` перетворить рядок на число».** Перетворення робить лише код, наприклад `Number(text)`.
 
-**«Можна написати `x instanceof Product`, де `Product` — це `type`».** Компілятор відповість `'Product' only refers to
-a type, but is being used as a value here`. Під час роботи типів немає, тому перевіряти можна лише значення.
+Файл `as-number.ts`:
+
+```ts
+// Спершу as unknown, бо прямий запис "41.5" as number компілятор відхиляє.
+const price = "41.5" as unknown as number;
+
+console.log(typeof price); // що насправді лежить у змінній
+console.log(price + 1); // компілятор вважає, що це додавання чисел
+console.log(typeof Number("41.5")); // справжнє перетворення
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false as-number.ts
+(tsc нічого не надрукував: помилок немає)
+$ node as-number.ts
+string
+41.51
+number
+```
+
+Значення `"41.5" as unknown as number` після запуску лишається рядком. Тому `typeof` дає `string`, а `+ 1` склеює
+рядки й дає `41.51`. Лише виклик `Number` дає справжнє число. Отже, коли вам потрібне число, викликайте перетворення,
+а запису `as` не вірте.
+
+**«Можна написати `x instanceof Product`, де `Product` — це `type`».**
+
+Файл `instanceof.ts`:
+
+```ts
+type Product = { name: string };
+
+function isProduct(x: unknown): boolean {
+  return x instanceof Product; // Product тут є лише типом
+}
+
+console.log(isProduct({ name: "Чай" }));
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false instanceof.ts
+instanceof.ts(4,23): error TS2693: 'Product' only refers to a type, but is being used as a value here.
+$ node instanceof.ts
+ReferenceError: Product is not defined
+```
+
+Компілятор каже, що `Product` є лише типом. Запуск показує те саме з іншого боку: `node` стер опис типу, і назви
+`Product` у програмі не лишилося. Під час роботи типів немає, тому перевіряти можна лише значення.
 
 **«`any` зручний, бо не заважає працювати».** Він не заважає лише компілятору. Помилка нікуди не зникає, а переїжджає
 до людини, яка користується програмою.

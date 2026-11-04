@@ -56,16 +56,29 @@ function ParcelCard() {
 
 ### Що саме приходить у функцію
 
-Подивімося на це прямо. Компонент `Label` нічого не показує, а лише друкує свій аргумент:
+Подивімося на це прямо. Компонент `Label` нічого не показує, а лише друкує свій аргумент. Компонент і тест лежать в
+одному файлі, ім'я якого закінчується на `.test.tsx`, наприклад `src/label.test.tsx`. Команда `npx vitest run`
+запускає такий файл:
 
 ```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { render } from '@testing-library/react'
+import { test } from 'vitest'
+
 function Label(props: { city: string; weight: number; fragile: boolean; tags: string[] }) {
-  console.log(props)
+  console.log(props) // друкує все, що функція отримала
   return null
 }
 
-render(<Label city="Львів" weight={2} fragile tags={['скло']} />)
+test('Label', () => {
+  // render показує компонент, тобто React викликає функцію Label.
+  render(<Label city="Львів" weight={2} fragile tags={['скло']} />)
+})
 ```
+
+Решта прикладів із React у цій лекції запускаються так само: рядки показу й друку стоять усередині `test`, а перші
+рядки файла ми далі не повторюємо. Ось що надрукував цей тест:
 
 ```text
 { city: 'Львів', weight: 2, fragile: true, tags: [ 'скло' ] }
@@ -172,6 +185,8 @@ export const d = /* @__PURE__ */ _jsx(Stamp, {
 Поля об'єкта записуються по черзі, тому пізніше значення замінює раннє. Порядок записів у тегу вирішує результат:
 
 ```tsx
+import { renderToStaticMarkup } from 'react-dom/server' // перетворює компонент на рядок HTML без документа
+
 function Stamp({ color, text }: { color: string; text: string }) {
   return <i style={{ color }}>{text}</i>
 }
@@ -349,9 +364,18 @@ _jsx(Panel, {
 
 ### Яку форму має `children`
 
-Форма значення залежить від того, що написав батько:
+Форма значення залежить від того, що написав батько. Щоб це побачити, зробимо компонент `Panel`, який нічого не
+показує, а лише друкує свій проп `children`:
 
 ```tsx
+import type { ReactNode } from 'react' // ReactNode означає все, що React уміє показати
+
+function Panel({ children }: { children?: ReactNode }) {
+  // Перше слово каже, що це за значення, а далі друкується сам вміст.
+  console.log(Array.isArray(children) ? 'масив' : typeof children, JSON.stringify(children))
+  return null
+}
+
 const n = 2
 render(<Panel>Просто текст</Panel>)
 render(<Panel>Посилок: {n}</Panel>)
@@ -363,6 +387,16 @@ render(
 render(<Panel />)
 ```
 
+```text
+string "Просто текст"
+масив ["Посилок: ",2]
+object {"type":"p","key":null,"props":{"children":"один"},"_owner":null,"_store":{}}
+undefined undefined
+```
+
+Кожен виклик `render` надрукував один рядок, у тому самому порядку. У рядку зі словом `object` лежить елемент, тобто
+об'єкт із полем `type`, а поля `_owner` і `_store` є службовими полями React. Таблиця збирає цей вивід:
+
 | Що між тегами | Що лежить у `children` |
 |---------------|------------------------|
 | лише текст | рядок `"Просто текст"` |
@@ -372,9 +406,31 @@ render(<Panel />)
 
 Третій рядок випливає з правила про пробіли з лекції «JSX»: кінці рядків і відступи навколо тега компілятор прибирає,
 тому дитина лишається одна. З цієї таблиці випливає, що писати `children.map(...)` небезпечно: у трьох випадках із
-чотирьох `children` не є масивом. Масив дітей, коли він є, у режимі розробки теж заморожений: виклик `children.push`
-дає `Cannot add property 2, object is not extensible`. React має окремий помічник `Children` для таких випадків, але
-документація називає його вживання нечастим і радить спершу пошукати інший спосіб.
+чотирьох `children` не є масивом. Масив дітей, коли він є, у режимі розробки теж заморожений. Перевіримо це викликом
+`push`:
+
+```tsx
+function Adds({ children }: { children: ReactNode[] }) {
+  try {
+    children.push('ще') // спроба дописати значення в отриманий масив
+  } catch (error) {
+    console.log((error as Error).message)
+  }
+  return null
+}
+
+const n = 2
+render(<Adds>Посилок: {n}</Adds>) // між тегами текст і вираз, тому children є масивом
+```
+
+```text
+Cannot add property 2, object is not extensible
+```
+
+Масив `["Посилок: ", 2]` уже має елементи з індексами 0 і 1, тому `push` намагається додати елемент з індексом 2, а
+заморожений масив цього не дозволяє. Отже, `children` можна лише читати й показувати, як і решту пропсів. React має
+окремий помічник `Children` для таких випадків, але документація називає його вживання нечастим і радить спершу
+пошукати інший спосіб.
 
 Тип для пропа `children` зазвичай пишуть `ReactNode`, що означає все, що React уміє показати. Докладно цей тип розбере
 день 6. Якщо проп оголошено обов'язковим, то запис `<Panel />` не пройде `tsc`: `TS2741: Property 'children' is
@@ -513,8 +569,45 @@ console.log(render(<Tern ok={true} />).container.innerHTML)
 JavaScript цей оператор повертає один зі своїх операндів без перетворення. Стандарт ECMAScript описує його так: якщо
 ліва частина після перетворення хибна, повернути ліву частину. В інших випадках результатом стає права частина.
 
-Лекція «JSX» вже показувала, що React робить з різними значеннями. Разом із поведінкою `&&` це дає повну таблицю. Ось
-результат запису `<p>{v && <b>так</b>}</p>`:
+Лекція «JSX» вже показувала, що React робить з різними значеннями. Разом із поведінкою `&&` це дає повну таблицю. Щоб
+її отримати, покажемо запис `<p>{v && <b>так</b>}</p>` із кожним значенням і надрукуємо абзац, який вийшов:
+
+```tsx
+// Тип any стоїть лише для досліду, бо в змінну v потраплять значення різних типів.
+function Show({ v }: { v: any }) {
+  return <p>{v && <b>так</b>}</p>
+}
+
+const cases: [string, unknown][] = [
+  ['0', 0], ['-0', -0], ['0n', 0n], ['NaN', NaN], ["''", ''], ['false', false], ['null', null],
+  ['undefined', undefined], ['2', 2], ['-1', -1], ["'0'", '0'], ['[]', []], ['{}', {}],
+]
+for (const [label, v] of cases) {
+  const p = render(<Show v={v} />).container.querySelector('p')!
+  // childNodes містить усе, що лежить в абзаці: елементи й шматки тексту. Кожен з них називають вузлом.
+  console.log(label, '|', p.outerHTML, '| вузлів:', p.childNodes.length)
+}
+```
+
+```text
+0 | <p>0</p> | вузлів: 1
+-0 | <p>0</p> | вузлів: 1
+0n | <p>0</p> | вузлів: 1
+Received NaN for the `children` attribute. If this is expected, cast the value to a string.
+NaN | <p>NaN</p> | вузлів: 1
+'' | <p></p> | вузлів: 0
+false | <p></p> | вузлів: 0
+null | <p></p> | вузлів: 0
+undefined | <p></p> | вузлів: 0
+2 | <p><b>так</b></p> | вузлів: 1
+-1 | <p><b>так</b></p> | вузлів: 1
+'0' | <p><b>так</b></p> | вузлів: 1
+[] | <p><b>так</b></p> | вузлів: 1
+{} | <p><b>так</b></p> | вузлів: 1
+```
+
+Рядок зі словами `Received NaN` є попередженням, яке друкує сам React. Таблиця групує той самий вивід і пояснює кожну
+групу:
 
 | Значення `v` | Розмітка | Вузлів у `<p>` | Чому |
 |--------------|----------|----------------|------|
@@ -545,10 +638,28 @@ JavaScript цей оператор повертає один зі своїх о�
 Запис `0 || 'немає'` дає `'немає'`, бо нуль хибний. Запис `0 ?? 'немає'` дає `0`, бо оператор `??` замінює лише `null`
 і `undefined`.
 
-**Хто це ловить.** Автоматичні перевірки коду цього не ловлять. `tsc` пропускає цей запис, бо тип виразу є «число або
-елемент», а число є дозволеним умістом розмітки. ESLint із наборами `typescript-eslint` recommended і `react-hooks`
-recommended теж мовчить, ми це перевірили. Сторінка не падає, а лише показує зайвий символ. Тому цю помилку знаходить
-лише приклад у тесті, де число дорівнює нулю. Як його написати, розказано нижче, у розділі про рецепт.
+**Хто це ловить.** Автоматичні перевірки коду цього не ловлять. Запустимо їх на файлі, який містить цю помилку. Запис
+`$?` друкує код виходу попередньої команди:
+
+```tsx
+// файл src/Attempts.tsx
+export function Attempts({ attempts }: { attempts: number }) {
+  return <p>{attempts && <b>Невдалих спроб: {attempts}</b>}</p>
+}
+```
+
+```text
+$ npx tsc --noEmit -p tsconfig.app.json; echo "код виходу tsc: $?"
+код виходу tsc: 0
+$ npx eslint src/Attempts.tsx; echo "код виходу ESLint: $?"
+код виходу ESLint: 0
+```
+
+Обидві програми не надрукували жодного зауваження, а код виходу 0 означає, що вони не знайшли помилок. `tsc` пропускає
+цей запис, бо тип виразу є «число або елемент», а число є дозволеним умістом розмітки. ESLint із наборами
+`typescript-eslint` recommended і `react-hooks` recommended теж мовчить. Сторінка не падає, а лише показує зайвий
+символ. Тому цю помилку знаходить лише приклад у тесті, де число дорівнює нулю. Як його написати, розказано нижче, у
+розділі про рецепт.
 
 ## Варіанти стану: пропс, який описує одну з кількох форм
 
@@ -615,24 +726,71 @@ TS2339: Property 'courier' does not exist on type '{ stage: "packing"; }'.
 `TS2339: Property 'courier' does not exist on type 'Delivery'`, бо поле `courier` є не в усіх варіантах. Той самий
 запис усередині гілки `onTheWay` помилки не дає.
 
-**Новий варіант компілятор помітить не завжди.** Додамо четвертий етап, `{ stage: 'lost'; lastSeen: string }`, і не
-змінюватимемо код картки. Якщо остання гілка читає поле, компілятор помітить проблему:
+**Новий варіант компілятор помітить не завжди.** Додамо четвертий етап, `{ stage: 'lost'; lastSeen: string }`, і
+напишемо дві картки, які про нього не знають. Обидві розбирають `packing` і `onTheWay`, а решту віддають останній
+гілці. Остання гілка картки `Reads` читає поле, а остання гілка картки `Silent` жодного поля не читає:
+
+```tsx
+type Delivery =
+  | { stage: 'packing' }
+  | { stage: 'onTheWay'; courier: string; attempts: number }
+  | { stage: 'delivered'; signedBy: string }
+  | { stage: 'lost'; lastSeen: string } // новий варіант
+
+function Reads({ delivery }: { delivery: Delivery }) {
+  if (delivery.stage === 'packing') return <p>Посилку пакують</p>
+  if (delivery.stage === 'onTheWay') return <p>Везе кур'єр {delivery.courier}</p>
+  return <p>Отримала: {delivery.signedBy}</p> // тут лишилися delivered і lost
+}
+function Silent({ delivery }: { delivery: Delivery }) {
+  if (delivery.stage === 'packing') return <p>Посилку пакують</p>
+  if (delivery.stage === 'onTheWay') return <p>Везе кур'єр {delivery.courier}</p>
+  return <p>Отримано</p> // тут теж лишилися delivered і lost
+}
+
+const lost: Delivery = { stage: 'lost', lastSeen: 'Київ' }
+console.log(render(<Reads delivery={lost} />).container.innerHTML)
+console.log(render(<Silent delivery={lost} />).container.innerHTML)
+```
+
+Про картку `Reads` компілятор повідомляє проблему, а про картку `Silent` не повідомляє нічого:
 
 ```text
 TS2339: Property 'signedBy' does not exist on type '{ stage: "delivered"; signedBy: string; } | { stage: "lost"; lastSeen: string; }'.
 ```
 
-Якщо ж остання гілка просто показує напис «Отримано» й жодного поля не читає, помилки не буде, і загублена посилка на
-екрані стане отриманою. Для таких випадків у лекції «TypeScript: основи» є прийом із типом `never`, який змушує
-компілятор перевірити, що всі варіанти розібрано.
+Vitest не зважає на цю помилку типів, запускає обидві картки для загубленої посилки й друкує таке:
+
+```text
+<p>Отримала: </p>
+<p>Отримано</p>
+```
+
+Перший рядок надрукувала картка `Reads`. Її помилку можна знайти ще до запуску, бо `tsc` про неї повідомив. Другий
+рядок надрукувала картка `Silent`. Отже, якщо остання гілка просто показує напис «Отримано» й жодного поля не читає,
+помилки не буде, і загублена посилка на екрані стане отриманою. Для таких випадків у лекції «TypeScript: основи» є
+прийом із типом `never`, який змушує компілятор перевірити, що всі варіанти розібрано.
 
 **Під час роботи типів немає.** Vitest і Vite лише вирізають типи й запускають код, про що розповідала та сама лекція.
-Тому тест пройде по коду з помилкою типів, а результат залежить від глибини читання:
+Тому тест пройде по коду з помилкою типів, а результат залежить від глибини читання. Обидві картки нижче читають поле
+`courier` у гілці `packing`, де його немає, тому `tsc` скаржиться на обидві:
 
 ```tsx
-// delivery має тип any, тому tsc мовчить; під час роботи це { stage: 'packing' }
-<p>Везе кур'єр {delivery.courier}</p>
-<p>{delivery.courier.toUpperCase()}</p>
+function Soft({ delivery }: { delivery: Delivery }) {
+  if (delivery.stage === 'packing') return <p>Везе кур'єр {delivery.courier}</p>
+  return null
+}
+function Hard({ delivery }: { delivery: Delivery }) {
+  if (delivery.stage === 'packing') return <p>{delivery.courier.toUpperCase()}</p>
+  return null
+}
+
+console.log(render(<Soft delivery={{ stage: 'packing' }} />).container.innerHTML)
+try {
+  render(<Hard delivery={{ stage: 'packing' }} />)
+} catch (error) {
+  console.log((error as Error).message)
+}
 ```
 
 ```text
@@ -645,8 +803,9 @@ Cannot read properties of undefined (reading 'toUpperCase')
 в редакторі, а не чекають, поки щось упаде в браузері.
 
 **Необов'язкові поля цього не дають.** Тип `{ stage: string; courier?: string }` компілюється, але компілятор не
-пов'язує `stage` із `courier`. Він каже лише `TS18048: 'delivery.courier' is possibly 'undefined'`, а цю скаргу легко
-заглушити знаком `!`. Знак `!` є обіцянкою компілятору, що значення є, і компілятор вірить їй без перевірки.
+пов'язує `stage` із `courier`. На запис `delivery.courier.toUpperCase()` він каже лише `TS18048: 'delivery.courier' is
+possibly 'undefined'`, а цю скаргу легко заглушити знаком `!`. Знак `!` є обіцянкою компілятору, що значення є, і
+компілятор вірить їй без перевірки.
 Документація TypeScript у розділі `Discriminated unions` радить саме такий висновок: зв'язок між полями треба описати
 в типі, а не обіцяти його знаком оклику.
 
@@ -655,7 +814,7 @@ Cannot read properties of undefined (reading 'toUpperCase')
 Покажемо картку з чотирма різними наборами даних і подивимося, що вийшло:
 
 ```tsx
-render(
+const { container } = render(
   <>
     <ParcelStatus city="Львів" delivery={{ stage: 'packing' }} />
     <ParcelStatus city="Одеса" delivery={{ stage: 'onTheWay', courier: 'Ігор', attempts: 0 }} />
@@ -663,7 +822,12 @@ render(
     <ParcelStatus city="Рівне" delivery={{ stage: 'onTheWay', courier: 'Ігор', attempts: 2 }} />
   </>,
 )
+// Для кожної картки друкуємо вміст її тега section, тобто те, що Panel поклала всередину рамки.
+container.querySelectorAll('section').forEach((section) => console.log(section.innerHTML))
 ```
+
+Перші чотири рядки виводу надрукував `console.log` у тілі `ParcelStatus`, а наступні чотири надрукував останній рядок
+цього коду:
 
 ```text
 виклик для міста Львів
@@ -718,6 +882,8 @@ render(
 цілком збігається з рядком, і від цього залежить, чи спіймає приклад пастку:
 
 ```tsx
+import { cleanup, render, screen } from '@testing-library/react'
+
 const attempts = 0
 function A() {
   return <article>{attempts && <b>спроб: {attempts}</b>}<p>Посилку пакують</p></article>
@@ -725,6 +891,12 @@ function A() {
 function B() {
   return <article><p>Спроб: {attempts && <b>{attempts}</b>}</p></article>
 }
+
+const a = render(<A />)
+console.log('A:', screen.queryByText('0')?.tagName ?? null, '|', a.container.textContent)
+cleanup() // запит шукає в усьому документі, тому перед другим показом прибираємо перший
+const b = render(<B />)
+console.log('B:', screen.queryByText('0')?.tagName ?? null, '|', b.container.textContent)
 ```
 
 ```text
@@ -749,7 +921,24 @@ B: null | Спроб: 0
 `useState` і `useReducer`. Так само файл `recipe.test.tsx` читає ваші коментарі над компонентами.
 
 Подивитися на картки можна запуском `npm run dev` за адресою `/f1-d03.html`. Сервер розробки Vite віддає HTML-файл із
-кореня проєкту за його іменем. Ми перевірили це запитом `curl`, а саму сторінку в браузері не відкривали.
+кореня проєкту за його іменем. Це можна перевірити програмою `curl`, яка робить запит до сервера й друкує відповідь.
+Поки працює `npm run dev`, запустіть в іншому терміналі дві команди. Файл `f1-d03.html` має вже лежати в корені
+`spa/`, а програма `grep` залишає з відповіді лише адресу скрипта сторінки:
+
+```bash
+curl -s http://localhost:5173/f1-d03.html | grep -o 'src="/src[^"]*"'
+curl -s http://localhost:5173/no-such.html | grep -o 'src="/src[^"]*"'
+```
+
+```text
+src="/src/lessons/f1-d03/preview.tsx"
+src="/src/main.tsx"
+```
+
+Перший запит повернув саме файл `f1-d03.html`, бо лише він підключає `preview.tsx`. Файла `no-such.html` у проєкті
+немає, але сервер не повідомив про помилку, а віддав `index.html`, який підключає `main.tsx`. Отже, якщо за адресою
+`/f1-d03.html` ви бачите стартову сторінку проєкту, то файл лежить не в корені `spa/`. Саму сторінку в браузері ми не
+відкривали.
 
 ## Хто яку помилку ловить
 
@@ -763,6 +952,26 @@ B: null | Спроб: 0
 | зайвий проп | пропускає | `TS2322` | компонент його не прочитає |
 | рамка не виводить `{children}` | пропускає | `TS6133`, якщо проп розкладено в параметрах | мовчить, вміст зникає |
 | `{if (ok) 'так'}` | `Unexpected token` | `TS1109` | до запуску не дійде |
+
+Рядок про рамку досі не мав прикладу. Рамка `Frame` розкладає `children` у параметрах, але не виводить його:
+
+```tsx
+// файл src/Frame.tsx
+import type { ReactNode } from 'react'
+
+export function Frame({ title, children }: { title: string; children: ReactNode }) {
+  return <h3>{title}</h3>
+}
+```
+
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/Frame.tsx(4,32): error TS6133: 'children' is declared but its value is never read.
+```
+
+Числа в дужках означають рядок і позицію в рядку. Отже, забуте `{children}` компілятор знайде лише тоді, коли проп
+названо в параметрах. Рамка `Careless` вище не називає `children` у параметрах, тому `tsc` на неї не скаржиться, і
+таку помилку може виявити лише приклад у тесті.
 
 Перші чотири рядки показують, що один інструмент цього не закриває. Частину ловить `tsc`, а поведінку закривають
 приклади.

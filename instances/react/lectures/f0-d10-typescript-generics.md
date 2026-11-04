@@ -149,7 +149,31 @@ infer.ts(14,1): error TS2322: Type '{ value: number; }' is not assignable to typ
 об'єкт. Компілятор цього передбачити не може, тому такий випадок вимагає явного запису: `box<Product | null>(null)`.
 
 **Вказувати `T` треба для всіх параметрів одразу.** Якщо параметрів типу два, а в дужках указано один, компілятор
-відповість `Expected 2 type arguments, but got 1`. Часткового виведення немає.
+відповість `Expected 2 type arguments, but got 1`. Часткового виведення немає. Перевіримо це на функції з двома
+параметрами типу.
+
+Файл `partial-args.ts`:
+
+```ts
+function pair<A, B>(a: A, b: B): [A, B] {
+  return [a, b];
+}
+
+// Указано лише A, а B компілятор мав би добрати сам.
+const wrong = pair<number>(1, "два");
+// Указано обидва параметри, тому помилки немає.
+const right = pair<number, string>(1, "два");
+// Не вказано жодного, тому компілятор добирає обидва.
+const inferred = pair(1, "два");
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false partial-args.ts
+partial-args.ts(6,20): error TS2558: Expected 2 type arguments, but got 1.
+```
+
+Компілятор поскаржився лише на рядок зі змінною `wrong`, бо там указано один параметр із двох. На практиці є два
+робочі записи: або вкажіть усі параметри, або не вказуйте жодного й дайте компілятору добрати їх з аргументів.
 
 ## Обмеження: `extends`
 
@@ -333,6 +357,29 @@ $ node stack.ts
 - `createStack<T>(): Stack<T>` не має аргументів, тому `T` тут нема звідки вивести. Тому виклик пише
   `createStack<string>()` явно. Без цього вийшов би `Stack<unknown>`.
 - Об'єкт із методами не повторює типів `item`, бо компілятор бере їх з `Stack<T>`, указаного як тип результату.
+- Вивід `Змінено ціну 1` містить два значення: `undo.pop()` забрав і повернув останній доданий запис, а `undo.size()`
+  після цього показав, що в стеку лишився один запис.
+
+Перевірмо дві помилки, про які щойно йшлося. Допишіть у кінець файлу `stack.ts` такі рядки:
+
+```ts
+// Тип Stack записано без аргументу.
+const noArgument: Stack = createStack<string>();
+
+// Виклик без кутових дужок: аргументів немає, тому T нема звідки взяти.
+const noType = createStack();
+const item: string | undefined = noType.pop();
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false stack.ts
+stack.ts(21,19): error TS2314: Generic type 'Stack<T>' requires 1 type argument(s).
+stack.ts(25,7): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+```
+
+Перше повідомлення стосується запису `Stack` без аргументу. Друге показує, що `noType.pop()` повертає `unknown`, тобто
+компілятор підставив `T = unknown`. Отже, коли функція не має аргументів, з яких можна вивести `T`, пишіть тип у
+кутових дужках самі. Інакше результат доведеться перевіряти перед кожним вживанням.
 
 Параметр можна поставити й в об'єднанні з учорашньої лекції. Запис `type Loaded<T> = { status: "ok"; value: T } | {
 status: "fail"; reason: string }` описує результат будь-якого завантаження, а `Loaded<number>` і `Loaded<Product[]>`
@@ -383,6 +430,7 @@ console.log(coffee);
 
 const frozen: Readonly<Product> = { ...tea };
 frozen.price = 100;
+console.log(frozen.price);
 ```
 
 ```text
@@ -392,16 +440,19 @@ traps.ts(16,8): error TS2540: Cannot assign to 'price' because it is a read-only
 $ node traps.ts
 undefined
 undefined
+100
 ```
 
 - `Omit` не перевіряє назв. Його другий параметр обмежено будь-яким ключем, а не `keyof T`, тому описка `"prise"` у
   третьому рядку пройшла й нічого не прибрала. `Pick` у наступному рядку таку описку зупинив.
 - `Partial` дозволяє явне `undefined`. Об'єкт `updated` за типом `Product`, а ціна в ньому `undefined`, і компілятор
-  мовчить.
-- `Record<string, number>` обіцяє число за будь-яким ключем, навіть за неіснуючим. Прапорець
-  `--noUncheckedIndexedAccess` змушує враховувати `undefined`, проте `--strict` його не вмикає.
-- `Readonly` існує лише для компілятора. Файл `node` запустив, і рядок із присвоєнням виконався. Заморозити об'єкт під
-  час роботи може лише `Object.freeze`. Крім того, `Readonly` і `Partial` діють лише на верхній рівень полів.
+  мовчить. Це значення надрукував `console.log(updated.price)` у першому рядку виводу.
+- `Record<string, number>` обіцяє число за будь-яким ключем, навіть за неіснуючим. Тому другий рядок виводу теж
+  `undefined`: його надрукував `console.log(coffee)`. Прапорець `--noUncheckedIndexedAccess` змушує враховувати
+  `undefined`, проте `--strict` його не вмикає.
+- `Readonly` існує лише для компілятора. Файл `node` запустив, і рядок із присвоєнням виконався: третій рядок виводу
+  `100` є новою ціною. Заморозити об'єкт під час роботи може лише `Object.freeze`. Крім того, `Readonly` і `Partial`
+  діють лише на верхній рівень полів.
 
 ## Коли дженерик не потрібен
 
@@ -438,23 +489,94 @@ $ node parse.ts
 string
 ```
 
-Компілятор мовчить, бо `JSON.parse` повертає `any`, а `any` можна покласти куди завгодно. Запис `parse<Rate>`
-читається як перевірка, але є тим самим твердженням `as Rate` в іншому записі. Функція `async function getJson<T>(url:
-string): Promise<T>`, яка повертає `response.json()`, має ту саму ваду. Такий запис можна використовувати як угоду з
-сервером, але дані лишаються неперевіреними, доки їх не перевірить код.
+Вивід `string` показує неправду в типі: за типом `Rate` поле `value` є числом, а в тексті JSON там стоїть рядок
+`"41.5"`. Компілятор мовчить, бо `JSON.parse` повертає `any`, а `any` можна покласти куди завгодно. Запис
+`parse<Rate>` читається як перевірка, але є тим самим твердженням `as Rate` в іншому записі. Функція
+`async function getJson<T>(url: string): Promise<T>`, яка повертає `response.json()`, має ту саму ваду. Такий запис
+можна використовувати як угоду з сервером, але дані лишаються неперевіреними, доки їх не перевірить код.
 
 Інколи `as` усередині дженерика виправданий, бо компілятор не може простежити цикл. Наприклад, `const result = {} as
-Record<K, number>` у функції, яка далі заповнює всі ключі `K`. Без `as` компілятор відповість `Type '{}' is not
-assignable to type 'Record<K, number>'`. Тут обіцянку дає сам автор функції, і вона стосується коду, який він бачить,
-а не даних зі світу.
+Record<K, number>` у функції, яка далі заповнює всі ключі `K`. Функція `zeros` нижче створює таблицю лічильників, де
+кожен лічильник дорівнює нулю. Рядок зі змінною `plain` навмисно записано без `as`, щоб побачити відповідь
+компілятора.
+
+Файл `zeros.ts`:
+
+```ts
+function zeros<K extends string>(keys: K[]): Record<K, number> {
+  // Без as: компілятор бачить порожній об'єкт, а не об'єкт з усіма ключами K.
+  const plain: Record<K, number> = {};
+
+  // З as: автор функції обіцяє, що цикл нижче заповнить усі ключі K.
+  const result = {} as Record<K, number>;
+  for (const key of keys) {
+    result[key] = 0;
+  }
+  return result;
+}
+
+console.log(zeros(["low", "high"]));
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false zeros.ts
+zeros.ts(3,9): error TS2322: Type '{}' is not assignable to type 'Record<K, number>'.
+$ node zeros.ts
+{ low: 0, high: 0 }
+```
+
+Без `as` компілятор відповів `Type '{}' is not assignable to type 'Record<K, number>'`, і ця відповідь стосується лише
+рядка зі змінною `plain`. Рядок із `as` компілятор пропустив, а `node` надрукував таблицю з усіма ключами, тобто цикл
+справді виконав обіцянку. Тут обіцянку дає сам автор функції, і вона стосується коду, який він бачить, а не даних зі
+світу.
 
 ## Типові хибні уявлення
 
 **«`K extends keyof T` не пропустить чужий ключ під час роботи».** Обмеження живе лише в компіляторі. Виклик
-`pluck(shelf, "prise" as "price")` компілюється, а `node` друкує `[ undefined, undefined ]`.
+`pluck(shelf, "prise" as "price")` компілюється, а `node` друкує `[ undefined, undefined ]`. Щоб побачити це, допишіть
+у кінець файлу `pluck.ts` такий рядок:
+
+```ts
+// as змушує компілятор вважати описку "prise" правильною назвою "price".
+console.log(pluck(shelf, "prise" as "price"));
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false pluck.ts
+(tsc нічого не надрукував: помилок немає)
+$ node pluck.ts
+[ 80, 150 ] [ 'Чай', 'Кава' ]
+230
+[ undefined, undefined ]
+```
+
+Перші два рядки виводу надрукував старий код файлу, а останній надрукував новий рядок. Поля `prise` в об'єктах немає,
+тому `item[key]` дає `undefined` для кожного з двох товарів. Отже, обмеження зупиняє описку лише доти, доки компілятор
+бачить справжню назву поля. Запис `as` цю перевірку обходить.
 
 **«`Partial` дозволяє покласти в поле що завгодно».** Він дозволяє лише пропустити поле або покласти `undefined`.
 Поле, яке є, зберігає свій тип, тому `{ price: "99" }` компілятор відхилить.
+
+Файл `partial-type.ts`:
+
+```ts
+type Product = { id: number; name: string; price: number };
+
+// Поле пропущено або дорівнює undefined: це Partial дозволяє.
+const empty: Partial<Product> = {};
+const cleared: Partial<Product> = { price: undefined };
+
+// Поле є, але тип інший: це Partial не дозволяє.
+const wrong: Partial<Product> = { price: "99" };
+```
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false partial-type.ts
+partial-type.ts(8,35): error TS2322: Type 'string' is not assignable to type 'number'.
+```
+
+Компілятор поскаржився лише на останній рядок. Отже, `Partial` робить поле необов'язковим, але перевірку типу поля не
+вимикає: ціну рядком він у код не пропустить.
 
 **«Чим більше параметрів типу, тим гнучкіша функція».** Гнучкість дає зв'язок між типами, а не кількість параметрів.
 Посібник радить брати якомога менше параметрів.

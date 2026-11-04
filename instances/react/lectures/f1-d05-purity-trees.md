@@ -9,6 +9,13 @@
 справжній. Перевірку лінтером запущено на ESLint із правилами React. У справжньому браузері приклади не запускалися,
 тому біля кожного твердження про браузер сказано, на чому воно тримається.
 
+Кожен дослід можна повторити в проєкті шаблону. Для цього створіть окремий файл тесту, наприклад
+`src/tickets.test.tsx`. Першим рядком напишіть `// @vitest-environment jsdom`. Далі йдуть рядки `import`: функції
+`render` і `fireEvent` приходять із пакета `@testing-library/react`, функція `test` із пакета `vitest`, а
+`StrictMode`, `memo` і хуки із пакета `react`. Лекція не повторює ці рядки в кожному прикладі. Код прикладу покладіть
+усередину `test('дослід', () => { ... })`. Запускає файл команда `npx vitest run src/tickets.test.tsx
+--disable-console-intercept`, а прапорець у ній прибирає службові рядки навколо `console.log`.
+
 **Після лекції ви зможете пояснити:**
 
 - які дві умови робить компонент чистим і чому локальний `push` їх не порушує;
@@ -111,6 +118,9 @@ function Queue({ names }: { names: string[] }) {
 }
 ```
 
+Запускаємо ті самі три покази, що й вище. Прибрати з них треба лише рядок `nextNumber = 1`, бо лічильника більше
+немає:
+
 ```text
 перший показ:   Талон 1: ОляТалон 2: ІгорТалон 3: Марта
 другий показ:   Талон 1: ОляТалон 2: ІгорТалон 3: Марта
@@ -122,9 +132,57 @@ function Queue({ names }: { names: string[] }) {
 
 ### Що саме порушує чистоту
 
-Порушень буває більше, ніж запис у лічильник. Ось типові випадки. Лінтер у цій таблиці означає ESLint із правилами
-`react-hooks`, який шаблон проєкту вже підключив, і його результат справжній: ми запустили всі ці рядки в одному
-файлі.
+Порушень буває більше, ніж запис у лічильник. Зберімо типові випадки в одному файлі `src/impure.tsx` і перевірмо його
+лінтером. Лінтер тут означає ESLint із правилами `react-hooks`, який шаблон проєкту вже підключив.
+
+```tsx
+let nextNumber = 1
+const shown: string[] = []
+
+export function WritesCounter() {
+  nextNumber = nextNumber + 1 // запис у зовнішню змінну
+  return <p>{nextNumber}</p>
+}
+
+export function WritesArray({ name }: { name: string }) {
+  shown.push(name) // запис через метод у зовнішній масив
+  return <p>{name}</p>
+}
+
+export function SortsProp({ names }: { names: string[] }) {
+  names.sort() // зміна масиву, який належить батькові
+  return <p>{names.join(', ')}</p>
+}
+
+export function WritesTitle({ text }: { text: string }) {
+  document.title = text // запис у сторінку під час рендеру
+  return <p>{text}</p>
+}
+
+export function ReadsClock() {
+  const now = Date.now() // кожен виклик дає інше число
+  return <p>{now}</p>
+}
+```
+
+Звичайний вивід ESLint для кожного зауваження друкує ще цитату коду й абзац пояснень. Тому ми просимо ESLint видати
+результат у форматі JSON, а короткий скрипт Node друкує з нього номер рядка, назву правила й перший рядок
+повідомлення:
+
+```bash
+npx eslint src/impure.tsx -f json | node -e "
+  const [file] = JSON.parse(require('fs').readFileSync(0))
+  for (const m of file.messages) console.log(m.line, m.ruleId, m.message.split('\n')[0])"
+```
+
+```text
+5 react-hooks/globals Error: Cannot reassign variables declared outside of the component/hook
+20 react-hooks/immutability Error: This value cannot be modified
+25 react-hooks/purity Error: Cannot call impure function during render
+```
+
+Лінтер знайшов порушення в рядках 5, 20 і 25. Рядок 10 із `shown.push(name)` і рядок 15 із `names.sort()` він
+пропустив. Ось усі п'ять випадків у таблиці разом з умовою чистоти, яку порушує кожен:
 
 | Що робить тіло компонента | Яку умову порушує | Що каже лінтер |
 |---------------------------|-------------------|----------------|
@@ -157,8 +215,19 @@ function PriceUsual({ uah }: { uah: number }) {
 }
 const PriceRemembered = memo(PriceUsual)
 
-// показуємо обидва для 400 гривень, потім міняємо курс і показуємо знову
-rate = 50
+// Той самий рядок показів для обох запусків: пропс uah обидва рази дорівнює 400.
+const prices = () => (
+  <>
+    <PriceUsual uah={400} /> <PriceRemembered uah={400} />
+  </>
+)
+
+const view = render(prices())
+console.log('курс 40:', view.container.textContent)
+
+rate = 50 // змінюємо зовнішню змінну, а пропси лишаються ті самі
+view.rerender(prices())
+console.log('курс 50:', view.container.textContent)
 ```
 
 ```text
@@ -186,6 +255,9 @@ function Numbered({ names }: { names: string[] }) {
   }
   return <p>{rows.join('; ')}</p>
 }
+
+const view = render(<StrictMode><Numbered names={['Марта', 'Ігор', 'Оля']} /></StrictMode>)
+console.log('Numbered у StrictMode:', view.container.textContent)
 ```
 
 ```text
@@ -209,6 +281,15 @@ function SortedGood({ names }: { names: string[] }) {
   const sorted = names.toSorted()
   return <p>{sorted.join(', ')}</p>
 }
+
+// Кожен компонент отримує власний масив батька, щоб результати не змішувалися.
+const forBad = ['Марта', 'Ігор', 'Оля']
+render(<SortedBad names={forBad} />)
+console.log('після SortedBad, масив батька:', forBad)
+
+const forGood = ['Марта', 'Ігор', 'Оля']
+render(<SortedGood names={forGood} />)
+console.log('після SortedGood, масив батька:', forGood)
 ```
 
 ```text
@@ -222,10 +303,26 @@ function SortedGood({ names }: { names: string[] }) {
 Те саме робив компонент `Views` із лекції «Пропси й умовний рендер», який при кожному рендері збільшував
 `parcel.views`. Там число росло з кожним `rerender`. Усередині `<StrictMode>` воно одразу стрибає через одиницю:
 
+```tsx
+function Views({ parcel }: { parcel: { views: number } }) {
+  parcel.views = parcel.views + 1
+  return <p>{parcel.views}</p>
+}
+
+const parcel = { views: 0 }
+const { container, rerender } = render(<StrictMode><Views parcel={parcel} /></StrictMode>)
+console.log(container.innerHTML)
+rerender(<StrictMode><Views parcel={parcel} /></StrictMode>)
+console.log(container.innerHTML)
+```
+
 ```text
 <p>2</p>
 <p>4</p>
 ```
+
+`<StrictMode>` викликає тіло двічі на кожен показ, тому перший показ лишає на екрані 2, а другий показ 4. Отже,
+змінений пропс видно вже на першому показі, і чужі дані в тілі компонента треба лише читати.
 
 ### Навіщо React це все
 
@@ -284,8 +381,21 @@ function Parent() {
 }
 ```
 
-Запис у `log` у тілі робить ці компоненти нечистими. Ми пишемо так лише заради досліду, щоб побачити порядок. Ось що
-надрукував запуск без `<StrictMode>`:
+Запис у `log` у тілі робить ці компоненти нечистими. Ми пишемо так лише заради досліду, щоб побачити порядок. Запуск
+показує компонент без `<StrictMode>`, клацає кнопку, а потім прибирає компонент зі сторінки:
+
+```tsx
+const view = render(<Parent />)
+console.log('показ:    ', log.join(' → '))
+
+log.length = 0 // спорожняємо журнал, щоб наступний рядок показав лише клацання
+fireEvent.click(view.getByRole('button'))
+console.log('клацання: ', log.join(' → '))
+
+log.length = 0
+view.unmount() // компонент зникає зі сторінки
+console.log('зникнення:', log.join(' → '))
+```
 
 ```text
 показ:     тіло Parent → тіло Child → ефект Child → ефект Parent
@@ -360,30 +470,123 @@ function Reminder({ text }: { text: string }) {
 - `[text]` каже: запустити ефект знову лише тоді, коли змінився `text`.
 
 Без прибирання той самий компонент лишає таймери працювати назавжди. Порівняйте кількість живих таймерів у двох
-варіантах:
+варіантах. Компонент `ReminderLeaky` відрізняється від `Reminder` лише тим, що його ефект нічого не повертає:
+
+```tsx
+function ReminderLeaky({ text }: { text: string }) {
+  useEffect(() => {
+    setInterval(() => { /* показати нагадування */ }, 60000)
+    activeTimers++
+  }, [text])
+  return <p>Нагадування: {text}</p>
+}
+
+function check(label: string, Component: typeof Reminder) {
+  activeTimers = 0
+  const view = render(<Component text="Вода" />)
+  console.log(`${label}, показ:`, activeTimers)
+  view.rerender(<Component text="Ліки" />) // новий текст запускає ефект знову
+  console.log(`${label}, новий текст:`, activeTimers)
+  view.unmount()
+  console.log(`${label}, зникнення:`, activeTimers)
+}
+
+check('без прибирання', ReminderLeaky)
+check('з прибиранням', Reminder)
+```
 
 ```text
 без прибирання, показ: 1
 без прибирання, новий текст: 2
 без прибирання, зникнення: 2
+з прибиранням, показ: 1
+з прибиранням, новий текст: 1
+з прибиранням, зникнення: 0
 ```
 
-Компонента вже немає на екрані, а два таймери досі працюють. Ось це й називається витоком: програма тримає те, що
-ніхто не використовує. Правило таке: прибирання скасовує рівно те, що зробив цей запуск ефекту.
+У першому варіанті компонента вже немає на екрані, а два таймери досі працюють. Ось це й називається витоком: програма
+тримає те, що ніхто не використовує. У другому варіанті новий текст зупиняє старий таймер перед запуском нового, а
+зникнення зупиняє останній. Правило таке: прибирання скасовує рівно те, що зробив цей запуск ефекту.
 
 Є одна поширена описка. Стрілка без фігурних дужок повертає значення виразу, тому запис `useEffect(() =>
 setInterval(tick, 60000), [text])` повертає номер таймера, а React вважає все, що повертає ефект, функцією прибирання.
-Компілятор каже про це заздалегідь, бо тип результату ефекту дозволяє лише нічого або функцію. Без компілятора запуск
-дає `useEffect must not return anything besides a function`, а коли компонент зникає, з'являється `TypeError: destroy
-is not a function`.
+Ось цілий файл `src/typo.test.tsx` із такою опискою:
+
+```tsx
+// @vitest-environment jsdom
+import { render } from '@testing-library/react'
+import { useEffect } from 'react'
+import { test } from 'vitest'
+
+function Typo({ text }: { text: string }) {
+  useEffect(() => setInterval(() => {}, 60000), [text]) // стрілка повертає номер таймера
+  return <p>{text}</p>
+}
+
+test('дослід', () => {
+  const view = render(<Typo text="Вода" />)
+  view.unmount() // React викликає те, що повернув ефект
+})
+```
+
+Компілятор каже про це заздалегідь, бо тип результату ефекту дозволяє лише нічого або функцію. Команда
+`npx tsc -p tsconfig.app.json --noEmit` друкує:
+
+```text
+src/typo.test.tsx(7,19): error TS2322: Type 'number' is not assignable to type 'void | Destructor'.
+```
+
+Без компілятора помилку виявляє запуск. Vitest типів не перевіряє, тому команда
+`npx vitest run src/typo.test.tsx --disable-console-intercept` запускає цей код і друкує, серед інших рядків, такі:
+
+```text
+useEffect must not return anything besides a function, which is used for clean-up. You returned: 38
+ FAIL  src/typo.test.tsx > дослід
+TypeError: destroy is not a function
+```
+
+Перший рядок React друкує одразу після показу, коли бачить, що ефект повернув число. Це число є номером таймера, і у
+вас воно може бути іншим. Рядок `TypeError` з'являється на `view.unmount()`, бо React намагається викликати це число
+як функцію. Тому тіло ефекту пишіть у фігурних дужках, а прибирання повертайте окремим рядком `return`.
 
 ## Що робить `<StrictMode>`
 
 **`<StrictMode>`** є компонентом React без власної розмітки. Він вмикає додаткові перевірки для всього, що стоїть
 усередині нього. Шаблон проєкту вже обгортає ним застосунок у файлі `src/main.tsx`, як показувала лекція «Проєкт:
 Vite, лінт, TypeScript». Перевірки працюють лише в режимі розробки. Ось невеликий компонент з ефектом усередині
-`<StrictMode>`, запущений без браузера в Node із jsdom. Спершу він працює в режимі розробки, а потім у режимі збірки,
-який вмикає змінна середовища `NODE_ENV`:
+`<StrictMode>`, запущений без браузера в Node із jsdom. Цей дослід є звичайним скриптом `strict-modes.mjs` у корені
+проєкту, а не тестом, бо Vitest завжди вмикає режим розробки:
+
+```js
+import { JSDOM } from 'jsdom'
+
+// jsdom створює імітацію сторінки. Вона має з'явитися раніше за завантаження react-dom,
+// тому React завантажується нижче через await import, а не через import згори.
+const dom = new JSDOM('<div id="root"></div>')
+globalThis.window = dom.window
+globalThis.document = dom.window.document
+const { createElement, StrictMode, useEffect } = await import('react')
+const { createRoot } = await import('react-dom/client')
+
+const log = []
+
+function Probe() {
+  log.push('тіло')
+  useEffect(() => {
+    log.push('ефект')
+    return () => { log.push('прибирання') }
+  }, [])
+  return createElement('p', null, 'Привіт') // Node не розуміє JSX, тому елемент створює сама функція
+}
+
+createRoot(document.getElementById('root')).render(createElement(StrictMode, null, createElement(Probe)))
+await new Promise((resolve) => setTimeout(resolve, 100)) // чекаємо, поки React запустить ефекти
+
+console.log(process.env.NODE_ENV, '→', log.join(' → '))
+```
+
+Спершу скрипт працює в режимі розробки, а потім у режимі збірки. Режим вибирає змінна середовища `NODE_ENV` у командах
+`NODE_ENV=development node strict-modes.mjs` і `NODE_ENV=production node strict-modes.mjs`:
 
 ```text
 development → тіло → тіло → ефект → прибирання → ефект
@@ -400,6 +603,8 @@ Vitest запускає React у режимі розробки, тому в те
 `useReducer`. Перевіримо все це разом. Компонент `Counter` рахує кожен такий виклик:
 
 ```tsx
+const count = { body: 0, init: 0, update: 0, memo: 0, reducer: 0, handler: 0 }
+
 function Counter() {
   count.body++
   const [n, setN] = useState(() => { count.init++; return 0 })
@@ -414,6 +619,36 @@ function Counter() {
   )
 }
 ```
+
+Запуск показує компонент і клацає кнопку спершу без обгортки, а потім усередині `<StrictMode>`:
+
+```tsx
+// Друкує лічильники й скидає їх, щоб кожен рядок рахував лише свою подію.
+function report(label: string) {
+  console.log(label, count)
+  for (const key of Object.keys(count) as (keyof typeof count)[]) count[key] = 0
+}
+
+const plain = render(<Counter />)
+report('показ, без обгортки:')
+fireEvent.click(plain.getByRole('button'))
+report('клацання, без обгортки:')
+plain.unmount()
+
+const strict = render(<StrictMode><Counter /></StrictMode>)
+report('показ, StrictMode:')
+fireEvent.click(strict.getByRole('button'))
+report('клацання, StrictMode:')
+```
+
+```text
+показ, без обгортки: { body: 1, init: 1, update: 0, memo: 1, reducer: 0, handler: 0 }
+клацання, без обгортки: { body: 1, init: 0, update: 1, memo: 1, reducer: 1, handler: 1 }
+показ, StrictMode: { body: 2, init: 2, update: 0, memo: 2, reducer: 0, handler: 0 }
+клацання, StrictMode: { body: 2, init: 0, update: 2, memo: 2, reducer: 2, handler: 1 }
+```
+
+Ті самі числа зручніше читати в таблиці:
 
 | Подія | Режим | тіло | `useState` початок | функція оновлення | `useMemo` | редюсер | обробник |
 |-------|-------|------|--------------------|-------------------|-----------|---------|----------|
@@ -453,6 +688,12 @@ function Counter() {
 Друга перевірка стосується ефектів. Після першого показу React у режимі розробки один раз виконує прибирання й
 запускає ефект знову. Тіло при цьому не викликається. Ось той самий `Parent` із `Child`, тепер у `<StrictMode>`:
 
+```tsx
+log.length = 0
+render(<StrictMode><Parent /></StrictMode>)
+console.log(log.join(' → '))
+```
+
 ```text
 тіло Parent → тіло Parent → тіло Child → тіло Child → ефект Child → ефект Parent → прибирання Parent → прибирання Child → ефект Child → ефект Parent
 ```
@@ -463,6 +704,21 @@ function Counter() {
 
 Правильне запитання тут звучить не так: «як запустити ефект лише один раз?». Документація ставить його інакше: «як
 зробити ефект таким, щоб він витримував повторний запуск?». Подивіться, що дає `<StrictMode>` компонентам із таймером:
+
+```tsx
+activeTimers = 0
+const leaky = render(<StrictMode><ReminderLeaky text="Вода" /></StrictMode>)
+console.log('без прибирання, StrictMode показ:', activeTimers)
+leaky.unmount()
+
+activeTimers = 0
+const clean = render(<StrictMode><Reminder text="Вода" /></StrictMode>)
+console.log('з прибиранням, StrictMode показ:', activeTimers)
+clean.rerender(<StrictMode><Reminder text="Ліки" /></StrictMode>)
+console.log('з прибиранням, новий текст:', activeTimers)
+clean.unmount()
+console.log('з прибиранням, зникнення:', activeTimers)
+```
 
 ```text
 без прибирання, StrictMode показ: 2
@@ -484,7 +740,19 @@ function Counter() {
 межа. Ось компонент `A` поза обгорткою й компонент `B` усередині неї, а обгортка стоїть не в корені застосунку:
 
 ```tsx
+const log: string[] = []
+
+function Part({ label }: { label: string }) {
+  log.push(`тіло ${label}`)
+  useEffect(() => {
+    log.push(`ефект ${label}`)
+    return () => { log.push(`прибирання ${label}`) }
+  }, [])
+  return <p>{label}</p>
+}
+
 render(<div><Part label="A" /><StrictMode><Part label="B" /></StrictMode></div>)
+console.log(log.join(' → '))
 ```
 
 ```text
@@ -505,7 +773,8 @@ render(<div><Part label="A" /><StrictMode><Part label="B" /></StrictMode></div>)
 показує, і хто кого імпортує. Відповіді на них виглядають схоже, тому їх легко сплутати.
 
 Ось застосунок черги в кількох файлах. `App` малює обгортку `Shell`, а всередину неї вкладає чергу й підвал. `Queue`
-малює талони, а якщо людей немає, то компонент `Empty`.
+малює талони, а якщо людей немає, то компонент `Empty`. Кожен компонент першим рядком тіла друкує свою назву, щоб
+запуск показав порядок викликів.
 
 ```tsx
 // App.tsx
@@ -514,6 +783,7 @@ import { Queue } from './Queue'
 import { Shell } from './Shell'
 
 export function App({ names }: { names: string[] }) {
+  console.log('App')
   return (
     <Shell>
       <Queue names={names} />
@@ -529,19 +799,81 @@ import { Empty } from './Empty'
 import { Ticket } from './Ticket'
 
 export function Queue({ names }: { names: string[] }) {
+  console.log('Queue')
   if (names.length === 0) return <Empty />
   return <ul>{names.map((name) => <Ticket key={name} name={name} />)}</ul>
 }
 ```
 
-Файл `data.ts` лише зберігає масив імен і не містить жодного компонента, а імпортує його файл входу `main.tsx`.
+Решта файлів така сама проста:
+
+```tsx
+// Shell.tsx
+import type { ReactNode } from 'react'
+
+export function Shell({ children }: { children: ReactNode }) {
+  console.log('Shell')
+  return <main>{children}</main>
+}
+
+// Ticket.tsx
+export function Ticket({ name }: { name: string }) {
+  console.log(`Ticket «${name}»`)
+  return <li>{name}</li>
+}
+
+// Empty.tsx
+export function Empty() {
+  console.log('Empty')
+  return <p>Черга порожня</p>
+}
+
+// Footer.tsx
+export function Footer() {
+  console.log('Footer')
+  return <footer>Кінець черги</footer>
+}
+```
+
+Файл `data.ts` лише зберігає масив імен і не містить жодного компонента, а імпортує його файл входу `main.tsx`:
+
+```ts
+// data.ts
+export const names = ['Оля', 'Ігор', 'Марта']
+```
 
 **Дерево рендеру** показує, який компонент малює якого під час одного рендеру. Кожен вузол цього дерева є компонентом
-на своєму місці. Ось порядок викликів із запуску для трьох людей, а нижче він для порожньої черги:
+на своєму місці. Запуск показує застосунок для трьох людей, а потім для порожньої черги:
+
+```tsx
+// @vitest-environment jsdom
+// main.test.tsx
+import { render } from '@testing-library/react'
+import { test } from 'vitest'
+import { App } from './App'
+import { names } from './data'
+
+test('дослід', () => {
+  render(<App names={names} />).unmount()
+  console.log('--- порожня черга')
+  render(<App names={[]} />)
+})
+```
 
 ```text
-App → Shell → Queue → Ticket «Оля» → Ticket «Ігор» → Ticket «Марта» → Footer
-App → Shell → Queue → Empty → Footer
+App
+Shell
+Queue
+Ticket «Оля»
+Ticket «Ігор»
+Ticket «Марта»
+Footer
+--- порожня черга
+App
+Shell
+Queue
+Empty
+Footer
 ```
 
 З цих викликів складається таке дерево:
@@ -557,7 +889,24 @@ App
 ```
 
 **Дерево модулів** показує, який файл імпортує який. Вузлом є файл, а гілкою рядок `import`. Лекція «Модулі й пакети»
-називала цю саму будову графом модулів. Її можна побачити простою командою `grep -n "^import"`:
+називала цю саму будову графом модулів. Її можна побачити простою командою. Запущена в теці цих файлів, команда
+`grep -n "^import" *.ts *.tsx` друкує:
+
+```text
+App.tsx:2:import { Footer } from './Footer'
+App.tsx:3:import { Queue } from './Queue'
+App.tsx:4:import { Shell } from './Shell'
+Queue.tsx:2:import { Empty } from './Empty'
+Queue.tsx:3:import { Ticket } from './Ticket'
+Shell.tsx:2:import type { ReactNode } from 'react'
+main.test.tsx:3:import { render } from '@testing-library/react'
+main.test.tsx:4:import { test } from 'vitest'
+main.test.tsx:5:import { App } from './App'
+main.test.tsx:6:import { names } from './data'
+```
+
+Рядки про пакети `react`, `vitest` і `@testing-library/react` у дерево не входять, бо воно показує лише ваші файли.
+Решта рядків складається в таке дерево:
 
 ```text
 main.tsx
@@ -570,8 +919,7 @@ main.tsx
         └── Ticket.tsx
 ```
 
-У нашому досліді роль `main.tsx` виконував файл тесту. Кожен компонент у досліді ще дописував свою назву в журнал із
-допоміжного файла, і цей файл разом із такими рядками тут не показано.
+У нашому досліді роль `main.tsx` виконував файл тесту `main.test.tsx`, бо саме він імпортує `App.tsx` і `data.ts`.
 
 Схожість обманює. Ось чотири відмінності, і кожна видна на цьому прикладі.
 

@@ -27,25 +27,44 @@
 Ви робите каталог бібліотеки. Ось компонент картки книжки й виклик, який написав колега:
 
 ```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { render } from '@testing-library/react'
+import { test } from 'vitest'
+
 function BookCard({ title, pages }: { title: string; pages: number }) {
   return <p>{title}, {pages * 2}</p>
 }
 
-render(<BookCard title="Кобзар" pages="сто" />)
+test('картка книжки', () => {
+  // render показує компонент у документі й повертає container, вузол-обгортку навколо нього.
+  const { container } = render(<BookCard title="Кобзар" pages="сто" />)
+  console.log(container.innerHTML)
+})
 ```
+
+Цей код лежить у файлі `src/book-card.test.tsx` проєкту `spa`. Команда `npx vitest run src/book-card.test.tsx
+--disable-console-intercept` запускає файл, а прапорець у кінці прибирає службові рядки навколо друку. Вона друкує:
 
 ```text
 <p>Кобзар, NaN</p>
 ```
 
-Vitest запускає цей код і не скаржиться, тест зелений, а на екрані стоїть `NaN`. Це той самий поділ, який пояснювала
+Vitest запускає цей код і не скаржиться, тест зелений, а на екрані стоїть `NaN`. Це значення, назва якого означає «не
+число», дав рядок `pages * 2`, бо слово «сто» неможливо помножити на два. Це той самий поділ, який пояснювала
 лекція «TypeScript: основи»: перевірка типів і запуск коду є двома окремими діями. Vitest перед запуском просто
 викидає типи й виконує JavaScript, тому він не бачить, що рядок прийшов замість числа. `tsc` нічого не запускає, але
-цей рядок не пропустить:
+цей рядок не пропустить. Команда `npx tsc --noEmit -p tsconfig.app.json` друкує:
 
 ```text
 error TS2322: Type 'string' is not assignable to type 'number'.
 ```
+
+Перед словом `error` команда друкує ще шлях до файла й номер рядка, а довге повідомлення займає кілька рядків. Тут і
+далі лекція показує лише перший рядок повідомлення й без шляху. Кожен дослід у лекції лежить у власному файлі тесту з
+такими самими першими рядками. Далі лекція показує тільки те, що змінюється: компоненти стоять над `test`, а виклики
+`render` і `console.log` стоять усередині `test`. Функції `fireEvent` і `screen`, які знадобляться пізніше, теж
+приходять із `@testing-library/react`, а `createContext` і `useContext` приходять із `react`.
 
 Тому в цьому дні команд дві, і жодна не замінює іншу. У заготовці дня частина тестів уже проходить, бо код працює й
 без типів, а `tsc` при цьому друкує двадцять помилок.
@@ -132,12 +151,25 @@ function BusyButton(props: React.ComponentProps<'button'> & { busy: boolean }) {
 ```
 
 Перший виклик компілюється, бо `onClick` і `type` є пропсами кнопки. Другий дає `TS2322`, бо `href` належить
-посиланню, а не кнопці. Так само `React.CSSProperties` описує об'єкт для пропа `style`, і запис `{ colour: 'red' }`
-дає `TS2561` з підказкою `Did you mean to write 'color'?`.
+посиланню, а не кнопці. Так само `React.CSSProperties` описує об'єкт для пропа `style`, і запис `<p style={{ colour:
+'red' }} />` дає `TS2561` з підказкою `Did you mean to write 'color'?`.
 
 На роботі ви ще побачите запис `const Card: React.FC<CardProps> = ...`. Сторінка `Using TypeScript` його не
 використовує, і нічого нового він не дає: це той самий опис пропсів, записаний інакше. У нього теж немає неявного
-`children`, тому `<Fc title="x">текст</Fc>` без оголошеного `children` дає `TS2322`.
+`children`, і компілятор не пропустить такий виклик:
+
+```tsx
+const Fc: React.FC<{ title: string }> = ({ title }) => <h2>{title}</h2>
+
+export const withText = <Fc title="x">текст</Fc>
+```
+
+```text
+error TS2322: Type '{ children: string; title: string; }' is not assignable to type 'IntrinsicAttributes & { title: string; }'.
+```
+
+Текст між тегами стає пропом `children`, тому компілятор показує це поле в переданому об'єкті. В описі пропсів такого
+поля немає, і в цьому полягає помилка. Отже, якщо компонент приймає вкладений вміст, оголосіть `children` у типі самі.
 
 ## Вкладений вміст: `children`
 
@@ -162,7 +194,15 @@ type ReactNode =
 тега, а `Iterable<ReactNode>` означає масив чи інший перебирний набір таких самих значень. `ReactPortal` і `Promise`
 ви зустрінете пізно, і зараз вони неважливі.
 
-Подивимося на компонент `Shelf` із типом `children: React.ReactNode`:
+Подивимося на компонент `Shelf`, у якого проп `children` має цей тип:
+
+```tsx
+function Shelf({ children }: { children: React.ReactNode }) {
+  return <section>{children}</section>
+}
+```
+
+Ось різні виклики цього компонента й те, що сказав про них `tsc`:
 
 | Виклик | Результат `tsc` |
 |--------|-----------------|
@@ -175,22 +215,54 @@ type ReactNode =
 | `<Shelf>{new Date()}</Shelf>` | `TS2322: Type 'Date' is not assignable to type 'ReactNode'` |
 | `<Shelf>{() => 'x'}</Shelf>` | `TS2322: Type '() => string' is not assignable to type 'ReactNode'` |
 
-Рядок з об'єктом важливий, бо `tsc` тут рятує від справжньої помилки під час роботи:
+Рядок з об'єктом важливий, бо `tsc` тут рятує від справжньої помилки під час роботи. Vitest на типи не дивиться, тому
+він цей виклик виконає:
+
+```tsx
+try {
+  render(<Shelf>{{ title: 'Кобзар' }}</Shelf>)
+} catch (error) {
+  // React не вміє показати об'єкт і кидає помилку, а тест друкує її текст.
+  console.log(String(error))
+}
+```
 
 ```text
-Error: Objects are not valid as a React child (found: object with keys {title}).
+Error: Objects are not valid as a React child (found: object with keys {title}). If you meant to render a collection of children, use an array instead.
 ```
+
+Слова `keys {title}` називають поля об'єкта, який React отримав замість вмісту. Отже, коли ви побачите таке
+повідомлення, шукайте у фігурних дужках JSX цілий об'єкт і показуйте одне його поле.
 
 Значення, які тип дозволяє, не всі щось показують. Лекція «JSX» уже пояснювала, що `null`, `undefined`, `true` і
 `false` на екрані не видно, а число нуль видно. Запуск це підтверджує:
-`<Shelf>{null}{false}{undefined}{true}{0}{''}</Shelf>` дає `<section>0</section>`.
+
+```tsx
+const { container } = render(<Shelf>{null}{false}{undefined}{true}{0}{''}</Shelf>)
+console.log(container.innerHTML)
+```
+
+```text
+<section>0</section>
+```
+
+Із шести значень у документі лишився тільки нуль, а порожній рядок, як і чотири інші значення, нічого не додав. Отже,
+компілятор пропускає всі ці значення, а що з них видно на екрані, треба знати самому.
 
 Якщо `children` не обов'язковий, пишуть `children?: React.ReactNode`, і тоді `<Shelf />` компілюється.
 
 ### Вузький тип `ReactElement`
 
-Другий шлях, який описує документація, є `children: React.ReactElement`. Він приймає лише один елемент. Компонент
-`OneOnly` з таким типом поводиться так:
+Другий шлях, який описує документація, є `children: React.ReactElement`. Він приймає лише один елемент. Ось компонент
+`OneOnly` з таким типом:
+
+```tsx
+function OneOnly({ children }: { children: React.ReactElement }) {
+  return <section>{children}</section>
+}
+```
+
+Різні виклики цього компонента `tsc` оцінює так:
 
 | Виклик | Результат `tsc` |
 |--------|-----------------|
@@ -205,8 +277,8 @@ Error: Objects are not valid as a React child (found: object with keys {title}).
 Є межа, про яку документація каже окремо: TypeScript не вміє вимагати елемент певного тега. Написати, що компонент
 приймає лише `<li>`, неможливо, бо тип результату будь-якого тега однаковий.
 
-Старий запис `JSX.Element` тепер дає `TS2503: Cannot find namespace 'JSX'`, бо у `@types/react` 19 глобального
-простору імен немає. Якщо він потрібен, пишуть `React.JSX.Element`.
+Старий запис `const node: JSX.Element = <div />` тепер дає `TS2503: Cannot find namespace 'JSX'`, бо у `@types/react`
+19 глобального простору імен немає. Якщо він потрібен, пишуть `React.JSX.Element`.
 
 ### Звідки береться `React.` без імпорту
 
@@ -249,11 +321,15 @@ function handleCode(e: React.ChangeEvent<HTMLInputElement>) {
 ```
 
 Параметр у кутових дужках називає тег, на якому стоїть обробник. Від нього залежить, які поля доступні: у
-`HTMLInputElement` поле `value` є. Цей самий обробник не підійде до тега `<select>`:
+`HTMLInputElement` поле `value` є. Цей самий обробник не підійде до тега `<select>`. Запис `<select
+onChange={handleCode} />` дає:
 
 ```text
 error TS2322: Type '(e: ChangeEvent<HTMLInputElement, Element>) => void' is not assignable to type 'ChangeEventHandler<HTMLSelectElement, HTMLSelectElement>'.
 ```
+
+Ліва частина повідомлення описує ваш обробник, який чекає подію поля вводу. Права частина описує те, що надішле тег
+`<select>`. Отже, на кожен тег потрібен обробник зі своїм параметром у кутових дужках.
 
 Якщо ви не пам'ятаєте назву типу, напишіть обробник стрілкою в атрибуті й наведіть курсор на `e` у редакторі.
 Документація радить саме так. Це підказка редактора, і запуском ми її не перевіряли.
@@ -281,28 +357,64 @@ error TS2339: Property 'value' does not exist on type 'EventTarget'.
 ```
 
 Перший рядок компілюється, а другий ні. Тип каже правду: клік міг статися на будь-якому вузлі всередині кнопки. Запуск
-це показує. Для `<button onClick={...}><b>Видати</b></button>` і кліку по тексту `tagName` дає такі значення:
+це показує. Усередині кнопки стоїть текст у тезі `<b>`, а тест клацає саме по цьому тексту. Поле `tagName` містить назву
+тега вузла:
+
+```tsx
+function IssueButton() {
+  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
+    // Запис as Element потрібен, бо тип EventTarget не має поля tagName.
+    console.log('target:', (e.target as Element).tagName)
+    console.log('currentTarget:', e.currentTarget.tagName)
+  }
+  return <button onClick={handleClick}><b>Видати</b></button>
+}
+
+render(<IssueButton />)
+fireEvent.click(screen.getByText('Видати')) // getByText знаходить вузол із цим текстом, тобто <b>
+```
 
 ```text
 target: B
 currentTarget: BUTTON
 ```
 
+Перший рядок виводу каже, що подія виникла на `<b>`. Другий каже, що обробник стоїть на кнопці. Отже, коли обробнику
+потрібні дані кнопки, читайте їх через `currentTarget`.
+
 Для `ChangeEvent` є виняток: поле `target` описано так само, як `currentTarget`. Для поля вводу це правда, бо подія
-виникає саме на ньому. Запуск дає `поле: INPUT INPUT`. Але подія зміни спливає, і обробник можна поставити на форму:
+виникає саме на ньому. Але подія зміни спливає, і обробник можна поставити на форму. У цьому досліді обробник стоїть і
+на полі, і на формі, а тест змінює значення поля:
 
 ```tsx
-<form onChange={(e) => e.target.elements.length}>
-  <input />
-</form>
+function BothHandlers() {
+  return (
+    <form
+      onChange={(e) => {
+        console.log('форма:', e.target.tagName, e.currentTarget.tagName)
+        console.log('elements:', e.target.elements)
+      }}
+    >
+      <input onChange={(e) => console.log('поле:', e.target.tagName, e.currentTarget.tagName)} />
+    </form>
+  )
+}
+
+render(<BothHandlers />)
+fireEvent.change(screen.getByRole('textbox'), { target: { value: 'К' } })
 ```
 
-Цей код компілюється, а під час роботи `e.target` є полем вводу, у якого `elements` немає:
+Цей код компілюється, бо тип каже, що `e.target` у формі є формою, а в неї `elements` є. Під час роботи `e.target` є
+полем вводу, у якого `elements` немає:
 
 ```text
+поле: INPUT INPUT
 форма: INPUT FORM
 elements: undefined
 ```
+
+Перший рядок надрукував обробник на полі, і там обидва поля показують той самий вузол. Другий і третій рядки надрукував
+обробник на формі: `target` є полем, `currentTarget` є формою, а `elements` не існує, хоча тип обіцяв його.
 
 Коментар у самому файлі типів називає це неправильним описом, який лишено для зворотної сумісності до React 20. Тому
 на практиці ставте обробник зміни на сам елемент, і тоді опис правильний. Документація в прикладі читає
@@ -341,7 +453,15 @@ error TS2322: Type '(e: MouseEvent) => void' is not assignable to type 'MouseEve
 ## Стан
 
 Лекція «TypeScript: дженерики» пояснила, що `useState` є дженериком, і тип стану виводиться з початкового значення.
-Тут важливо зрозуміти, де цього досить, а де ні. Ось усе разом, а поруч те, що сказав `tsc`:
+Тут важливо зрозуміти, де цього досить, а де ні. Ось усе разом, а поруч те, що сказав `tsc`. Кожен рядок таблиці
+стоїть усередині компонента й спирається на такі оголошення:
+
+```tsx
+type Book = { title: string; pages: number }
+type Status = 'idle' | 'loading' | 'done'
+
+const kobzar: Book = { title: 'Кобзар', pages: 320 }
+```
 
 | Код | Тип стану | Що вийшло |
 |-----|-----------|-----------|
@@ -350,7 +470,7 @@ error TS2322: Type '(e: MouseEvent) => void' is not assignable to type 'MouseEve
 | `const [narrow, setNarrow] = useState<Status>('idle')`, потім `setNarrow('будь-що')` | `Status` | `TS2345`: цього значення немає в об'єднанні |
 | `const [book, setBook] = useState(null)`, потім `setBook({ title: 'Кобзар', pages: 320 })` | `null` | `TS2353`, розбір нижче |
 | `const [good, setGood] = useState<Book \| null>(null)`, потім `good.title` | `Book \| null` | `TS18047: 'good' is possibly 'null'` |
-| `const [list, setList] = useState([])`, потім `setList([книжка])` | `never[]` | `TS2322`: `not assignable to type 'never'` |
+| `const [list, setList] = useState([])`, потім `setList([kobzar])` | `never[]` | `TS2322`: `not assignable to type 'never'` |
 | `const [books, setBooks] = useState<Book[]>([])` | `Book[]` | компілюється |
 | `const [later] = useState<Book>()`, потім `later.title` | `Book \| undefined` | `TS18048: 'later' is possibly 'undefined'` |
 
@@ -360,7 +480,7 @@ error TS2322: Type '(e: MouseEvent) => void' is not assignable to type 'MouseEve
 
 ### Читаємо дивне повідомлення
 
-Повідомлення для `useState(null)` виглядає так:
+Рядок таблиці з `useState(null)` і викликом `setBook({ title: 'Кобзар', pages: 320 })` дає таке повідомлення:
 
 ```text
 error TS2353: Object literal may only specify known properties, and 'title' does not exist in type '(prevState: null) => null'.
@@ -421,11 +541,15 @@ function loanReducer(state: LoanState, action: LoanAction): LoanState {
 «TypeScript: основи» це ловить:
 
 ```text
+error TS6133: 'state' is declared but its value is never read.
 error TS2322: Type '{ type: "lost"; }' is not assignable to type 'never'.
 ```
 
-Виклики теж перевіряються. Після `const [state, dispatch] = useReducer(loanReducer, initial)` тип `dispatch` приймає
-лише справжні дії:
+Другий рядок виводу і є сигналом про пропущену гілку. Перший рядок надруковано тому, що параметр `state` у цій версії
+функції ще ніде не вжито, а шаблон проєкту вважає це помилкою.
+
+Виклики теж перевіряються. Після `const initial: LoanState = { reader: null }` і `const [state, dispatch] =
+useReducer(loanReducer, initial)` тип `dispatch` приймає лише справжні дії:
 
 | Виклик | Що сказав `tsc` |
 |--------|-----------------|
@@ -433,8 +557,21 @@ error TS2322: Type '{ type: "lost"; }' is not assignable to type 'never'.
 | `dispatch({ type: 'borow', reader: 'Оля' })` | `TS2820`: `Did you mean '"borrow"'?` |
 | `dispatch({ type: 'return', reader: 'Оля' })` | `TS2353`: поля `reader` у цієї дії немає |
 
-Редюсер без цих помилок працює: дія `borrow` з читачкою Олею дала `{ reader: 'Оля' }`, а `return` дав `{ reader: null
-}`.
+Тепер допишемо пропущену гілку `case 'lost': return state`, і обидві помилки зникнуть. Редюсер є звичайною функцією,
+тому тест може викликати його напряму, без компонента:
+
+```ts
+console.log(loanReducer({ reader: null }, { type: 'borrow', reader: 'Оля' }))
+console.log(loanReducer({ reader: 'Оля' }, { type: 'return' }))
+```
+
+```text
+{ reader: 'Оля' }
+{ reader: null }
+```
+
+Перший виклик записав у стан читачку з поля дії, а другий прибрав її. Отже, поведінку редюсера можна перевірити одним
+викликом функції, а типи тим часом стежать, щоб дія мала всі свої поля.
 
 ## Контекст: коротко
 
@@ -463,8 +600,8 @@ function useLibrary(): LibraryValue {
 Розгляньмо рядки.
 
 - `createContext<LibraryValue | null>(null)` каже, що тут лежить значення або `null`. Без параметра типу
-  `createContext(null)` дозволяє лише `null`: запис `<Bare value={{ city: 'Львів' }}>` дає `TS2322: ... not assignable
-  to type 'null'`.
+  контекст дозволяє лише `null`: після `const Bare = createContext(null)` запис `<Bare value={{ city: 'Львів' }}>` дає
+  `TS2322: ... not assignable to type 'null'`.
 - `function useLibrary(): LibraryValue` обіцяє результат без `null`. Це сигнатура в коді, і компілятор перевіряє її
   виконання.
 - `useContext(LibraryContext)` повертає `LibraryValue | null`.
@@ -473,37 +610,97 @@ function useLibrary(): LibraryValue {
 
 Без перевірки компілятор не пропустить таке тіло:
 
+```tsx
+function useLibrary(): LibraryValue {
+  return useContext(LibraryContext)
+}
+```
+
 ```text
 error TS2322: Type 'LibraryValue | null' is not assignable to type 'LibraryValue'.
 ```
 
+Ліва частина описує те, що повернув `useContext`, а права описує обіцянку в сигнатурі хука. Вони різняться на `null`,
+тому без перевірки цей хук не компілюється.
+
 Компоненти, які читають контекст через цей хук, отримують значення без `null` і без жодної своєї перевірки. Компонент,
-який читає контекст напряму, дістане `TS18047: 'value' is possibly 'null'`.
+який читає контекст напряму, тобто пише `const value = useContext(LibraryContext)` і далі `value.city`, дістане
+`TS18047: 'value' is possibly 'null'`.
 
 ### Знак оклику
 
 Перевірку можна обійти коротшим записом: `return useContext(LibraryContext)!`. Знак `!` після виразу називають
 **оператором ненульовості**. Він нічого не робить під час роботи, а лише каже компілятору: повір, тут не `null`. Це
-така сама обіцянка, як `as` із лекції «TypeScript: основи». Компілятор мовчить, а ось що станеться, коли провайдера
-немає, для двох варіантів хука. Варіант зі знаком `!` у досліді називається `usePromise`:
+така сама обіцянка, як `as` із лекції «TypeScript: основи». Компілятор мовчить. Подивимося, що станеться, коли
+провайдера немає, для двох варіантів хука. Варіант зі знаком `!` у досліді називається `usePromise`, а варіант із
+перевіркою є показаним вище хуком `useLibrary`:
+
+```tsx
+function usePromise(): LibraryValue {
+  return useContext(LibraryContext)!
+}
+
+function CheckedCity() {
+  const { city } = useLibrary()
+  return <p>{city}</p>
+}
+
+function PromisedCity() {
+  const { city } = usePromise()
+  return <p>{city}</p>
+}
+
+// Обидва компоненти стоять без провайдера. render кидає помилку, а тест друкує її текст.
+for (const element of [<CheckedCity />, <PromisedCity />]) {
+  try {
+    render(element)
+  } catch (error) {
+    console.log(String(error))
+  }
+}
+```
 
 ```text
 Error: useLibrary: компонент має бути всередині LibraryContext
 TypeError: Cannot destructure property 'city' of 'usePromise(...)' as it is null.
 ```
 
-Перший рядок одразу каже, що зробити. Другий повідомляє про наслідок у чужому рядку коду.
+Перший рядок одразу каже, що зробити. Другий повідомляє про наслідок у чужому рядку коду. Тому в хуку контексту пишіть
+перевірку, а не знак `!`.
 
 Значення за замовчуванням замість `null` теж прибрало б `null` із типу. Але тоді забутий провайдер перестає бути
 помилкою, і компонент мовчки покаже вигадане місто.
 
-Документація пише перевірку як `if (!object)`. Для об'єктів це однаково, але не для кожного значення. Контекст типу
-`number | null` зі значенням `0` і перевіркою `if (!value)` кинув помилку попри наявний провайдер:
+Документація пише перевірку як `if (!object)`. Для об'єктів це однаково, але не для кожного значення. У цьому досліді
+контекст має тип `number | null`, а провайдер стоїть і кладе в нього число нуль:
+
+```tsx
+const CountContext = createContext<number | null>(null)
+
+function useCount(): number {
+  const value = useContext(CountContext)
+  if (!value) {
+    throw new Error('немає провайдера')
+  }
+  return value
+}
+
+function Count() {
+  return <p>{useCount()}</p>
+}
+
+try {
+  render(<CountContext value={0}><Count /></CountContext>)
+} catch (error) {
+  console.log('нуль:', String(error))
+}
+```
 
 ```text
 нуль: Error: немає провайдера
 ```
 
+Провайдер у дереві є, але вираз `!value` для числа нуль дає `true`, тому хук кинув помилку зі словами про провайдера.
 Тому порівнюйте з `null` прямо. Причину пояснює таблиця хибних значень із лекції «Пропси й умовний рендер».
 
 Перевірка працює лише під час запуску. Типи не можуть знати, чи стоїть провайдер вище в дереві, бо дерево рендеру
@@ -514,6 +711,8 @@ TypeError: Cannot destructure property 'city' of 'usePromise(...)' as it is null
 Ось компонент, написаний без типів. Він працює: працівник вводить код книжки, форма шукає її й повідомляє батька.
 
 ```tsx
+import { useState } from 'react'
+
 export function ReturnForm({ books, onReturn }) {
   const [code, setCode] = useState('')
   const [last, setLast] = useState(null)
@@ -539,7 +738,26 @@ export function ReturnForm({ books, onReturn }) {
 }
 ```
 
-Додаємо типи по одному й щоразу запускаємо `tsc`. Таблиця показує справжню кількість помилок.
+Додаємо типи по одному. Кожен крок змінює лише такі рядки, а решта компонента лишається тією самою:
+
+```tsx
+// Опис пропсів: над компонентом стоять типи, а параметр функції отримує опис.
+type Book = { code: string; title: string }
+type ReturnFormProps = { books: Book[]; onReturn: (code: string) => void }
+export function ReturnForm({ books, onReturn }: ReturnFormProps) {
+
+// Типи подій: змінюються оголошення двох обробників.
+function handleCode(e: React.ChangeEvent<HTMLInputElement>) {
+function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
+
+// Тип стану: змінюється один рядок.
+const [last, setLast] = useState<Book | null>(null)
+
+// Перевірка: новий рядок одразу після виклику find.
+if (book === undefined) return
+```
+
+Після кожного кроку ми запускаємо `npx tsc --noEmit -p tsconfig.app.json`. Таблиця показує справжню кількість помилок.
 
 | Крок | Що ми дописали | Помилок `tsc` | Що лишилося |
 |------|----------------|---------------|-------------|
@@ -616,7 +834,7 @@ export const q: number = data
 | `grep -rnw any src/lessons/f1-d06` | слово `any` в тексті | неявний `any` (його ловить `tsc`) і рядки з `as` чи `!` |
 
 Лінт шаблону ще додає правило `@typescript-eslint/no-explicit-any`, яке для `function X(p: any)` друкує `Unexpected
-any. Specify a different type.`
+any. Specify a different type`.
 
 ## Типові хибні уявлення
 

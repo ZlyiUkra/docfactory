@@ -2,7 +2,8 @@
 
 Ця лекція пояснює, у якому вигляді сторінка існує всередині браузера і як браузер повідомляє код про дії людини.
 Читання займе близько 35 хвилин. Приклади призначені для консолі браузера. Їхній вивід ми отримали в jsdom, тобто в
-імітації браузера для Node, тому в консолі він може виглядати трохи інакше, а теги й значення будуть ті самі.
+імітації браузера для Node, і звірили з браузером Chrome. У вашій консолі він може виглядати трохи інакше, а теги й
+значення будуть ті самі.
 
 **Після лекції ви зможете пояснити:**
 
@@ -106,7 +107,8 @@ console.log("що в полі:", JSON.stringify(document.querySelector("#name").
 цього зв'язку — **відображення** (англійською reflection): стандарт HTML описує для кожної властивості, як вона
 пов'язана з атрибутом.
 
-Подивимося, чим відрізняються ці зв'язки:
+Подивимося, чим відрізняються ці зв'язки. Приклад запущено на сторінці з адресою `https://shop.example/`. На іншій
+сторінці початок повної адреси в першому рядку виводу буде іншим:
 
 ```js
 document.body.innerHTML = `
@@ -235,6 +237,10 @@ card ↑   фаза 3 | currentTarget: card
 catalog ↑ фаза 3 | currentTarget: catalog
 ```
 
+Число в кожному рядку — це поле `event.eventPhase`: 1 означає занурення, 2 означає, що подія дійшла до цілі, а 3
+означає спливання. Перші три рядки показують рух згори вниз через секцію, картку й кнопку. Потім спрацювали обидва
+обробники на символі `heart`, бо він і є ціллю. Останні три рядки показують той самий шлях у зворотному порядку.
+
 Тепер можна пояснити ситуацію зі сердечком.
 
 | Запитання | Відповідь | Чому |
@@ -292,8 +298,8 @@ document.body.innerHTML = `<button id="save"><b id="icon">✓</b></button>`;
 const button = document.querySelector("#save");
 button.addEventListener("click", async (event) => {
   console.log("до await: target =", event.target.id, "| currentTarget =", event.currentTarget.id);
-  await Promise.resolve();                      // будь-яке очікування
-  console.log("після await: target =", event.target.id, "| currentTarget =", event.currentTarget);
+  await new Promise((r) => setTimeout(r, 10));  // очікування, наприклад запит у мережу
+  console.log("після await: target =", event.target.id, "| currentTarget =", event.currentTarget?.id ?? null);
 });
 document.querySelector("#icon").click();
 ```
@@ -306,10 +312,51 @@ document.querySelector("#icon").click();
 Поле `target` лишається. Поле `currentTarget` дорівнює `null`. Якщо вузол знадобиться після очікування, збережіть його
 в змінну до `await`.
 
+Зовсім коротке очікування може дати інший результат. Замініть у цьому коді рядок очікування на `await
+Promise.resolve();`, приберіть останній рядок із `click()` і клацніть по кнопці мишею. Запуск дає такий вивід:
+
+```text
+до await: target = icon | currentTarget = save
+після await: target = icon | currentTarget = save
+```
+
+Другий рядок показує, що `currentTarget` ще на місці. Код після `await` тут є мікрозадачею, тобто коротким завданням,
+яке браузер виконує, коли поточний код закінчився. Про це йшлося в дні 5. Справжнє клацання приходить окремою задачею,
+тому після обробника поточного коду вже немає, і браузер виконує мікрозадачу, хоч подія ще не закінчила шлях. Виклик
+`click()` із коду працює інакше: цей код ще не завершився, тому мікрозадача чекає на його кінець. На той час подія вже
+пройшла шлях, і поле дорівнює `null`. На таку різницю не варто покладатися, тому правило лишається те саме: зберігайте
+вузол у змінну до `await`.
+
 **Не всі події спливають.** Прапорець `event.bubbles` каже, чи спливає подія. Подія отримання фокуса `focus` не
-спливає. Ми перевірили це на формі з полем: звичайний обробник `focus` на формі не спрацював, а обробник `focusin`
-спрацював, бо ця подія спливає. Обробник `focus` із параметром `{ capture: true }` теж спрацював, бо занурення
-проходить незалежно від `bubbles`.
+спливає. Перевіримо це на формі з полем. На формі висять три обробники, а четвертий висить на самому полі й друкує
+прапорець:
+
+```js
+document.body.innerHTML = `<form id="order"><input id="field"></form>`;
+const form = document.querySelector("#order");
+const field = document.querySelector("#field");
+
+form.addEventListener("focus", () => console.log("focus на формі, спливання"));
+form.addEventListener("focus", () => console.log("focus на формі, занурення"), { capture: true });
+form.addEventListener("focusin", () => console.log("focusin на формі, спливання"));
+field.addEventListener("focus", (event) => console.log("event.bubbles у focus:", event.bubbles));
+
+field.focus();
+```
+
+```text
+focus на формі, занурення
+event.bubbles у focus: false
+focusin на формі, спливання
+```
+
+Якщо ви запускаєте код у консолі й вивід порожній, клацніть мишею по полю на сторінці. Тоді сторінка отримає фокус, і
+браузер надішле ті самі події.
+
+Рядка `focus на формі, спливання` у виводі немає, бо `focus` не спливає, і звичайний обробник на формі не спрацював.
+Обробник `focusin` спрацював, бо ця подія спливає. Обробник `focus` із параметром `{ capture: true }` теж спрацював,
+бо занурення проходить незалежно від `bubbles`. Отже, щоб на формі дізнатися про фокус у будь-якому її полі, потрібен
+`focusin` або обробник із `capture`.
 
 **Є два способи зупинити подію.** `stopPropagation()` зупиняє рух до наступних вузлів, але інші обробники на поточному
 вузлі ще спрацюють. `stopImmediatePropagation()` зупиняє ще й їх.
@@ -347,10 +394,40 @@ console.log("зі скасуванням на батькові адреса:", J
 зі скасуванням на батькові адреса: ""
 ```
 
-**Пастка з кнопкою у формі.** Тег `<button>` без атрибута `type` усередині форми надсилає форму. Ми перевірили це на
-двох кнопках: клацання по кнопці без `type` викликало подію `submit`, а клацання по кнопці з `type="button"` не
-викликало нічого. Без `preventDefault()` на події `submit` браузер перейшов би на нову адресу, і стан сторінки зник
-би. Тому кнопки, що не надсилають форму, завжди отримують `type="button"`.
+Перший рядок показує звичайний перехід: обробників ще немає, тому браузер записав у адресу `#orders`. Другий рядок
+показує, що обробник на `<nav>` скасував перехід, хоч сам `<nav>` не є посиланням. Отже, коли посилання перестало
+працювати, шукайте `preventDefault()` не лише на самому посиланні, а й на всіх його предках.
+
+**Пастка з кнопкою у формі.** Тег `<button>` без атрибута `type` усередині форми надсилає форму. Перевіримо це на двох
+кнопках:
+
+```js
+document.body.innerHTML = `
+  <form id="order">
+    <button id="plain">Без type</button>
+    <button id="safe" type="button">Не надсилає</button>
+  </form>`;
+const form = document.querySelector("#order");
+form.addEventListener("submit", (event) => {
+  event.preventDefault();                      // щоб браузер не пішов на нову адресу й вивід не зник
+  console.log("  подія submit, її викликала кнопка:", event.submitter.id);
+});
+
+console.log('клацання по кнопці з type="button":');
+document.querySelector("#safe").click();
+console.log("клацання по кнопці без type:");
+document.querySelector("#plain").click();
+```
+
+```text
+клацання по кнопці з type="button":
+клацання по кнопці без type:
+  подія submit, її викликала кнопка: plain
+```
+
+Клацання по кнопці без `type` викликало подію `submit`, а клацання по кнопці з `type="button"` не викликало нічого.
+Без `preventDefault()` на події `submit` браузер перейшов би на нову адресу, і стан сторінки зник би. Тому кнопки, що
+не надсилають форму, завжди отримують `type="button"`.
 
 ## Делегування
 
@@ -417,12 +494,81 @@ toolbar.querySelector('[data-action="link"]').click();
 
 Коли ви пишете `onClick` у React, це не `addEventListener` на вашому вузлі. Починаючи з версії 17, React реєструє
 обробники на **корені**, тобто на вузлі, куди змонтовано застосунок. Там він ловить події, що спливли, і сам викликає
-ваші функції за деревом компонентів. Це те саме делегування. У нашому досліді React 19 зареєстрував на корені 142
-слухачі, серед них окремо `click` для занурення й для спливання. Отже, на корені висить не один обробник на весь
+ваші функції за деревом компонентів. Це те саме делегування.
+
+Приклади цього розділу використовують React, тому консоль браузера для них не підійде. Проєкт React ви створите в
+дні 11. У ньому можна замінити вміст файла `src/main.tsx` кодом прикладу й побачити вивід у консолі браузера. Зараз
+достатньо прочитати код і вивід.
+
+Спершу порахуємо слухачі на корені. Код нижче підміняє метод `addEventListener` на майбутньому корені, щоб записати
+кожну реєстрацію, а потім просить React створити корінь:
+
+```tsx
+import { createRoot } from "react-dom/client";
+
+const container = document.createElement("div");
+const registered: string[] = [];
+const realAdd = container.addEventListener.bind(container);
+
+// Запам'ятовуємо назву кожної події й фазу, а тоді реєструємо обробник як зазвичай.
+container.addEventListener = (
+  type: string,
+  listener: EventListenerOrEventListenerObject,
+  options?: boolean | AddEventListenerOptions,
+) => {
+  const capture = options === true || (typeof options === "object" && options.capture === true);
+  registered.push(type + (capture ? " занурення" : " спливання"));
+  realAdd(type, listener, options);
+};
+
+createRoot(container);                         // компонент ще не показано, а слухачі вже є
+console.log("слухачів на корені:", registered.length);
+console.log(registered.filter((name) => name.startsWith("click ")).join(" | "));
+```
+
+```text
+слухачів на корені: 142
+click спливання | click занурення
+```
+
+Перший рядок показує, що React зареєстрував 142 слухачі ще до показу першого компонента. Другий рядок показує, що
+подія `click` має два слухачі: для занурення й для спливання. Отже, на корені висить не один обробник на весь
 застосунок, а окремий обробник майже для кожного типу події.
 
-Ми зібрали ту саму картку з кнопкою, додали справжні обробники через `addEventListener` і клацнули по символу.
+Тепер зберемо ту саму картку з кнопкою, додамо справжні обробники через `addEventListener` і клацнемо по символу.
 Обробник React друкує три поля, а `nativeEvent` є справжньою подією браузера:
+
+```tsx
+import type { MouseEvent } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
+
+document.body.innerHTML = `<div id="root"></div>`;
+
+const report = (name: string) => (e: MouseEvent) => {
+  const target = e.target as Element;                    // де виникла подія
+  const own = e.currentTarget as Element;                // ваш елемент, чий onClick зараз працює
+  const real = e.nativeEvent.currentTarget as Element;   // де зараз стоїть справжня подія браузера
+  console.log(name, "target", target.tagName, "| currentTarget", own.tagName, "| nativeEvent.currentTarget", real.id);
+};
+
+function Card() {
+  return (
+    <article onClick={report("article")}>
+      <button id="like" onClick={report("button")}><b id="heart">♥</b></button>
+    </article>
+  );
+}
+
+// flushSync просить React показати компонент одразу, щоб наступні рядки вже знайшли кнопку.
+flushSync(() => createRoot(document.querySelector("#root")!).render(<Card />));
+
+// Це справжні обробники браузера, React про них нічого не знає.
+document.querySelector("#like")!.addEventListener("click", () => console.log("справжній обробник на кнопці"));
+document.addEventListener("click", () => console.log("справжній обробник на document"));
+
+document.querySelector<HTMLElement>("#heart")!.click();
+```
 
 ```text
 справжній обробник на кнопці
@@ -435,15 +581,74 @@ article target B | currentTarget ARTICLE | nativeEvent.currentTarget root
 дійшла, React викликав обробники кнопки й картки. Поле `currentTarget` у React показує ваш елемент, а справжня подія в
 цю мить стоїть на корені. `document` лежить вище за корінь, тому він спрацював останнім.
 
-Які наслідки це має:
+Такий порядок має кілька наслідків.
 
-- `e.stopPropagation()` у React зупиняє рух по дереву компонентів і справжню подію теж. У нашому досліді `onClick` на
-  батьку не спрацював, обробник на `document` теж, а справжні обробники нижче кореня вже встигли спрацювати раніше.
-- Справжній `stopPropagation()` на вузлі нижче кореня не дає події дійти до кореня, тому не спрацює жоден `onClick`. У
-  нашому досліді сталося саме так. Таке трапляється, коли сторонній код сам додає обробники на вузли.
-- `e.currentTarget` після `await` дорівнює `null` і в React. Ми це перевірили.
-- Частина подій поводиться інакше, ніж у браузері. Документація React каже, що `onFocus` і `onBlur` спливають, а
-  `onScroll` не спливає.
+**Зупинка в обробнику React.** `e.stopPropagation()` у React зупиняє рух по дереву компонентів і справжню подію теж.
+Щоб це побачити, замініть у прикладі вище рядок кнопки на такий:
+
+```tsx
+      <button id="like" onClick={(e) => { report("button")(e); e.stopPropagation(); }}><b id="heart">♥</b></button>
+```
+
+```text
+справжній обробник на кнопці
+button target B | currentTarget BUTTON | nativeEvent.currentTarget root
+```
+
+Рядка `article` немає, тому `onClick` на батьку не спрацював. Рядка `document` теж немає. Справжній обробник на кнопці
+лежить нижче кореня, тому він устиг спрацювати раніше.
+
+**Зупинка у справжньому обробнику.** Справжній `stopPropagation()` на вузлі нижче кореня не дає події дійти до кореня,
+тому не спрацює жоден `onClick`. Щоб це побачити, поверніть рядок кнопки й замініть у тому самому прикладі справжній
+обробник на кнопці:
+
+```tsx
+document.querySelector("#like")!.addEventListener("click", (event) => {
+  console.log("справжній обробник зупинив подію");
+  event.stopPropagation();
+});
+```
+
+```text
+справжній обробник зупинив подію
+```
+
+У виводі лише один рядок: React не дізнався про клацання взагалі. Таке трапляється, коли сторонній код сам додає
+обробники на вузли. Тому, якщо `onClick` раптом перестав працювати, перевірте справжні обробники на вузлах нижче
+кореня.
+
+**`currentTarget` після `await`.** `e.currentTarget` після `await` дорівнює `null` і в React:
+
+```tsx
+import type { MouseEvent } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
+
+document.body.innerHTML = `<div id="root"></div>`;
+
+function SaveButton() {
+  const save = async (e: MouseEvent<HTMLButtonElement>) => {
+    console.log("до await:", e.currentTarget.tagName);
+    await new Promise((r) => setTimeout(r, 10));
+    console.log("після await:", e.currentTarget);
+  };
+  return <button id="save" onClick={save}>Зберегти</button>;
+}
+
+flushSync(() => createRoot(document.querySelector("#root")!).render(<SaveButton />));
+document.querySelector<HTMLElement>("#save")!.click();
+```
+
+```text
+до await: BUTTON
+після await: null
+```
+
+Рядок після `await` друкує `null`, тому читання `e.currentTarget.dataset` у цьому місці впаде. Вузол зберігають у
+змінну до `await`, так само як у коді без React.
+
+**Інші події.** Частина подій поводиться інакше, ніж у браузері. Документація React каже, що `onFocus` і `onBlur`
+спливають, а `onScroll` не спливає.
 
 **Атрибути й властивості.** Проп `value` робить поле **керованим**: React щоразу наводить властивість `value` у
 відповідність до стану, а без `onChange` поле не зміниться під руками людини. Проп `defaultValue` задає лише початкове
@@ -538,4 +743,4 @@ article target B | currentTarget ARTICLE | nativeEvent.currentTarget root
 
 Лекцію написано для цього плану. Вона спирається на MDN (тексти за ліцензією CC BY-SA 2.5), стандарти WHATWG DOM і
 HTML (ліцензія CC BY 4.0), документацію React і запис про зміни в React 17, переказуючи їх своїми словами. Приклади
-коду написано для лекції. Їхній вивід отримано в jsdom 26 і React 19, а не в справжньому браузері.
+коду написано для лекції. Їхній вивід отримано в jsdom 30 і React 19.3 та звірено в Chrome 157 без вікна.

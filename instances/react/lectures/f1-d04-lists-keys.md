@@ -20,9 +20,17 @@
 ## Журнал, у якому оцінка дісталася іншому учневі
 
 Ви робите журнал для вчительки. Кожен рядок містить ім'я учня, поле для оцінки й кнопку, яка прибирає учня зі списку.
-Код виглядає правильно, і він справді показує всіх:
+Код виглядає правильно, і він справді показує всіх. Ось весь файл разом із тестом. Ім'я такого файлу закінчується на
+`.test.tsx`, а запускає його команда `npx vitest run`:
 
 ```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити імітацію браузера, бо без документа компонент показати ніде.
+import { useState } from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { test } from 'vitest'
+
 type Student = { id: number; name: string }
 const STUDENTS: Student[] = [
   { id: 11, name: 'Марта' },
@@ -46,14 +54,17 @@ function Journal() {
   )
 }
 
-render(<Journal />)
-await user.type(screen.getByLabelText('Марта'), '12')
-await user.type(screen.getByLabelText('Богдан'), '7')
-await user.type(screen.getByLabelText('Соломія'), '10')
-await user.click(screen.getByRole('button', { name: 'Вибув: Марта' }))
-for (const field of screen.getAllByRole<HTMLInputElement>('textbox')) {
-  console.log(field.getAttribute('aria-label'), '=', field.value)
-}
+test('журнал', async () => {
+  const user = userEvent.setup() // цей об'єкт набирає текст і натискає кнопки замість людини
+  render(<Journal />)
+  await user.type(screen.getByLabelText('Марта'), '12')
+  await user.type(screen.getByLabelText('Богдан'), '7')
+  await user.type(screen.getByLabelText('Соломія'), '10')
+  await user.click(screen.getByRole('button', { name: 'Вибув: Марта' }))
+  for (const field of screen.getAllByRole<HTMLInputElement>('textbox')) {
+    console.log(field.getAttribute('aria-label'), '=', field.value)
+  }
+})
 ```
 
 ```text
@@ -68,6 +79,12 @@ for (const field of screen.getAllByRole<HTMLInputElement>('textbox')) {
 Щоб зрозуміти, що сталося, треба відповісти на два запитання. Перше: як масив даних стає рядками на екрані? Друге: як
 React після зміни масиву вирішує, який новий рядок відповідає якому старому? Відповідь на друге запитання й містить
 весь зміст слова `key`.
+
+Решта прикладів із React у цій лекції запускаються так само, як цей файл. Кожен приклад лежить у власному файлі тесту
+й починається з тих самих рядків імпорту та з того самого типу `Student` і масиву `STUDENTS`. Дії лежать усередині
+виклику `test('…', async () => { … })`, а першим рядком там стоїть `const user = userEvent.setup()`. Далі ми цих
+рядків не повторюємо. Якщо прикладу потрібні ще якісь функції, їх імпортують із тих самих пакетів: `act` і `fireEvent`
+із `@testing-library/react`, `vi` із `vitest`, `Fragment` із `react`.
 
 ## Список є масивом елементів
 
@@ -98,9 +115,34 @@ true 3 li 11
 Дві знайомі пастки стоять поруч із цим записом.
 
 **Фігурні дужки після стрілки.** Лекція «Масиви й об'єкти функційно» пояснила, що `{` одразу після `=>` відкриває тіло
-функції, а не значення. Якщо в такому тілі немає `return`, функція повертає `undefined`, і React не показує нічого. У
-файлі з типами `tsc` це помічає й каже `TS2322: Type 'void[]' is not assignable to type 'ReactNode'`. Круглі дужки,
-`=> (<li>…</li>)`, означають один вираз, і його значення повертається саме.
+функції, а не значення. Якщо в такому тілі немає `return`, функція повертає `undefined`, і React не показує нічого:
+
+```tsx
+// файл src/no-return.tsx
+const names = ['Марта', 'Богдан']
+
+export function NoReturn() {
+  // Дужка { після стрілки відкриває тіло функції. У тілі немає return, тому map отримує undefined.
+  return <ul>{names.map((name) => { <li key={name}>{name}</li> })}</ul>
+}
+```
+
+Тест показує цей компонент викликом `render(<NoReturn />)` і друкує `container.innerHTML`. Під цим виводом стоїть
+результат перевірки того самого файлу компілятором `tsc`, а з його довгого повідомлення показано лише перший рядок:
+
+```text
+<ul></ul>
+```
+
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/no-return.tsx(6,14): error TS2322: Type 'void[]' is not assignable to type 'ReactNode'.
+```
+
+Список `<ul>` порожній, бо жоден виклик функції не повернув рядка. Під час запуску React не надрукував нічого, тому
+про цю помилку каже лише `tsc`. Він повідомляє, що `map` дав масив `void[]`, тобто масив значень, яких функція не
+повертала. Отже, якщо список раптом порожній, подивіться на дужку після стрілки. Круглі дужки, `=> (<li>…</li>)`,
+означають один вираз, і його значення повертається саме.
 
 **Нуль замість порожнього списку.** Лекція «Пропси й умовний рендер» обіцяла, що пастка з `&&` повернеться:
 
@@ -151,7 +193,21 @@ export const b = _jsx("ul", { children: names.map((n) => _jsx("li", { children: 
 чи зміниться їхній порядок, тому викликає `_jsx`, і масив перевіряє вже React.
 
 Звідси випливає межа, яку корисно запам'ятати. Масив, записаний дужками прямо в розмітці, `{[<li>а</li>,
-<li>б</li>]}`, для React теж є масивом із виразу, і без ключів він дає попередження, хоча виглядає статичним.
+<li>б</li>]}`, для React теж є масивом із виразу, і без ключів він дає попередження, хоча виглядає статичним:
+
+```tsx
+// Рядок друку тут не потрібен, бо попередження в консоль пише сам React.
+render(<ul>{[<li>а</li>, <li>б</li>]}</ul>)
+```
+
+```text
+Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <ul>. See https://react.dev/link/warning-keys for more information.
+```
+
+Перший рядок називає помилку, а останній каже, де її шукати: у виклику, який показує `<ul>`. Отже, якщо рядки відомі
+заздалегідь, пишіть їх просто тегами, без масиву. Тоді компілятор викличе `_jsxs`, і ключі не знадобляться.
 
 ## Що таке ключ
 
@@ -184,17 +240,65 @@ console.log(Object.keys(el.props as object))
 Із цього випливає три наслідки.
 
 **Ключ завжди є рядком.** React перетворює значення на рядок, тому число `1` і рядок `"1"` для нього той самий ключ.
-Два такі рядки поруч дадуть попередження про однакові ключі.
+Два такі рядки поруч дадуть попередження про однакові ключі:
+
+```tsx
+// Рядок друку не потрібен: попередження в консоль пише сам React.
+render(<ul>{[1, '1'].map((id) => <li key={id}>{id}</li>)}</ul>)
+```
+
+```text
+Encountered two children with the same key, `1`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+```
+
+React назвав повторений ключ просто `1`, хоча одне значення було числом, а інше рядком. Отже, якщо дані приходять із
+двох джерел, де той самий номер записано по-різному, ці номери все одно збігаються.
 
 **Компонент свого ключа не бачить.** Функція компонента отримує об'єкт пропсів, а ключа в ньому немає. Спроба
 прочитати `props.key` дає `undefined`, а React у режимі розробки пише: `` `key` is not a prop. Trying to access it
 will result in `undefined` being returned. `` `tsc` цього не зупиняє: запис `function P({ key }: { key: string })`
-компілюється, хоча значення там ніколи не буде. Якщо компоненту потрібен той самий номер, батько передає його вдруге
-окремим пропом, наприклад `<Row key={s.id} studentId={s.id} />`.
+компілюється, хоча значення там ніколи не буде. Ось такий компонент у роботі:
+
+```tsx
+function P({ key }: { key: string }) {
+  console.log('компонент прочитав key:', key)
+  return <p>Марта</p>
+}
+
+render(<P key="a" />) // батько передав ключ "a"
+```
+
+```text
+P: `key` is not a prop. Trying to access it will result in `undefined` being returned. If you need to access the same value within the child component, you should pass it as a different prop. (https://react.dev/link/special-props)
+компонент прочитав key: undefined
+```
+
+Перший рядок надрукував React, а другий надрукував сам компонент. Батько передав `"a"`, а компонент отримав
+`undefined`. Якщо компоненту потрібен той самий номер, батько передає його вдруге окремим пропом, наприклад `<Row
+key={s.id} studentId={s.id} />`.
 
 **Ключ не передають через розгортання.** Запис `{...row}` з лекції «Пропси й умовний рендер» працює для пропсів. Якщо
 в об'єкті `row` є поле `key`, React застосує його, але напише `A props object containing a "key" prop is being spread
-into JSX`. Такий запис просять замінити явним `key={row.key}` перед розгортанням.
+into JSX`:
+
+```tsx
+const row = { key: 'a', title: 'x' }
+const el = <li {...row}>Марта</li> // поле key потрапляє в елемент через розгортання
+console.log('ключ елемента:', el.key)
+```
+
+```text
+A props object containing a "key" prop is being spread into JSX:
+  let props = {key: someKey, title: ..., children: ...};
+  <li {...props} />
+React keys must be passed directly to JSX without using spread:
+  let props = {title: ..., children: ...};
+  <li key={someKey} {...props} />
+ключ елемента: a
+```
+
+Останній рядок показує, що ключ спрацював, а решту надрукував React, щоб попередити про такий запис. Такий запис
+просять замінити явним `key={row.key}` перед розгортанням, як показує нижня частина повідомлення.
 
 Ключ також не потрапляє в документ. Для браузера ключа не існує, і в розмітці сторінки ви його не знайдете.
 
@@ -220,8 +324,45 @@ into JSX`. Такий запис просять замінити явним `key
 випадку React друкує попередження.
 
 Ключі порівнюються лише між дітьми одного батька. Рядок із тим самим ключем, перенесений в інший `<ul>`, вважається
-новим рядком. Ми перевірили це: поле в такому рядку після перенесення порожнє. Рядок, який за тим самим ключем змінив
-тег із `<li>` на `<p>`, теж отримує нове порожнє поле.
+новим рядком. Рядок, який за тим самим ключем змінив тег із `<li>` на `<p>`, теж отримує нове поле. Запустимо обидва
+випадки. В обох випадках ключ лишається `m`, а в поле спершу набрано `12`:
+
+```tsx
+// Той самий рядок із тим самим ключем стоїть то в першому <ul>, то в другому.
+function Lists({ inFirst }: { inFirst: boolean }) {
+  const row = <li key="m"><input aria-label="Марта" /></li>
+  return (
+    <>
+      <ul>{inFirst ? [row] : []}</ul>
+      <ul>{inFirst ? [] : [row]}</ul>
+    </>
+  )
+}
+
+// Рядок лишається в тому самому <ul> із тим самим ключем, але тег змінюється.
+function Tagged({ tag: Tag }: { tag: 'li' | 'p' }) {
+  return <ul>{[<Tag key="m"><input aria-label="Марта" /></Tag>]}</ul>
+}
+
+const moved = render(<Lists inFirst={true} />)
+await user.type(screen.getByLabelText('Марта'), '12')
+moved.rerender(<Lists inFirst={false} />)
+console.log('інший <ul>:', JSON.stringify(screen.getByLabelText<HTMLInputElement>('Марта').value))
+moved.unmount()
+
+const retagged = render(<Tagged tag="li" />)
+await user.type(screen.getByLabelText('Марта'), '12')
+retagged.rerender(<Tagged tag="p" />)
+console.log('інший тег:', JSON.stringify(screen.getByLabelText<HTMLInputElement>('Марта').value))
+```
+
+```text
+інший <ul>: ""
+інший тег: ""
+```
+
+Обидва рядки друкують порожній текст, тому оцінка `12` пропала разом зі старим вузлом. Отже, ключ не збереже поле,
+якщо рядок перейшов до іншого батька або змінив тег.
 
 Тепер видно, що сталося в журналі. Ключ `index` є лише номером, а не тим, хто стоїть у рядку.
 
@@ -484,6 +625,44 @@ for (const [what, next] of changes) {
 Вбудований у браузер і в jsdom об'єкт `MutationObserver` записує кожну зміну документа, тому ми порахували ці зміни, а
 не час. Час у jsdom нічого не каже про браузер.
 
+```tsx
+type KeyOf = (student: Student, index: number) => string | number
+
+function Long({ rows, keyOf }: { rows: Student[]; keyOf: KeyOf }) {
+  return <ul>{rows.map((s, i) => <li key={keyOf(s, i)}>{s.name}</li>)}</ul>
+}
+
+const thousand = Array.from({ length: 1000 }, (_, i) => ({ id: i + 1, name: `Учень ${i + 1}` }))
+const variants: [string, KeyOf][] = [
+  ['key={index}', (_, i) => i],
+  ['key={student.id}', (s) => s.id],
+  ['key={Math.random()}', () => Math.random()],
+]
+
+for (const [what, keyOf] of variants) {
+  const { container, rerender, unmount } = render(<Long rows={thousand} keyOf={keyOf} />)
+  // Спостерігач починає записувати лише зараз, тому перший показ у записи не потрапляє.
+  const observer = new MutationObserver(() => {})
+  observer.observe(container, { subtree: true, childList: true, characterData: true })
+  rerender(<Long rows={thousand.slice(1)} keyOf={keyOf} />) // прибрано перший рядок
+  const records = observer.takeRecords() // забирає всі записи про зміни
+  observer.disconnect()
+  const texts = records.filter((r) => r.type === 'characterData').length
+  const removed = records.reduce((sum, r) => sum + r.removedNodes.length, 0)
+  const added = records.reduce((sum, r) => sum + r.addedNodes.length, 0)
+  console.log(what, '| змінено текстів:', texts, '| видалено вузлів:', removed, '| створено вузлів:', added)
+  unmount()
+}
+```
+
+```text
+key={index} | змінено текстів: 999 | видалено вузлів: 1 | створено вузлів: 0
+key={student.id} | змінено текстів: 0 | видалено вузлів: 1 | створено вузлів: 0
+key={Math.random()} | змінено текстів: 0 | видалено вузлів: 1000 | створено вузлів: 999
+```
+
+Ті самі числа в таблиці:
+
 | Ключ | Змінено текстів | Видалено вузлів | Створено вузлів |
 |------|-----------------|-----------------|-----------------|
 | `key={index}` | 999 | 1 | 0 |
@@ -493,25 +672,87 @@ for (const [what, next] of changes) {
 Усі три варіанти дають однаковий вигляд сторінки. Ключ-індекс змушує React переписати текст майже в кожному рядку, бо
 кожен рядок тепер показує сусіда. Ключ-`id` прибирає один вузол і більше нічого не робить. Випадковий ключ видаляє
 весь список і будує його знову. Ці числа отримано в jsdom, а в браузері їх не перераховували. Проте кількість змін
-визначає сам React, а не браузер.
+визначає сам React, а не браузер. Отже, ключ-`id` заощаджує роботу в довгому списку навіть тоді, коли в рядках немає
+полів.
 
 ## Випадковий ключ
 
 Запис `key={Math.random()}` дає при кожному рендері нове значення, тому жоден старий ключ не збігається з новим, і за
 таблицею вище всі старі рядки видаляються, а всі нові створюються. Сторінка `Rendering Lists` застерігає, що так
-втрачається все введене користувачем у цих рядках, а ще повільно. Теорія дня показує це запуском, і поле там справді
-стає порожнім, а фокус зникає.
+втрачається все введене користувачем у цих рядках, а ще повільно. Запустимо це. Тест набирає оцінку в поле, просить
+батька показати компонент ще раз із тими самими даними й дивиться на поле. Функцію, яка дає ключ, тест передає пропом,
+щоб перевірити одразу дві такі функції:
+
+```tsx
+function Fresh({ makeKey }: { makeKey: () => string | number }) {
+  return <ul>{STUDENTS.map((s) => <li key={makeKey()}><input aria-label={s.name} /></li>)}</ul>
+}
+
+const errors = vi.spyOn(console, 'error').mockImplementation(() => {}) // рахує повідомлення React
+const variants: [string, () => string | number][] = [
+  ['Math.random()', () => Math.random()],
+  ['crypto.randomUUID()', () => crypto.randomUUID()],
+]
+
+for (const [what, makeKey] of variants) {
+  const { rerender, unmount } = render(<Fresh makeKey={makeKey} />)
+  const field = screen.getByLabelText<HTMLInputElement>('Марта')
+  await user.type(field, '12')
+  rerender(<Fresh makeKey={makeKey} />) // дані ті самі, новий лише виклик компонента
+  const now = screen.getByLabelText<HTMLInputElement>('Марта')
+  console.log(what, '| той самий вузол:', now === field, '| текст:', JSON.stringify(now.value),
+    '| фокус у полі:', document.activeElement === now, '| повідомлень React:', errors.mock.calls.length)
+  unmount()
+}
+```
+
+```text
+Math.random() | той самий вузол: false | текст: "" | фокус у полі: false | повідомлень React: 0
+crypto.randomUUID() | той самий вузол: false | текст: "" | фокус у полі: false | повідомлень React: 0
+```
+
+Вираз `той самий вузол: false` означає, що React видалив старе поле й створив нове. Нове поле порожнє, а фокус зник
+разом зі старим. React при цьому не надрукував нічого, тому помилку знайде лише приклад із повторним рендером.
 
 Пастка має кілька видів.
 
 **Час.** Запис `key={Date.now()}` схожий на випадковий, але поводиться ще дивніше. Усі рядки одного рендеру зазвичай
-створюються за одну мілісекунду, тому отримують той самий ключ, і React пише про однакові ключі. Ми перевірили це в
-тесті із замороженим годинником. На наступному рендері час інший, і рядки видаляються так само, як із випадковим
-ключем.
+створюються за одну мілісекунду, тому отримують той самий ключ, і React пише про однакові ключі. На наступному рендері
+час інший. Щоб обидва рендери щоразу давали той самий результат, тест заморожує годинник: `vi.spyOn(Date, 'now')`
+підміняє функцію `Date.now`, і вона повертає задане число.
+
+```tsx
+const clock = vi.spyOn(Date, 'now').mockReturnValue(1000) // увесь перший рендер бачить час 1000
+const errors = vi.spyOn(console, 'error').mockImplementation(() => {}) // рахує повідомлення React
+
+function Stamped() {
+  return <ul>{STUDENTS.map((s) => <li key={Date.now()}>{s.name}</li>)}</ul>
+}
+
+const { container, rerender } = render(<Stamped />)
+console.log('перший рендер:', container.innerHTML)
+console.log('повідомлень React:', errors.mock.calls.length, '| повторений ключ:', errors.mock.calls[0][1])
+
+clock.mockReturnValue(2000) // годинник пішов уперед, другий рендер бачить час 2000
+rerender(<Stamped />)
+console.log('другий рендер:', container.innerHTML)
+```
+
+```text
+перший рендер: <ul><li>Марта</li><li>Богдан</li><li>Соломія</li></ul>
+повідомлень React: 2 | повторений ключ: 1000
+другий рендер: <ul><li>Марта</li><li>Богдан</li><li>Марта</li><li>Богдан</li><li>Соломія</li></ul>
+```
+
+Перший рендер показує трьох учнів, але React двічі попереджає, що ключ `1000` повторюється. Після другого рендеру на
+екрані п'ять рядків замість трьох. Усі три нові рядки отримали новий ключ `2000`, тому React створив їх заново. Зі
+старих рядків він видалив лише Соломію. Старі рядки мали той самий ключ, а React зберігає для кожного ключа один
+рядок, тому він знав лише про останній із них. Отже, такий ключ може залишити на екрані чужі рядки, а наступний розділ
+показує, чому на це не можна покладатися.
 
 **`crypto.randomUUID()` під час рендеру.** Ця функція дає унікальний рядок, і сторінка `Rendering Lists` її радить,
-але для запису, який тільки-но створюється. Викликана просто в `map`, вона є тим самим випадковим ключем. Лінтер цього
-не помічає, як показує таблиця нижче.
+але для запису, який тільки-но створюється. Викликана просто в `map`, вона є тим самим випадковим ключем: другий рядок
+виводу вище збігається з першим. Лінтер цього не помічає, як показує таблиця нижче.
 
 **`useId`.** Хук `useId` створює стабільний унікальний рядок для зв'язування полів із підписами. Сторінка цього хука
 окремо каже, що для ключів списку він не призначений: «`useId` **should not be used to generate keys** in a list.»
@@ -537,6 +778,7 @@ console.log(container.innerHTML)
 ```
 
 ```text
+Encountered two children with the same key, `a`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
 <ul><li>один</li><li>два</li><li>три</li></ul>
 <ul><li>один</li><li>два</li><li>один</li></ul>
 ```
@@ -547,9 +789,61 @@ two children with the same key, `a` ``, а далі йдеться про те, 
 версія React має право поводитися інакше.
 
 Правило унікальності діє лише серед сусідів одного масиву. Два окремі `map` в одному батьку можуть мати однакові
-ключі, і ми перевірили, що попередження там немає.
+ключі, і попередження там немає:
 
-Особливі значення теж варто знати, бо вони приходять із даних.
+```tsx
+function Two() {
+  return (
+    <ul>
+      {STUDENTS.map((s) => <li key={s.id}>{s.name}</li>)}
+      {STUDENTS.map((s) => <li key={s.id}>{s.id}</li>)}
+    </ul>
+  )
+}
+
+const errors = vi.spyOn(console, 'error').mockImplementation(() => {}) // рахує повідомлення React
+console.log(render(<Two />).container.innerHTML)
+console.log('повідомлень React:', errors.mock.calls.length)
+```
+
+```text
+<ul><li>Марта</li><li>Богдан</li><li>Соломія</li><li>11</li><li>12</li><li>13</li></ul>
+повідомлень React: 0
+```
+
+На екрані всі шість рядків, а ключ `11` стоїть двічі. React не попередив про це, бо кожен `map` дав окремий масив.
+Отже, той самий `id` можна спокійно вживати у двох списках поруч.
+
+Особливі значення теж варто знати, бо вони приходять із даних. Два значення перевіримо запуском. Кожен список стоїть у
+своєму тегу, бо попередження про відсутній ключ React друкує один раз для назви батька:
+
+```tsx
+const noKey = [undefined, undefined].map((id, i) => <li key={id}>{i}</li>)
+const nullKey = [null, null].map((id, i) => <li key={id}>{i}</li>)
+console.log('ключ із undefined:', noKey[0].key, '| ключ із null:', JSON.stringify(nullKey[0].key))
+// Рядки друку для двох наступних викликів не потрібні: попередження в консоль пише сам React.
+render(<ul>{noKey}</ul>)
+render(<ol>{nullKey}</ol>)
+```
+
+```text
+ключ із undefined: null | ключ із null: "null"
+Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using <ul>. See https://react.dev/link/warning-keys for more information.
+Encountered two children with the same key, `null`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+```
+
+Тут `null` у виводі означає, що ключа в елемента немає, а `"null"` є звичайним рядком. Третє значення, об'єкт, не
+доходить до запуску, бо його зупиняє `tsc`. Ось його вивід для файлу `src/object-key.tsx`, у якому стоїть один рядок
+`export const wrong = <li key={{ id: 1 }}>Марта</li>`:
+
+```text
+$ npx tsc --noEmit -p tsconfig.app.json
+src/object-key.tsx(1,26): error TS2322: Type '{ id: number; }' is not assignable to type 'Key | null | undefined'.
+```
+
+Ті самі результати в таблиці:
 
 | Значення ключа | Що отримує React | Що станеться |
 |----------------|------------------|--------------|
@@ -575,11 +869,13 @@ function Lines() {
   return <ul>{STUDENTS.map((s) => <Line name={s.name} />)}</ul>
 }
 
-render(<Lines />)
+render(<Lines />) // рядок друку не потрібен: попередження в консоль пише сам React
 ```
 
 ```text
 Each child in a list should have a unique "key" prop.
+
+Check the render method of `Lines`. See https://react.dev/link/warning-keys for more information.
 ```
 
 Тут масив містить елементи `Line`, і саме в них ключа немає. Ключ у `<li>` стоїть уже всередині, серед дітей `Line`,
@@ -651,8 +947,33 @@ console.log(withIds(['Богдан']))
 Попередження про ключі зручне, але в нього три межі.
 
 **Воно є лише в режимі розробки.** Лекція «Інструменти браузера» пояснила, що збірка для користувачів вирізає код,
-загорнутий у перевірку `NODE_ENV`. Попередження теж там. Ми запустили той самий список без ключів і з однаковими
-ключами двома способами:
+загорнутий у перевірку `NODE_ENV`. Попередження теж там. Цей файл запускають самим Node, без Vitest, тому імітацію
+браузера він готує сам, а теги записує викликом `createElement`, бо JSX у Node не працює. Він показує той самий список
+без ключів і з однаковими ключами:
+
+```js
+// файл prod.mjs
+import { JSDOM } from 'jsdom'
+import { createElement as h } from 'react'
+import { flushSync } from 'react-dom'
+
+// Пакет react-dom/client шукає документ під час завантаження, тому імітацію браузера готують раніше.
+const { window } = new JSDOM('<div id="a"></div><div id="b"></div>')
+globalThis.window = window
+globalThis.document = window.document
+const { createRoot } = await import('react-dom/client')
+
+let messages = 0
+console.error = () => { messages += 1 } // рахує все, що React пише про помилки
+
+const names = ['а', 'б']
+const show = (id, element) => flushSync(() => createRoot(document.getElementById(id)).render(element))
+show('a', h('ul', null, names.map((n) => h('li', null, n)))) // список без ключів
+show('b', h('ul', null, names.map((n) => h('li', { key: 'той самий' }, n)))) // однакові ключі
+console.log('NODE_ENV =', process.env.NODE_ENV, '| повідомлень React:', messages)
+```
+
+Ми запустили цей файл двома способами:
 
 ```text
 $ node prod.mjs
@@ -660,6 +981,10 @@ NODE_ENV = undefined | повідомлень React: 2
 $ NODE_ENV=production node prod.mjs
 NODE_ENV = production | повідомлень React: 0
 ```
+
+У першому запуску змінна `NODE_ENV` не задана, тому React працює в режимі розробки й пише два попередження. У другому
+запуску ті самі помилки в ключах лишилися, а React не написав нічого. Отже, у збірці для користувачів консоль про
+ключі мовчить, і шукати такі помилки треба під час розробки.
 
 **Воно друкується один раз для назви батька.** React пам'ятає, для якої назви батьківського тега чи компонента вже
 попередив. Другий `<ul>` без ключів, навіть в іншому компоненті, мовчить, доки сторінку не перезавантажено, а `<ol>`
@@ -779,11 +1104,73 @@ console.log('з await:', JSON.stringify(field.value))
 завдання дня показує саме цю поведінку. У справжньому проєкті ви не писатимете проп, що вибирає ключ, а напишете один
 ключ за `id`, і приклад перевірятиме лише правильну поведінку.
 
-Подивитися на сторінку можна запуском `npm run dev` за адресою `/f1-d04.html`. Ми перевірили запитом `curl`, що Vite
-віддає цей файл, а саму сторінку в браузері не відкривали. Те, що ви там побачите, випливає з тестів: `user-event`
-набирає текст і натискає кнопки в jsdom так, як описано вище.
+Подивитися на сторінку можна запуском `npm run dev` за адресою `/f1-d04.html`. Саму сторінку ми в браузері не
+відкривали. Те, що ви там побачите, випливає з тестів: `user-event` набирає текст і натискає кнопки в jsdom так, як
+описано вище.
 
 ## Хто яку помилку ловить
+
+Колонку React у таблиці нижче показали приклади цієї лекції. Колонки `tsc` і ESLint отримано на окремому файлі, де
+кожна помилка стоїть у своєму компоненті:
+
+```tsx
+// файл src/mistakes.tsx
+type Row = { id: number; name: string }
+const ROWS: Row[] = [{ id: 1, name: 'Марта' }]
+
+export function NoKey() {
+  return <ul>{ROWS.map((r) => <li>{r.name}</li>)}</ul>
+}
+export function IndexKey() {
+  return <ul>{ROWS.map((r, i) => <li key={i}>{r.name}</li>)}</ul>
+}
+export function RandomKey() {
+  return <ul>{ROWS.map((r) => <li key={Math.random()}>{r.name}</li>)}</ul>
+}
+export function TimeKey() {
+  return <ul>{ROWS.map((r) => <li key={Date.now()}>{r.name}</li>)}</ul>
+}
+export function UuidKey() {
+  return <ul>{ROWS.map((r) => <li key={crypto.randomUUID()}>{r.name}</li>)}</ul>
+}
+export function NameKey() {
+  return <ul>{ROWS.map((r) => <li key={r.name}>{r.name}</li>)}</ul>
+}
+export function NullKey({ rows }: { rows: { id: number | null }[] }) {
+  return <ul>{rows.map((r) => <li key={r.id}>рядок</li>)}</ul>
+}
+function Line({ name }: { name: string }) {
+  return <li key={name}>{name}</li>
+}
+export function KeyInside() {
+  return <ul>{ROWS.map((r) => <Line name={r.name} />)}</ul>
+}
+export function ReadsKey({ key }: { key: string }) {
+  return <p>{key}</p>
+}
+```
+
+Команда `npx tsc --noEmit -p tsconfig.app.json` про цей файл не друкує нічого. ESLint до кожної знахідки друкує довге
+пояснення, тому цей короткий файл просить у нього лише назву правила й рядок, де правило спрацювало:
+
+```js
+// файл lint.mjs
+import { ESLint } from 'eslint'
+
+const [result] = await new ESLint().lintFiles(['src/mistakes.tsx'])
+const lines = result.source.split('\n')
+for (const m of result.messages) console.log(m.ruleId, '|', lines[m.line - 1].trim())
+console.log('знахідок:', result.messages.length)
+```
+
+```text
+$ node lint.mjs
+react-hooks/purity | return <ul>{ROWS.map((r) => <li key={Math.random()}>{r.name}</li>)}</ul>
+react-hooks/purity | return <ul>{ROWS.map((r) => <li key={Date.now()}>{r.name}</li>)}</ul>
+знахідок: 2
+```
+
+Отже, ESLint помітив лише дві помилки з дев'яти, а `tsc` жодної. Те саме разом із колонкою React:
 
 | Помилка | `tsc` | ESLint | React у режимі розробки | Що ще помітить |
 |---------|-------|--------|-------------------------|----------------|
@@ -825,8 +1212,28 @@ console.log('з await:', JSON.stringify(field.value))
 Вузол і стан належать одному екземпляру, тому переїжджають разом, але лежать у різних місцях.
 
 **«Переміщений рядок React створює заново».** З тим самим ключем у того самого батька вузли лишаються тими самими
-навіть після зміни порядку. Ми перевірили це порівнянням вузлів через `===`: усі три поля лишилися тими самими
-об'єктами.
+навіть після зміни порядку. Це можна перевірити порівнянням вузлів через `===`:
+
+```tsx
+function Order({ rows }: { rows: Student[] }) {
+  return <ul>{rows.map((s) => <li key={s.id}><input aria-label={s.name} /></li>)}</ul>
+}
+
+const { rerender } = render(<Order rows={STUDENTS} />)
+const before = STUDENTS.map((s) => screen.getByLabelText(s.name)) // поля до зміни порядку
+rerender(<Order rows={[...STUDENTS].reverse()} />)
+const after = STUDENTS.map((s) => screen.getByLabelText(s.name)) // поля тих самих учнів після зміни
+console.log('порядок на екрані:', screen.getAllByRole('textbox').map((f) => f.getAttribute('aria-label')).join(', '))
+console.log('ті самі вузли:', before.map((node, i) => node === after[i]))
+```
+
+```text
+порядок на екрані: Соломія, Богдан, Марта
+ті самі вузли: [ true, true, true ]
+```
+
+Порядок змінився, а всі три поля лишилися тими самими об'єктами. Отже, зі стабільним ключем React лише переставляє
+наявні вузли, і текст у полях нікуди не зникає.
 
 **«Якщо тести зелені, ключ правильний».** У тесті без видалення й без перевірки значення жоден ключ нічим не
 відрізняється від іншого.

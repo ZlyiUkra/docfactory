@@ -116,7 +116,17 @@ export const off = /* @__PURE__ */ _jsx("button", {
 
 Сервер розробки просить компілятор про докладніший варіант. Ось той самий тег із параметром `development: true`:
 
+```js
+// файл compile-dev.mjs
+import { transformWithOxc } from 'vite'
+const source = 'export const off = <button disabled>Купити</button>'
+// Параметр development: true просить той докладніший варіант, який бере сервер розробки.
+const { code } = await transformWithOxc(source, 'menu.jsx', { jsx: { runtime: 'automatic', development: true } })
+console.log(code)
+```
+
 ```text
+$ node compile-dev.mjs
 var _jsxFileName = "menu.jsx";
 import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
 export const off = /* @__PURE__ */ _jsxDEV("button", {
@@ -133,11 +143,27 @@ export const off = /* @__PURE__ */ _jsxDEV("button", {
 немає, а про ключі розповість день 4. Значення `false` каже, що дітей не кілька. Об'єкт із `fileName` і `lineNumber`
 вказує, де в коді стояв тег, і завдяки йому повідомлення React показують ваш рядок.
 
-Сьогоднішня практика просить знайти такі виклики у вкладці «Мережа». У браузері ми цього не робили. Ми запитали сервер
-розробки тією самою адресою модуля командою `curl`, і відповідь справді містить виклики `_jsxDEV(`. На початку
-відповіді стоїть рядок із `createHotContext`, а наприкінці стоїть `$RefreshReg$`. Ці рядки потрібні для гарячої заміни
-з лекції «Проєкт: Vite, лінт, TypeScript», а не для JSX. План дня пише `jsxDEV`, а у файлі ви побачите `_jsxDEV`: це
-та сама функція під іменем, яке дав їй рядок імпорту.
+Сьогоднішня практика просить знайти такі виклики у вкладці «Мережа». У браузері ми цього не робили. Ми запустили сервер
+розробки командою `npm run dev`, а в другому терміналі запитали в нього модуль стартового файлу `src/App.tsx` тією
+самою адресою командою `curl`:
+
+```text
+$ curl -s http://localhost:5173/src/App.tsx > compiled.js
+$ grep -c '_jsxDEV(' compiled.js
+42
+$ grep -n '_jsxDEV(' compiled.js | head -2
+12:	return /* @__PURE__ */ _jsxDEV(_Fragment, { children: [
+13:		/* @__PURE__ */ _jsxDEV("section", {
+$ grep -n -o 'createHotContext("[^"]*")\|\$RefreshReg\$(_c, "App")' compiled.js
+1:createHotContext("/src/App.tsx")
+348:$RefreshReg$(_c, "App")
+```
+
+Команда `grep -c` рахує рядки, у яких трапився шуканий запис, тому відповідь сервера справді містить виклики
+`_jsxDEV(`, а ваше число залежатиме від вашого файлу. Запис `grep -n` друкує перед кожним знайденим місцем номер
+рядка. На початку відповіді стоїть рядок із `createHotContext`, а наприкінці стоїть `$RefreshReg$`. Ці рядки потрібні
+для гарячої заміни з лекції «Проєкт: Vite, лінт, TypeScript», а не для JSX. План дня пише `jsxDEV`, а у файлі ви
+побачите `_jsxDEV`: це та сама функція під іменем, яке дав їй рядок імпорту.
 
 ## Правила випливають із цього
 
@@ -146,18 +172,72 @@ export const off = /* @__PURE__ */ _jsxDEV("button", {
 ### Один кореневий елемент
 
 Два сусідні теги після `return` стали б двома викликами функцій поруч. Запис `return f() g()` не має сенсу, бо функція
-повертає одне значення. Компілятор відмовляє: `Adjacent JSX elements must be wrapped in an enclosing tag`.
+повертає одне значення. Перевіримо це файлом, схожим на `compile.mjs`. Цей файл ловить помилку компілятора й друкує її
+повідомлення:
+
+```js
+// файл compile-error.mjs
+import { transformWithOxc } from 'vite'
+const source = 'function Pair() { return <dt>Кава</dt><dd>25 грн</dd> }'
+try {
+  await transformWithOxc(source, 'menu.jsx', { jsx: { runtime: 'automatic' } })
+} catch (error) {
+  console.log(error.message)
+}
+```
+
+```text
+$ node compile-error.mjs
+Transform failed with 1 error:
+
+[PARSE_ERROR] Adjacent JSX elements must be wrapped in an enclosing tag.
+   ╭─[ menu.jsx:1:39 ]
+   │
+ 1 │ function Pair() { return <dt>Кава</dt><dd>25 грн</dd> }
+   │                                       ┬  
+   │                                       ╰── 
+   │ 
+   │ Help: Did you want a JSX fragment `<>...</>`?
+───╯
+```
+
+Компілятор відмовляє: `Adjacent JSX elements must be wrapped in an enclosing tag`. Запис `menu.jsx:1:39` називає файл,
+перший рядок і 39-й знак, тобто місце, де починається другий тег. Рядок `Help` підказує фрагмент, про який ми зараз
+поговоримо. Решту помилок компілятора в цій лекції ми отримали цим самим файлом: у рядку `source` стояв запис, про який
+іде мова. Отже, побачивши таке повідомлення у своєму коді, шукайте два теги поруч після `return`.
 
 Їх можна загорнути в `<div>`, але тоді в документі з'явиться зайвий вузол, а HTML дозволяє не всяку вкладеність. Ось
-компонент, який повертає комірку таблиці, загорнуту в `<div>`, усередині рядка `<tr>`. Серед іншого React пише таке:
+компонент, який повертає комірку таблиці, загорнуту в `<div>`, усередині рядка `<tr>`. Компонент і тест лежать в одному
+файлі, ім'я якого закінчується на `.test.tsx`, а команда `npx vitest run` запускає такий файл:
+
+```tsx
+// @vitest-environment jsdom
+// Цей коментар просить Vitest створити jsdom, бо без документа компонент показати ніде.
+import { render } from '@testing-library/react'
+import { test } from 'vitest'
+
+// Компонент хоче повернути один кореневий елемент і тому загортає комірку в <div>.
+function Cell() {
+  return <div><td>Кава</td></div>
+}
+
+test('комірка в div', () => {
+  // Функція render показує елемент у документі jsdom. Попередження React друкує сам.
+  render(<table><tbody><tr><Cell /></tr></tbody></table>)
+})
+```
+
+Решта прикладів із React у цій лекції лежать у таких самих файлах усередині `test(...)`, тому далі ми ці рядки не
+повторюємо. Серед іншого React пише таке:
 
 ```text
 In HTML, <td> cannot be a child of <div>.
 In HTML, <div> cannot be a child of <tr>.
 ```
 
-Це попередження React ми отримали під jsdom. Для таких випадків існує **фрагмент** `<>…</>`. Він об'єднує елементи в
-один виклик, а в документі не лишає нічого:
+Перший рядок стосується `<td>` усередині нашого `<div>`, а другий стосується самого `<div>` усередині `<tr>`. Отже,
+обгортка `<div>` може зламати розмітку таблиці чи списку. Це попередження React ми отримали під jsdom. Для таких
+випадків існує **фрагмент** `<>…</>`. Він об'єднує елементи в один виклик, а в документі не лишає нічого:
 
 ```tsx
 const { container } = render(<><dt>Кава</dt><dd>25 грн</dd></>)
@@ -178,8 +258,8 @@ HTML-парсер браузера знає, що `<img>` завжди поро�
 
 Закрити себе в JSX може будь-який тег. Запис `<div className="fill" />` означає порожній `<div>`. В HTML такий запис
 означав би незакритий `<div>`, тому розмітку не можна переносити назад так само механічно. У зворотному напрямку теж є
-межа: `<img>` не може мати дітей, і спроба їх передати дає помилку React під час показу: `img is a void element tag
-and must neither have children nor use dangerouslySetInnerHTML`.
+межа: `<img>` не може мати дітей, і запис `<img>текст</img>` дає помилку React під час показу: ``img is a void element
+tag and must neither have `children` nor use `dangerouslySetInnerHTML`.``
 
 ### Назви атрибутів
 
@@ -201,18 +281,31 @@ SyntaxError: Unexpected token 'class'
 помилку ловлять уже інші інструменти. Назви в JSX повторюють властивості DOM-елементів, про які говорила лекція «DOM і
 події», у розділі «Атрибут і властивість»: `element.className`, `element.htmlFor`, `element.readOnly`.
 
+Запустимо записи як в HTML. Vitest типів не перевіряє, тому виконує й ті записи, які `tsc` не пропустив би. Кожне
+попередження React сам друкує в консоль, і ці попередження стоять у третьому стовпці таблиці:
+
+```tsx
+render(<p class="a" />)
+render(<p class="b" />) // запис із class удруге: нового попередження не буде
+render(<label for="qty" />)
+render(<input readonly />)
+render(<p tabindex="0" />)
+render(<button onclick={() => {}} />)
+render(<p aria-label="Ціна" data-id={7} />) // цей рядок не дає жодного попередження
+```
+
 | В HTML | У JSX | Що каже React на запис як в HTML |
 |--------|-------|----------------------------------|
-| `class` | `className` | `Invalid DOM property class. Did you mean className?` |
-| `for` | `htmlFor` | `Invalid DOM property for. Did you mean htmlFor?` |
-| `readonly` | `readOnly` | `Invalid DOM property readonly. Did you mean readOnly?` |
-| `tabindex` | `tabIndex` | `Invalid DOM property tabindex. Did you mean tabIndex?` |
-| `onclick` | `onClick` | `Invalid event handler property onclick. Did you mean onClick?` |
+| `class` | `className` | ``Invalid DOM property `class`. Did you mean `className`?`` |
+| `for` | `htmlFor` | ``Invalid DOM property `for`. Did you mean `htmlFor`?`` |
+| `readonly` | `readOnly` | ``Invalid DOM property `readonly`. Did you mean `readOnly`?`` |
+| `tabindex` | `tabIndex` | ``Invalid DOM property `tabindex`. Did you mean `tabIndex`?`` |
+| `onclick` | `onClick` | ``Invalid event handler property `onclick`. Did you mean `onClick`?`` |
 | `aria-label`, `data-id` | так само, з дефісом | нічого не каже |
 
-Записи `aria-*` і `data-*` лишилися з дефісом з історичних причин, і компілятор робить з них поля в лапках:
-`"data-id": 7`. Попередження React легко пропустити, бо сторінка з `class` виглядає правильно, а саме попередження
-React показує лише раз за запуск. Тому тут важливий `tsc`, який такий запис не пропускає.
+Записи `aria-*` і `data-*` лишилися з дефісом з історичних причин, і компілятор робить з `<p data-id={7} />` поле в
+лапках: `"data-id": 7`. Попередження React легко пропустити, бо сторінка з `class` виглядає правильно, а саме
+попередження React показує лише раз за запуск. Тому тут важливий `tsc`, який такий запис не пропускає.
 
 ### `style` приймає об'єкт
 
@@ -221,7 +314,10 @@ React показує лише раз за запуск. Тому тут важл
 значеннями:
 
 ```tsx
-renderToStaticMarkup(<p style={{ width: 75, marginTop: 0, opacity: 0.5, lineHeight: 1.5, fontSize: '1.2rem', backgroundColor: 'teal' }} />)
+// Функція renderToStaticMarkup будує рядок HTML без документа, тому результат легко надрукувати.
+import { renderToStaticMarkup } from 'react-dom/server'
+
+console.log(renderToStaticMarkup(<p style={{ width: 75, marginTop: 0, opacity: 0.5, lineHeight: 1.5, fontSize: '1.2rem', backgroundColor: 'teal' }} />))
 ```
 
 ```text
@@ -232,15 +328,26 @@ renderToStaticMarkup(<p style={{ width: 75, marginTop: 0, opacity: 0.5, lineHeig
 теж лишилися без неї, бо `opacity` і `line-height` вимірюються без одиниць. Рядок `'1.2rem'` пройшов як є, а
 `backgroundColor` став `background-color`.
 
-Рядок у `style` не просто ігнорується, а зупиняє показ компонента: `The style prop expects a mapping from style
-properties to values, not a string`. Компілятор тут не допоможе, бо для нього рядок є звичайним значенням поля.
-Документація радить уживати `style` лише для значень, що залежать від даних, а решту оформлювати класами через
-`className`.
+Рядок у `style` не просто ігнорується, а зупиняє показ компонента. Запис `<p style="color: red" />` дає помилку ``The
+`style` prop expects a mapping from style properties to values, not a string``. Компілятор тут не допоможе, бо для
+нього рядок є звичайним значенням поля. Документація радить уживати `style` лише для значень, що залежать від даних, а
+решту оформлювати класами через `className`.
 
 ### Логічні атрибути
 
 Деякі атрибути HTML мають значення лише тим, що вони є, наприклад `disabled`. React приймає для них `true` чи `false`
-і вирішує, чи ставити атрибут. Для `aria-*` і `data-*` він цього не робить, а записує значення рядком.
+і вирішує, чи ставити атрибут. Для `aria-*` і `data-*` він цього не робить, а записує значення рядком. Ось код, який
+друкує другий стовпець таблиці:
+
+```tsx
+const records = [
+  <button disabled>Купити</button>,
+  <button disabled={false}>Купити</button>,
+  <div aria-hidden={false} data-count={0} />,
+  <div title={undefined} />,
+]
+for (const record of records) console.log(renderToStaticMarkup(record))
+```
 
 | Запис | Результат |
 |-------|-----------|
@@ -249,17 +356,24 @@ properties to values, not a string`. Компілятор тут не допом
 | `<div aria-hidden={false} data-count={0} />` | `<div aria-hidden="false" data-count="0"></div>` |
 | `<div title={undefined} />` | `<div></div>` |
 
-До цієї ж теми належить поле вводу зі значенням. Запис `<input value="Кава" />` дає попередження `You provided a value
-prop to a form field without an onChange handler`, бо таке поле неможливо змінити. Слово `readOnly` каже React, що так
-задумано. Обробники змін ви вивчатимете з дня 7.
+До цієї ж теми належить поле вводу зі значенням. Запис `<input value="Кава" />` дає попередження ``You provided a
+`value` prop to a form field without an `onChange` handler``, бо таке поле неможливо змінити. Слово `readOnly` каже
+React, що так задумано. Обробники змін ви вивчатимете з дня 7.
 
 ### Текст і пробіли
 
 Текст між тегами теж розбирає компілятор, тому знаки синтаксису в ньому не можуть стояти просто так. Запис `<p>1 <
-2</p>` дає `Unexpected token`, а запис `<p>2 > 1</p>` дає `Unexpected token. Did you mean {'>'} or &gt;?`. Є два
+2</p>` дає `Unexpected token`, а запис `<p>2 > 1</p>` дає ``Unexpected token. Did you mean `{'>'}` or `&gt;`?``. Є два
 виходи: написати сутність `&lt;`, яку компілятор перетворить на знак, або взяти знак у дужки як рядок.
 
-Сутність працює лише в тексті JSX. У рядку JavaScript вона лишається набором звичайних знаків:
+Сутність працює лише в тексті JSX. У рядку JavaScript вона лишається набором звичайних знаків. Властивість
+`textContent` у цьому коді дає текст так, як його прочитає людина:
+
+```tsx
+for (const record of [<p>1 &lt; 2</p>, <p>{'1 < 2'}</p>, <p>{'1 &lt; 2'}</p>]) {
+  console.log(render(record).container.textContent)
+}
+```
 
 | Запис | Що побачить людина |
 |-------|--------------------|
@@ -272,6 +386,24 @@ prop to a form field without an onChange handler`, бо таке поле нем
 Пробіли компілятор теж обробляє по-своєму. Він прибирає кінці рядків разом із відступами навколо них, бо інакше
 форматування коду потрапляло б на екран. Пробіл усередині рядка він лишає. Ось що виходить для змінних зі значеннями
 `'Чорна'` і `'кава'`:
+
+```tsx
+const a = 'Чорна'
+const b = 'кава'
+const records = [
+  <p>
+    {a}
+    {b}
+  </p>,
+  <p>{a} {b}</p>,
+  <p>{a}{' '}{b}</p>,
+  <p>
+    Кава
+    з молоком
+  </p>,
+]
+for (const record of records) console.log(renderToStaticMarkup(record))
+```
 
 | Запис | Результат |
 |-------|-----------|
@@ -338,6 +470,11 @@ function DrinkRow({ drink }: { drink: Drink }) {
 
 Ось розмітка для цього напою і для іншого, у якого знижки немає, а залишок нульовий:
 
+```tsx
+console.log(renderToStaticMarkup(<DrinkRow drink={{ name: 'Лате', price: 80, discount: 25, left: 3 }} />))
+console.log(renderToStaticMarkup(<DrinkRow drink={{ name: 'Какао', price: 70, discount: 0, left: 0 }} />))
+```
+
 ```text
 <dt style="color:black;font-size:18px">Лате</dt><dd title="Залишилось: 3">60 грн<b> −25%</b></dd>
 <dt style="color:gray;font-size:18px">Какао</dt><dd title="Залишилось: 0">70 грн</dd>
@@ -348,7 +485,24 @@ function DrinkRow({ drink }: { drink: Drink }) {
 
 ### Що React робить зі значенням у дужках
 
-Вираз може дати що завгодно, і React кожен вид значень обробляє по-своєму. Ось результат запису `<p>{значення}</p>`:
+Вираз може дати що завгодно, і React кожен вид значень обробляє по-своєму. Цей код по черзі показує кожне значення в
+абзаці й друкує результат або текст помилки:
+
+```tsx
+const values = [
+  'Кава', 25, 0, NaN, '', true, false, null, undefined,
+  ['Кава', ' і ', 'чай'], { name: 'Кава' }, new Date(0),
+]
+for (const value of values) {
+  try {
+    console.log(render(<p>{value}</p>).container.innerHTML)
+  } catch (error) {
+    console.log((error as Error).message)
+  }
+}
+```
+
+Ось результат запису `<p>{значення}</p>`:
 
 | Значення | Розмітка |
 |----------|----------|
@@ -444,10 +598,24 @@ onerror>`. Захист полягає не у фільтрі, а в тому, �
 Незручна назва й обгортка з об'єкта потрібні для того, щоб цей запис не можна було написати випадково й легко було
 знайти в коді. Рядок замість об'єкта React не прийме, а разом із дітьми цей проп не працює:
 
+```tsx
+const records = [
+  <p dangerouslySetInnerHTML={'<b>a</b>'} />,
+  <p dangerouslySetInnerHTML={{ __html: '…' }}>текст</p>,
+]
+for (const record of records) {
+  try {
+    render(record)
+  } catch (error) {
+    console.log((error as Error).message)
+  }
+}
+```
+
 | Запис | Помилка React |
 |-------|---------------|
-| `<p dangerouslySetInnerHTML={'<b>a</b>'} />` | `props.dangerouslySetInnerHTML must be in the form {__html: ...}` |
-| `<p dangerouslySetInnerHTML={{ __html: '…' }}>текст</p>` | `Can only set one of children or props.dangerouslySetInnerHTML` |
+| `<p dangerouslySetInnerHTML={'<b>a</b>'} />` | `` `props.dangerouslySetInnerHTML` must be in the form `{__html: ...}`. `` |
+| `<p dangerouslySetInnerHTML={{ __html: '…' }}>текст</p>` | ``Can only set one of `children` or `props.dangerouslySetInnerHTML`.`` |
 
 Документація React вимагає давати цьому пропу лише довірені й очищені дані. **Очищення** (sanitization) означає, що
 спеціальна бібліотека розбирає HTML і вилучає небезпечне: обробники на кшталт `onerror` і теги `<script>`. MDN радить
@@ -459,11 +627,25 @@ onerror>`. Захист полягає не у фільтрі, а в тому, �
 Рядок `javascript:alert(1)` не містить знаків, які треба екранувати, і є правильним значенням атрибута. Екранування
 тут не допомагає, бо небезпека виникає пізніше: браузер, перейшовши за такою адресою, виконує написаний там код.
 
-React 19.3 частину таких адрес підміняє сам. Ось що опиняється в `href` після показу під jsdom:
+React 19.3 частину таких адрес підміняє сам. Цей код показує посилання з кожною адресою й читає атрибут, який реально
+опинився в документі:
+
+```tsx
+const urls = [
+  'javascript:alert(1)', ' JavaScript:alert(1)', 'java\tscript:alert(1)',
+  'data:text/html,<b>x</b>', 'vbscript:x', 'https://a.ua',
+]
+for (const url of urls) {
+  const link = render(<a href={url}>Посилання</a>).container.querySelector('a')!
+  console.log(link.getAttribute('href'))
+}
+```
+
+Ось що опиняється в `href` після показу під jsdom:
 
 | Значення `href` | Що опинилося в атрибуті |
 |-----------------|-------------------------|
-| `javascript:alert(1)` | `javascript:throw new Error('React has blocked a javascript: URL…')` |
+| `javascript:alert(1)` | `javascript:throw new Error('React has blocked a javascript: URL as a security precaution.')` |
 | ` JavaScript:alert(1)`, з пробілом попереду | те саме |
 | `java` + табуляція + `script:alert(1)` | те саме |
 | `data:text/html,<b>x</b>` | без змін |
@@ -513,28 +695,101 @@ console.log(renderToStaticMarkup(<div {...data} />))
 `JSON.parse` повертає тип `any`, який вимикає перевірку типів.
 
 Сам по собі об'єкт із даних елементом не стане. Елемент має поле `$$typeof`, значенням якого є символ, а формат JSON
-передати символ не може. Спроба показати об'єкт `{ type: 'img', props: {…} }` дає вже знайому помилку `Objects are not
-valid as a React child`.
+передати символ не може. Спробуємо показати об'єкт, який прийшов як JSON і схожий на елемент:
+
+```tsx
+console.log(typeof (<img />).$$typeof) // поле справжнього елемента
+const fake = JSON.parse('{"type":"img","props":{"src":"x"}}')
+try {
+  render(<p>{fake}</p>)
+} catch (error) {
+  console.log((error as Error).message)
+}
+```
+
+```text
+symbol
+Objects are not valid as a React child (found: object with keys {type, props}). If you meant to render a collection of children, use an array instead.
+```
+
+Перший рядок виводу показує, що поле `$$typeof` у справжнього елемента є символом. Другий рядок показує вже знайому
+помилку: об'єкт `{ type: 'img', props: {…} }` React елементом не вважає. Отже, у фігурних дужках об'єкт із даних тегом
+не стане.
 
 ## Розмітка після `return`
 
 Розбір читання до вчорашнього дня вже показав цю помилку, а сьогодні вона важлива, бо розмітка стає довшою. Якщо після
 `return` стоїть кінець рядка, JavaScript сам ставить там крапку з комою за правилом, яке стандарт ECMAScript називає
 автоматичною вставкою крапки з комою. Функція повертає `undefined`, а розмітка нижче стає виразом, до якого виконання
-ніколи не дійде.
+ніколи не дійде. Ось такий компонент у файлі цілком, а за ним запуск тесту й запуск `tsc`:
 
-Компілятор цей код приймає, бо він правильний для мови. React теж мовчить і нічого не показує. Помилку знаходить `tsc`
-на рядку, де компонент ужито: `TS2786: … cannot be used as a JSX component`. За документацією TypeScript, недосяжний
-код за замовчуванням подається як підказка для редактора, а не як помилка, тому `tsc` на самому рядку з розміткою
-мовчить. З параметром `allowUnreachableCode: false` компілятор видає `TS7027: Unreachable code detected`. Правило
-просте: відкривна дужка стоїть на одному рядку з `return`.
+```tsx
+// @vitest-environment jsdom
+// файл src/menu.test.tsx
+import { render } from '@testing-library/react'
+import { test } from 'vitest'
+
+function Menu() {
+  return // тут JavaScript сам ставить крапку з комою
+  (
+    <p>Кава</p>
+  )
+}
+
+test('return і розмітка на різних рядках', () => {
+  const { container } = render(<Menu />)
+  console.log('у документі:', JSON.stringify(container.innerHTML))
+})
+```
+
+```text
+$ npx vitest run src/menu.test.tsx
+у документі: ""
+
+$ npx tsc -p tsconfig.app.json
+src/menu.test.tsx(14,33): error TS2786: 'Menu' cannot be used as a JSX component.
+  Its type '() => void' is not a valid JSX element type.
+    Type '() => void' is not assignable to type '(props: any) => ReactNode | Promise<ReactNode>'.
+      Type 'void' is not assignable to type 'ReactNode | Promise<ReactNode>'.
+
+$ npx tsc -p tsconfig.app.json --allowUnreachableCode false
+src/menu.test.tsx(8,3): error TS7027: Unreachable code detected.
+src/menu.test.tsx(14,33): error TS2786: 'Menu' cannot be used as a JSX component.
+  Its type '() => void' is not a valid JSX element type.
+    Type '() => void' is not assignable to type '(props: any) => ReactNode | Promise<ReactNode>'.
+      Type 'void' is not assignable to type 'ReactNode | Promise<ReactNode>'.
+```
+
+Компілятор цей код приймає, бо він правильний для мови. React теж мовчить і нічого не показує: у виводі тесту документ
+порожній. Помилку знаходить `tsc` на рядку, де компонент ужито: `TS2786: … cannot be used as a JSX component`. За
+документацією TypeScript, недосяжний код за замовчуванням подається як підказка для редактора, а не як помилка, тому
+`tsc` на самому рядку з розміткою мовчить. З параметром `allowUnreachableCode: false` компілятор видає `TS7027:
+Unreachable code detected`. Правило просте: відкривна дужка стоїть на одному рядку з `return`.
 
 ## Хто яку помилку ловить
+
+Таблиця нижче зібрана з окремих запусків, і кожен запуск можна повторити. Стовпець «Компілятор JSX» дає файл
+`compile-error.mjs`, якщо підставити запис у рядок `source`. Стовпець «`tsc`» дає маленький файл із тим самим записом.
+Ось такий файл для запису з `class`:
+
+```tsx
+// файл src/case.tsx. Слово export потрібне, щоб tsc не скаржився на невжиту змінну.
+export const bad = <p class="a" />
+```
+
+```text
+$ npx tsc -p tsconfig.app.json
+src/case.tsx(2,23): error TS2322: Type '{ class: string; }' is not assignable to type 'DetailedHTMLProps<HTMLAttributes<HTMLParagraphElement>, HTMLParagraphElement>'.
+  Property 'class' does not exist on type 'DetailedHTMLProps<HTMLAttributes<HTMLParagraphElement>, HTMLParagraphElement>'. Did you mean 'className'?
+```
+
+Запис `TS2322` є кодом помилки, і такі коди стоять у стовпці `tsc`. Другий рядок виводу навіть підказує правильну назву.
+Стовпець «React під час роботи» ви вже бачили в прикладах вище.
 
 | Помилка | Компілятор JSX | `tsc` | React під час роботи |
 |---------|----------------|-------|----------------------|
 | два сусідні теги без обгортки | `Adjacent JSX elements…` | `TS2657` | до запуску не дійде |
-| незакритий `<img>` | `Expected corresponding JSX closing tag…` | `TS17008` | до запуску не дійде |
+| незакритий `<img>` у `<p><img src="x"></p>` | `Expected corresponding JSX closing tag…` | `TS17008` | до запуску не дійде |
 | `if` у фігурних дужках | `Unexpected token` | `TS1109` | до запуску не дійде |
 | `<p class="a" />` | пропускає | `TS2322` | попередження, сторінка працює |
 | `<p style="color: red" />` | пропускає | `TS2559` | помилка, компонент не показано |
@@ -553,6 +808,8 @@ valid as a React child`.
 щонайменше два: один для випадку, коли частина розмітки є, і другий для випадку, коли її немає.
 
 ```tsx
+type Cafe = { name: string; site: string }
+
 // Показує назву кав'ярні й посилання на її сайт, якщо сайт відомий.
 function CafeLink({ cafe }: { cafe: Cafe }) {
   // Є: cafe.name, cafe.site.
@@ -563,6 +820,11 @@ test('CafeLink: без сайту посилання немає', () => {
   render(<CafeLink cafe={{ name: 'Зерно', site: '' }} />)
   expect(screen.queryByRole('link')).toBeNull()
 })
+```
+
+```text
+$ npx vitest run src/cafe.test.tsx
+      Tests  1 passed (1)
 ```
 
 Цей приклад проходить уже на заглушці `return null`, бо на порожній сторінці посилання справді немає. Приклад не
