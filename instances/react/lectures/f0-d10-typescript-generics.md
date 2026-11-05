@@ -48,8 +48,8 @@ last-bad.ts(17,13): error TS18046: 'c' is of type 'unknown'.
 ```
 
 Такий вивід команда дає в теці, де немає файла `tsconfig.json`. Це файл, у якому проєкт зберігає налаштування
-компілятора TypeScript. Якщо такий файл лежить у вашій теці або в теці над нею, TypeScript 6.0 не перевіряє
-`last-bad.ts`, а друкує одну помилку:
+компілятора TypeScript. Якщо такий файл лежить у вашій теці або в теці над нею, компілятор версії 6.0 чи новішої
+не перевіряє `last-bad.ts`, а друкує одну помилку:
 
 ```text
 $ npx tsc --noEmit --strict --target es2022 --pretty false last-bad.ts
@@ -738,5 +738,5 @@ hooks.tsx(28,76): error TS2339: Property 'title' does not exist on type '{ id: n
 ---
 
 Лекцію написано для цього плану. Вона спирається на TypeScript Handbook і на сторінки useState та useRef документації
-React, переказані своїми словами. Код запущено на Node 24 і перевірено компілятором TypeScript 6.0.3; файл для React
+React, переказані своїми словами. Код запущено на Node 24 і перевірено компілятором TypeScript 7.0.2; файл для React
 перевірено з пакетом `@types/react` 19.3.

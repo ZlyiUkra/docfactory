@@ -90,7 +90,7 @@ $ npx tsc --noEmit --strict --target es2022 --pretty false order.ts
 order.ts(7,33): error TS2322: Type 'string' is not assignable to type 'number'.
 order.ts(8,33): error TS2561: Object literal may only specify known properties, but 'totl' does not exist in type 'Order'. Did you mean to write 'total'?
 $ echo $?
-2
+1
 ```
 
 Запис `order.ts(7,33)` означає «файл, рядок 7, позиція 33». `TS2322` — номер помилки, за яким її легко шукати. Слова
@@ -102,7 +102,7 @@ $ echo $?
 текстом.
 
 Команда `echo $?` друкує код, з яким завершилася попередня команда. Код 0 означає успіх, а будь-який інший код означає
-невдачу. Тут `tsc` завершився з кодом 2, бо знайшов помилки.
+невдачу. Тут `tsc` завершився з кодом 1, бо знайшов помилки.
 
 ## Перевірка й запуск — дві окремі дії
 
@@ -123,7 +123,7 @@ Node 24 запускає файли `.ts` напряму й типів не пе
 | Коли працює | до запуску програми | під час запуску |
 | Що робить із типами | порівнює з ними кожне значення в коді | викидає їх, не читаючи |
 | Що бачить | лише текст коду | справжні значення, зокрема дані з мережі |
-| Помилка типу | друкує її й завершується з кодом 2 | не шукає її й ніяк не реагує |
+| Помилка типу | друкує її й завершується з кодом 1 | не шукає її й ніяк не реагує |
 
 З цієї таблиці випливають три наслідки, і на них тримається решта лекції.
 
@@ -381,7 +381,7 @@ $ npx tsc --noEmit --strict --target es2022 --pretty false delivery-errors.ts
 delivery-errors.ts(8,19): error TS2339: Property 'courier' does not exist on type 'Delivery'.
   Property 'courier' does not exist on type '{ stage: "packing"; }'.
 delivery-errors.ts(12,40): error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
-delivery-errors.ts(22,26): error TS2820: Type '"onTheway"' is not assignable to type '"packing" | "onTheWay" | "delivered"'. Did you mean '"onTheWay"'?
+delivery-errors.ts(22,26): error TS2820: Type '"onTheway"' is not assignable to type '"delivered" | "onTheWay" | "packing"'. Did you mean '"onTheWay"'?
 delivery-errors.ts(25,7): error TS2322: Type '{ stage: "onTheWay"; }' is not assignable to type 'Delivery'.
   Property 'courier' is missing in type '{ stage: "onTheWay"; }' but required in type '{ stage: "onTheWay"; courier: string; }'.
 delivery-errors.ts(28,48): error TS2353: Object literal may only specify known properties, and 'courier' does not exist in type '{ stage: "packing"; }'.
@@ -696,7 +696,7 @@ $ npx tsc --noEmit --strict --target es2022 --module esnext --moduleResolution b
 upload.tsx(9,29): error TS2322: Type 'number' is not assignable to type 'string'.
 upload.tsx(19,23): error TS2339: Property 'percent' does not exist on type '{ stage: "idle"; }'.
 upload.tsx(21,43): error TS2345: Argument of type '{ stage: "sending"; }' is not assignable to parameter of type 'SetStateAction<UploadState>'.
-  Type '{ stage: "sending"; }' is not assignable to type '{ stage: "sending"; percent: number; } | ((prevState: UploadState) => UploadState)'.
+  Type '{ stage: "sending"; }' is not assignable to type '((prevState: UploadState) => UploadState) | { stage: "sending"; percent: number; }'.
     Property 'percent' is missing in type '{ stage: "sending"; }' but required in type '{ stage: "sending"; percent: number; }'.
 ```
 
@@ -791,5 +791,5 @@ data.currency === "string"`, і лише після неї компілятор 
 
 Лекцію написано для цього плану. Вона спирається на TypeScript Handbook, примітки до TypeScript 6.0, документацію
 Node.js, сторінку про `typeof` на MDN і сторінку Using TypeScript документації React, переказані своїми словами. Код
-запущено на Node 24 і перевірено компілятором TypeScript 6.0.3; файл для React перевірено з пакетом `@types/react`
+запущено на Node 24 і перевірено компілятором TypeScript 7.0.2; файл для React перевірено з пакетом `@types/react`
 19.3.
