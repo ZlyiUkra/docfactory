@@ -771,13 +771,13 @@ TypeScript та інструменти. Для кожного дня є лекц
   Functions` (той самий рецепт, приклади — у Vitest).
 - **Сервери MCP:** `react-docs`, `vite-docs`, `eslint-docs`, `tailwind-docs`, `typescript-docs`, `vitest-docs`,
   `htdp-book`.
-- **Зробити:** 1) `npm create vite@latest spa -- --template react-ts --eslint` з кореня репозиторію; 2) закріпіть
-  TypeScript командою `npm pkg set devDependencies.typescript="~6.0.3"`, бо шаблон записує версію 7, а
-  `typescript-eslint` приймає лише версію нижчу за 6.1 і без цього `npm install` падає з помилкою `ERESOLVE`; 3)
-  поставити в `spa/` Vitest, jsdom і Testing Library; 4) зробити перший коміт; окремий `git init` не потрібен, бо
-  `spa/` лежить у репозиторії проєкту; 5) переконатися, що лінт має пресет `recommended` з
-  `eslint-plugin-react-hooks`; 6) свідомо викликати хук усередині `if` і запустити лінт; 7) змінити текст у компоненті
-  з лічильником, не перезавантажуючи сторінку.
+- **Зробити:** 1) `npm create vite@latest spa -- --template react-ts --eslint` з кореня репозиторію; 2) встановити
+  залежності командою `npm install` у теці `spa/`; 3) поставити в `spa/` Vitest, jsdom і Testing Library; 4) зробити
+  перший коміт; окремий `git init` не потрібен, бо `spa/` лежить у репозиторії проєкту; 5) переконатися, що лінт має
+  пресет `recommended` з `eslint-plugin-react-hooks`; 6) свідомо викликати хук усередині `if` і запустити лінт; 7)
+  змінити текст у компоненті з лічильником, не перезавантажуючи сторінку. Застереження про версію: у `spa/` стоїть
+  TypeScript 6.0, а не 7, і це обмеження через ESLint. З прапорцем `--eslint` шаблон сам записує версію `~6.0.3`,
+  бо пакет `typescript-eslint` працює лише з TypeScript, нижчим за 6.1.
 - **Перевірити себе:** лінт завершується помилкою на правилі `rules-of-hooks`. Після правки тексту лічильник зберіг
   своє значення, отже, гаряча заміна спрацювала.
 - **Пастка:** брати старий туторіал на Create React App. Документація відповідає на це прямо: «Create React App has
