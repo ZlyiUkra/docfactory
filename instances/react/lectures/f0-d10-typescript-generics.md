@@ -46,7 +46,28 @@ last-bad.ts(11,23): error TS2322: Type 'string' is not assignable to type 'numbe
 last-bad.ts(17,13): error TS18046: 'c' is of type 'unknown'.
 ```
 
-Кожен спосіб має свою ваду:
+Такий вивід команда дає в теці, де немає файла `tsconfig.json`. Це файл, у якому проєкт зберігає налаштування
+компілятора TypeScript. Якщо такий файл лежить у вашій теці або в теці над нею, TypeScript 6.0 не перевіряє
+`last-bad.ts`, а друкує одну помилку:
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false last-bad.ts
+error TS5112: tsconfig.json is present but will not be loaded if files are specified on commandline. Use '--ignoreConfig' to skip this error.
+```
+
+Помилка `TS5112` каже таке. Файл названо просто в команді, тому компілятор не візьме налаштувань із `tsconfig.json`.
+Компілятор вимагає, щоб ви це підтвердили. Для цього додайте до команди прапорець `--ignoreConfig`:
+
+```text
+$ npx tsc --noEmit --strict --target es2022 --pretty false --ignoreConfig last-bad.ts
+last-bad.ts(11,23): error TS2322: Type 'string' is not assignable to type 'number'.
+last-bad.ts(17,13): error TS18046: 'c' is of type 'unknown'.
+```
+
+З прапорцем `--ignoreConfig` компілятор бере налаштування лише з прапорців команди. Вивід тоді той самий, що й у теці
+без `tsconfig.json`. Якщо `tsconfig.json` у вас є, додавайте цей прапорець до кожної команди цієї лекції.
+
+Тепер повернімося до трьох функцій. Кожен спосіб має свою ваду:
 
 | Спосіб | Що добре | Що погано |
 |--------|----------|-----------|
