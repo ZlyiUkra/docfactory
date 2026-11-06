@@ -5,10 +5,11 @@
 пакет розпадається на кілька, що робить `flushSync` і скільки він коштує. Читання займе близько 50 хвилин.
 
 Числа в лекції отримано на React 19.3.1 у браузері `chrome-headless-shell` версії 157, тобто в Chromium без вікна.
-Клацання були справжніми подіями миші, які браузеру надсилав протокол інструментів розробника. Якщо біля числа не
-сказано іншого, його отримано на збірці для профілювання (`vite build --mode profile`). Таблицю про старі версії React
-отримано в jsdom, і біля неї про це сказано. Вікно розширення React Developer Tools ми не відкривали, тому жодне число
-звідти не взято.
+Виняток становить замір «Скільки коштує `flushSync` усюди»: час до кадру залежить від монітора, тому цей замір
+зроблено в Chrome 156 з вікном. Клацання були справжніми подіями миші, які браузеру надсилав протокол інструментів
+розробника. Якщо біля числа не сказано іншого, його отримано на збірці для профілювання (`vite build --mode profile`).
+Таблицю про старі версії React отримано в jsdom, і біля неї про це сказано. Вікно розширення React Developer Tools ми
+не відкривали, тому жодне число звідти не взято.
 
 Практика дня просить зробити три випадки з трьома `set` і прокручування до нового елемента списку. Щоб не показувати
 готового розв'язку, лекція бере інший об'єкт: табло рейсу й панель з умовами перевезення.
@@ -404,7 +405,8 @@ window.scrollY: 1637
 
 Тепер коміт стоїть першим, а вузол уже є. Панель не дійшла до верху вікна, бо сторінка закінчилася: її висота 2337
 пікселів, вікно займає 700, отже, прокрутити можна щонайбільше на 2337 − 700 = 1637 пікселів. Панель стояла на 2029,
-тому після прокручування її верх опинився на 2029 − 1637 = 392.
+тому після прокручування її верх опинився на 2029 − 1637 = 392. Вікно браузера в цьому запуску мало висоту 700
+пікселів, тому у вашому вікні числа будуть іншими, але рахуються вони так само.
 
 ### У списку помилка тихіша
 
@@ -461,27 +463,82 @@ useLayoutEffect(() => {
 
 Пастка дня звучить так: людина ставить `flushSync` усюди, щоб стан оновився одразу. Головне правило фази вимагає
 числа, тому поміряймо. Екран `Departures` показує дві тисячі рядків. Кожен рядок рахує невелику суму й показує три
-стани, тому після кожної зміни React викликає всі рядки заново й змінює їхній текст:
+стани, тому після кожної зміни React викликає всі рядки заново й змінює їхній текст. Повний код досліду стоїть у
+файлі `src/main.tsx`, а збирає його команда `vite build --mode profile`:
 
 ```tsx
-function together() {
-  setGate(gate + 1)
-  setStatus(status + 1)
-  setLate(late + 1)
+// src/main.tsx
+import { Profiler, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { createRoot } from 'react-dom/client'
+
+const ROWS = 2000
+let commits = 0 // Скільки комітів дало поточне клацання.
+let render = 0 // Сума actualDuration за ці коміти, мс.
+
+function Row({ i, gate, status, late }: { i: number; gate: number; status: number; late: number }) {
+  let sum = 0
+  for (let k = 0; k < 40; k++) sum += (i * k + gate + status + late) % 7 // невелика сума в кожному рядку
+  return <li>рейс {i}: вихід {gate}, статус {status}, затримка {late}, контроль {sum}</li>
 }
-function separately() {
-  flushSync(() => setGate(gate + 1))
-  flushSync(() => setStatus(status + 1))
-  flushSync(() => setLate(late + 1))
+
+function Departures() {
+  const [gate, setGate] = useState(0)
+  const [status, setStatus] = useState(0)
+  const [late, setLate] = useState(0)
+  const list = () => document.getElementById('list')!
+
+  function together() {
+    setGate(gate + 1)
+    setStatus(status + 1)
+    setLate(late + 1)
+  }
+  function separately() {
+    flushSync(() => setGate(gate + 1))
+    flushSync(() => setStatus(status + 1))
+    flushSync(() => setLate(late + 1))
+  }
+  function separatelyWithReading() {
+    flushSync(() => setGate(gate + 1))
+    void list().offsetHeight
+    flushSync(() => setStatus(status + 1))
+    void list().offsetHeight
+    flushSync(() => setLate(late + 1))
+    void list().offsetHeight
+  }
+
+  // Обгортка міряє клацання: від початку обробника до повідомлення, яке надсилає функція кадру.
+  const measured = (name: string, handler: () => void) => () => {
+    commits = 0
+    render = 0
+    const start = performance.now()
+    handler()
+    requestAnimationFrame(() => {
+      const channel = new MessageChannel()
+      channel.port1.onmessage = () => {
+        console.log(JSON.stringify({ name, commits, render: +render.toFixed(1), frame: +(performance.now() - start).toFixed(1) }))
+      }
+      channel.port2.postMessage(null)
+    })
+  }
+
+  return (
+    <>
+      <button onClick={measured('together', together)}>together</button>
+      <button onClick={measured('separately', separately)}>separately</button>
+      <button onClick={measured('separatelyWithReading', separatelyWithReading)}>separatelyWithReading</button>
+      <ul id="list">
+        {Array.from({ length: ROWS }, (_, i) => <Row key={i} i={i} gate={gate} status={status} late={late} />)}
+      </ul>
+    </>
+  )
 }
-function separatelyWithReading() {
-  flushSync(() => setGate(gate + 1))
-  void list().offsetHeight
-  flushSync(() => setStatus(status + 1))
-  void list().offsetHeight
-  flushSync(() => setLate(late + 1))
-  void list().offsetHeight
-}
+
+createRoot(document.getElementById('root')!).render(
+  <Profiler id="departures" onRender={(_id, _phase, actualDuration) => { commits++; render += actualDuration }}>
+    <Departures />
+  </Profiler>,
+)
 ```
 
 Третій варіант читає `offsetHeight`, тобто висоту списку. Саме заради такого читання `flushSync` зазвичай і пишуть.
@@ -495,20 +552,20 @@ function separatelyWithReading() {
 
 | Варіант | Комітів | Рендер, мс, без уповільнення | До кадру, мс, без уповільнення | Рендер, мс, у 4 рази | До кадру, мс, у 4 рази |
 |---------|---------|------------------------------|--------------------------------|----------------------|------------------------|
-| `together` | 1 | 6.7 | 67.2 | 30.1 | 290.7 |
-| `separately` | 3 | 20.4 | 101.3 | 85.3 | 413.8 |
-| `separatelyWithReading` | 3 | 21.4 | 156.0 | 83.8 | 648.9 |
+| `together` | 1 | 5.5 | 62.4 | 29.6 | 381.1 |
+| `separately` | 3 | 15.2 | 86.9 | 85.6 | 538.7 |
+| `separatelyWithReading` | 3 | 15.5 | 142.2 | 80.3 | 894.1 |
 
 Прочитаймо рядки з уповільненням, бо саме їх вимагає правило фази.
 
 - Рендер коштує приблизно втричі дорожче, бо React тричі пройшов дві тисячі рядків. Це прямий наслідок трьох комітів.
-- Час до кадру виріс на 123 мс, тобто менш ніж утричі. Найімовірніша причина така: більшу частину цього часу займає
+- Час до кадру виріс на 158 мс, тобто менш ніж удвічі. Найімовірніша причина така: більшу частину цього часу займає
   робота браузера після вашого коду, а перерахунок і малювання тут відбулися один раз.
 - Варіант `separatelyWithReading` має такий самий рендер, як `separately`, а його час до кадру більш ніж удвічі
   більший за час `together`. Причина лежить поза `actualDuration`: це число міряє лише рендер, а не зміни документа й
   перерахунок компонування. Отже, одного `actualDuration` замало, щоб оцінити ціну `flushSync`.
 
-Ці числа належать нашому екрану й нашому комп'ютеру, і запуск ішов у браузері без вікна. Таблиця показує найгірший
+Ці числа належать нашому екрану й нашому комп'ютеру, а запуск ішов у Chrome 156 з вікном. Таблиця показує найгірший
 випадок, бо кожен рядок залежить від кожного стану. У вашому застосунку співвідношення буде іншим, тому міряйте свій
 екран, а не повторюйте наші цифри.
 
@@ -563,7 +620,7 @@ Tools теж показує коміти, але його ми не переві
 попереднього елемента, і консоль мовчить.
 
 **«`flushSync` усюди зробить інтерфейс чуйнішим».** Він не пришвидшує роботу, а лише змінює її час і дробить на
-частини. У нашому замірі час до кадру зріс з 290.7 мс до 413.8 мс, а з читанням висоти до 648.9 мс.
+частини. У нашому замірі час до кадру зріс з 381.1 мс до 538.7 мс, а з читанням висоти до 894.1 мс.
 
 ## Як це проявиться далі в React
 
