@@ -608,7 +608,7 @@ TypeScript та інструменти. Для кожного дня є лекц
   примірнику `webstandards` — `HTML Standard: 8 Web application APIs` (розділ 8.1.7 Event loops: задачі й
   мікрозадачі); у примірнику `htdp` — книжка How to Design Programs, частина I, розділ 3 `3.1 Designing Functions`
   (той самий рецепт для функцій, що повертають проміс).
-- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `ecma-spec`, `htdp-book`.
+- **Сервери MCP:** `mdn-docs`, `webstandards-docs`, `ecma-spec`, `nodejs-docs`, `htdp-book`.
 - **Зробити:** 1) напишіть три вигадані запити із затримками 300, 500 і 700 мс; 2) виконайте їх послідовно через
   `await`; 3) виконайте їх разом через `Promise.all`; 4) виміряйте час кожного варіанта через `performance.now()`.
 - **Перевірити себе:** ви отримали два числа: близько 1500 мс для послідовного варіанта й близько 700 мс для варіанта
