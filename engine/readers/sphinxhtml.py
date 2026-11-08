@@ -10,6 +10,9 @@
                 (найближчий), типово `</article>`, `<footer`, `rst-footer-buttons`;
                 `version_prefix` — рядок перед номером у мітці версії. `min_chars` — найкоротше
                 тіло без підзаголовка: сторінка атрибута в довіднику pandas має один рядок опису.
+                `version_labels` — об'єкт «тека → номер»: Read the Docs називає теки
+                `release_3.3.0` і `stable`, а мітка версії мусить бути номером («3.3», «3.4»).
+                Тека без запису в об'єкті дає мітку з власної назви, як і без поля.
 
 Навіщо. Документація NVIDIA Container Toolkit на docs.nvidia.com — сайт Sphinx, і кожна версія
 лежить своєю текою (`…/1.20.1/`, `…/1.6.0/`), а перелік версій (`versions1.json`) називає лише
@@ -130,6 +133,7 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
     exclude = _SKIP + [re.compile(r) for r in source.get("exclude") or ()]
     ends = [re.compile(r) for r in source.get("end") or _ENDS]
     vprefix = source.get("version_prefix", "")
+    vlabels = source.get("version_labels") or {}
 
     # Сторінка → {хеш тексту → [назва, тіло, адреса найновішої версії, версії]}; порядок
     # сторінок — порядок обходу найновішої версії, де сторінка з'явилася вперше.
@@ -173,7 +177,7 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
                 _markup.require(title, body, url,
                                 int(source.get("min_chars", _markup.MIN_BODY)))
                 return _markup.document(title, url, ctx.stamp, body,
-                                        ", ".join(vprefix + v for v in vers))
+                                        ", ".join(vprefix + vlabels.get(v, v) for v in vers))
 
             name = f"{key}-{digest}"
             items.append(Item(id=f"{source['id']}/{name}",
