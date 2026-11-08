@@ -189,3 +189,7 @@ def fetch_full(url: str, allow, *, since: str = "", gzip: bool = False, accept: 
         return ("304", b"", {}) if e.code == 304 else (f"збій: HTTP {e.code}", b"", {})
     except urllib.error.URLError as e:
         return (f"збій: {e.reason}", b"", {})
+    except (TimeoutError, ConnectionError) as e:
+        # Тайм-аут посеред читання тіла — не URLError: без цього один повільний файл обривав
+        # увесь прогін (electron, 2528 із 2788), а так це збій одного документа для `--missing`.
+        return (f"збій: {e or type(e).__name__}", b"", {})
