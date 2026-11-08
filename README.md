@@ -4271,6 +4271,20 @@ Connector/Python і Connector/ODBC, пакети npm `mysql2`, `mysql` і `@mysq
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/wordpress/README.md](instances/wordpress/README.md).
 
+### xgboost
+
+Документація XGBoost — бібліотеки, що навчає ансамблі дерев рішень градієнтним бустингом, а також випадковий ліс. Примірник містить
+теку `doc/` репозиторію на останньому патчі кожної лінії 0.40–3.4 (параметри, GPU, формат моделі, прогноз, навчальні статті, R і
+JVM), довідник Python API і приклади Python із сайту для ліній 0.72–3.4, нотатки релізів GitHub, журнал `NEWS.md` і записи PyPI.
+Усього 774 документи і 4631 фрагмент.
+
+- порт `8954`; запис у Claude Code — `xgboost-docs`, адреса `http://127.0.0.1:8954/mcp`; інструменти `search_docs` і `read_section`;
+- версію пишуть з префіксом: `xgboost-3.4`, `xgboost-1.7`;
+- не входять: LightGBM, scikit-learn, NumPy і сама мова Python;
+- приклад питання агентові: `./df xgboost ask "How do I train a random forest on the GPU with XGBoost?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/xgboost/README.md](instances/xgboost/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
