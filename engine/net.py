@@ -167,7 +167,12 @@ def fetch_full(url: str, allow, *, since: str = "", gzip: bool = False, accept: 
     try:
         with opener.open(req, timeout=TIMEOUT_SEC) as resp:
             data = resp.read(MAX_BYTES + 1)
-            packed = gzip and resp.headers.get("Content-Encoding", "").lower() == "gzip"
+            coded = resp.headers.get("Content-Encoding", "").lower() == "gzip"
+            # tradingview.com стискає відповідь, хоч її й не просили, і без розпаковки сайтмап —
+            # двійкове сміття. Файл .gz чи .tgz не чіпаємо: його розпаковує сам читач.
+            unasked = (coded and data[:2] == b"\x1f\x8b"
+                       and not urllib.parse.urlsplit(url).path.endswith((".gz", ".tgz")))
+            packed = (gzip and coded) or unasked
             got = {"etag": resp.headers.get("ETag", ""),
                    "modified": resp.headers.get("Last-Modified", "")}
         if len(data) > MAX_BYTES:
