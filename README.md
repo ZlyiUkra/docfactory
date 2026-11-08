@@ -4285,6 +4285,19 @@ JVM), довідник Python API і приклади Python із сайту д�
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/xgboost/README.md](instances/xgboost/README.md).
 
+### lightgbm
+
+Документація LightGBM — бібліотеки градієнтного бустингу, що вирощує дерева лист за листом на гістограмах ознак і вміє будувати
+випадковий ліс (`boosting="rf"`). Примірник містить теку `docs/` і README прикладів на останньому патчі кожної лінії 1–4.7, довідник
+Python API із сайту для ліній 3.2–4.7, нотатки релізів GitHub і записи PyPI. Усього 447 документів і 2592 фрагменти.
+
+- порт `8955`; запис у Claude Code — `lightgbm-docs`, адреса `http://127.0.0.1:8955/mcp`; інструменти `search_docs` і `read_section`;
+- версію пишуть з префіксом: `lightgbm-4.7`, `lightgbm-3.3`;
+- не входять: XGBoost, scikit-learn, NumPy і сама мова Python;
+- приклад питання агентові: `./df lightgbm ask "How do I train a random forest with LightGBM and stop early?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/lightgbm/README.md](instances/lightgbm/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
