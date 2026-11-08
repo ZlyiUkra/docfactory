@@ -4354,6 +4354,19 @@ Algorithmic Trading with MQL5. Усі три файли PDF користувач
 - корпус, індекс і файли PDF — лише на цій машині, у git їх немає;
 - докладніше — у [instances/mql5/README.md](instances/mql5/README.md).
 
+### chrome-extensions
+
+Документація розширень Chrome: розділи extensions і webstore сайту developer.chrome.com — посібники Manifest V3, довідник API `chrome.*`
+і `manifest.json`, старі сторінки Manifest V2, публікація в Chrome Web Store з її правилами — і код офіційних прикладів
+`chrome-extensions-samples`. Усього 943 документи й 8925 фрагментів.
+
+- порт `8960`; запис у Claude Code — `chrome-extensions-docs`, адреса `http://127.0.0.1:8960/mcp`; інструменти `search_docs` і `read_section`;
+- версій немає: сайт показує поточний стан, версію Chrome для API пише сама сторінка;
+- не входять: блог Chrome, вебплатформа звичайних сторінок (вона в `mdn` і `webdev`), розширення Firefox і Safari;
+- приклад питання агентові: `./df chrome-extensions ask "How does a content script send a message to the service worker?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/chrome-extensions/README.md](instances/chrome-extensions/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
