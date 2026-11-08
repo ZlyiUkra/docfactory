@@ -4312,6 +4312,20 @@ Python API із сайту для ліній 3.2–4.7, нотатки релі�
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/numpy/README.md](instances/numpy/README.md).
 
+### electron
+
+Документація Electron — каркаса настільних програм на HTML, CSS і JavaScript — разом з electron-builder, який збирає з програми
+інсталятор, підписує й публікує оновлення, і electron-vite, який збирає код через Vite. Примірник містить теку `docs/` Electron
+кожного мажора 0.37–45, нотатки всіх стабільних релізів, документацію electron-builder 1–26 і сайт electron-vite з журналами змін обох
+інструментів, а ще записи npm трьох пакетів. Усього 4711 документів і 19 569 фрагментів.
+
+- порт `8959`; запис у Claude Code — `electron-docs`, адреса `http://127.0.0.1:8959/mcp`; інструменти `search_docs` і `read_section`;
+- версію пишуть з префіксом: `electron-45`, `electron-builder-26`, `electron-vite-6`;
+- не входять: Electron Forge, Chromium і Node.js як такі;
+- приклад питання агентові: `./df electron ask "How do I expose a function from the preload script and call it from the page?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/electron/README.md](instances/electron/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
