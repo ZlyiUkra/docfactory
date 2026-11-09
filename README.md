@@ -4408,19 +4408,19 @@ CuPy — масиви NumPy на відеокарті: сайт docs.cupy.dev н
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/dukascopy-node/README.md](instances/dukascopy-node/README.md).
 
-### telegram
+### telegram-bot
 
-Документація розробника Telegram — увесь сайт core.telegram.org як знімок на 09.11.2026: довідник Bot API зі сторінкою на кожен метод
-і тип, журнал змін Bot API, посібники для ботів, Mini Apps і платежів; Telegram API (MTProto) з посібниками за темами і сторінкою
-кожного методу, конструктора й типу схеми; протокол MTProto, TDLib, Passport, Gateway API, віджети; README і журнал змін TDLib, README
-власного сервера Bot API. Усього 3797 документів і 17 821 фрагмент.
+Документація Telegram Bot API — розділ ботів сайту core.telegram.org як знімок на 09.11.2026: довідник Bot API зі сторінкою на кожен
+метод і тип, форматування, журнал змін Bot API усіх версій, посібники для ботів (BotFather, команди, клавіатури, inline-режим, режим
+приватності, webhook), Mini Apps, платежі й Telegram Stars, ігри, FAQ, урок, Serverless, а також README власного сервера Bot API.
+Усього 606 документів і 1320 фрагментів.
 
-- порт `8964`; запис у Claude Code — `telegram-docs`, адреса `http://127.0.0.1:8964/mcp`; інструменти `search_docs` і `read_section`;
-- версій немає: сайт описує чинний Bot API і чинний шар схеми, історія — у журналі змін і на сторінці шарів;
-- не входять: довідник класів TDLib (Doxygen, без markdown-версії), сторонні бібліотеки для ботів;
-- приклад питання агентові: `./df telegram ask "How do I receive updates with getUpdates and avoid getting the same update twice?"`;
+- порт `8964`; запис у Claude Code — `telegram-bot-docs`, адреса `http://127.0.0.1:8964/mcp`; інструменти `search_docs` і `read_section`;
+- версій немає: сайт описує чинний Bot API, історія — у журналі змін Bot API;
+- не входять: Telegram API для повноцінних клієнтів (MTProto, TDLib), сторонні бібліотеки для ботів;
+- приклад питання агентові: `./df telegram-bot ask "How do I receive updates with getUpdates and avoid getting the same update twice?"`;
 - корпус — в архіві від самого початку;
-- докладніше — у [instances/telegram/README.md](instances/telegram/README.md).
+- докладніше — у [instances/telegram-bot/README.md](instances/telegram-bot/README.md).
 
 ## Захист
 
