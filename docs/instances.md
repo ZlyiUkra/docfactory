@@ -5939,7 +5939,7 @@ are not here.
 
 **Порт** 8961, сервер `tree-models-docs`. Підняти: `./df tree-models serve`. Адреса: `http://127.0.0.1:8961/mcp`.
 
-**Обсяг.** Документів: 1 318, фрагментів: 10 731.
+**Обсяг.** Документів: 1 868, фрагментів: 15 257.
 
 **Опис.**
 
@@ -5959,8 +5959,8 @@ Documents : chapters of books and sections of papers about decision trees, rando
 ensemble pages of the scikit-learn User Guide. Library API references (XGBoost, LightGBM, NumPy) are not here: other
 servers hold them.
 
-**Далі в [README](../instances/tree-models/README.md):** Що всередині; Чого тут немає; Як читаються файли; Корпус лише
-локально; Як запустити.
+**Далі в [README](../instances/tree-models/README.md):** Що всередині; Обмеження текстів; Як читаються файли; Корпус
+лише локально; Як запустити.
 
 ### cupy
 

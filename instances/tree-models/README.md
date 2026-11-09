@@ -37,30 +37,27 @@
 | Molnar, Interpretable Machine Learning, 3-тє вид. (2025) | глави `.qmd` репозиторію `christophM/interpretable-ml-book` | 45 |
 | Kuhn, Johnson, Feature Engineering and Selection (CRC, 2019) | сайт книжки feat.engineering | 13 |
 | scikit-learn User Guide: 1.10 Decision Trees і 1.11 Ensembles | scikit-learn.org, стабільна версія | 2 |
+| Hastie, Tibshirani, Friedman, The Elements of Statistical Learning, 2-ге вид. (Springer, 2009) | PDF, завантажений браузером з hastie.su.domains | 173 |
+| James, Witten, Hastie, Tibshirani, Taylor, An Introduction to Statistical Learning with Applications in Python (Springer, 2023) | PDF, завантажений браузером зі statlearning.com | 100 |
+| Murphy, Probabilistic Machine Learning: An Introduction (MIT Press, 2022) | PDF, завантажений браузером | 193 |
+| Shalev-Shwartz, Ben-David, Understanding Machine Learning: From Theory to Algorithms (Cambridge University Press, 2014) | PDF, завантажений браузером із сайту автора | 36 |
+| Criminisi, Shotton, Konukoglu, Decision Forests: A Unified Framework… (Foundations and Trends in Computer Graphics and Vision, 2011) | PDF, завантажений браузером | 38 |
 
 **Статті** (PDF з arXiv, сайтів журналів і авторів): Breiman, Random Forests (2001); Geurts, Ernst, Wehenkel, Extremely Randomized
 Trees (2006); Meinshausen, Quantile Regression Forests (2006); Biau, Scornet, A Random Forest Guided Tour (2016); Probst, Wright,
 Boulesteix про налаштування параметрів лісу (2019); Wright, Ziegler, ranger (2017); Nakandala та ін., Hummingbird (2020); Chen,
-Guestrin, XGBoost (2016); Prokhorenkova та ін., CatBoost (2018); Grinsztajn, Oyallon, Varoquaux про дерева й нейромережі на
-табличних даних (2022); Lundberg та ін., TreeSHAP (2020); Athey, Tibshirani, Wager, Generalized Random Forests (2019).
+Guestrin, XGBoost (2016); Ke та ін., LightGBM (NeurIPS 2017); Prokhorenkova та ін., CatBoost (2018); Grinsztajn, Oyallon, Varoquaux про дерева й нейромережі на
+табличних даних (2022); Lundberg та ін., TreeSHAP (2020); Athey, Tibshirani, Wager, Generalized Random Forests (2019); Strobl та ін. про упередженість важливості ознак у лісі (2007). Статті
+LightGBM і Strobl завантажено браузером, бо сайти не відповідають програмі.
 
-Усього 1318 документів, з них пошук будує 10 731 фрагмент. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
+Усього 1868 документів, з них пошук будує 15 257 фрагментів. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
 книжки — глава чи розділ за закладками PDF, документ статті — її розділ. PDF без закладок (Breiman 2001, Extremely Randomized Trees,
-Quantile Regression Forests, дисертація Louppe) поділено на шматки по чотири сторінки з назвою «pp. N–M».
+Quantile Regression Forests, дисертація Louppe, LightGBM, звіт Criminisi) поділено на шматки по чотири сторінки з назвою «pp. N–M».
 
-Замір `quality` на 08.11.2026 дав такі числа. Запити назвами методів знаходять потрібне 10 із 10, а модель зазвичай питає саме так.
+Замір `quality` на 09.11.2026 дав такі числа. Запити назвами методів знаходять потрібне 10 із 10, а модель зазвичай питає саме так.
 Запити своїми словами знаходять потрібне 9 із 10.
 
-## Чого тут немає
-
-Цих текстів програма завантажити не може. Їх можна завантажити браузером у «Завантаження», і тоді вони додадуться:
-
-- The Elements of Statistical Learning та An Introduction to Statistical Learning: автори роздають PDF через Google Drive з
-  підтвердженням;
-- Understanding Machine Learning (Shalev-Shwartz, Ben-David): сайт університету відповідає програмам сторінкою захисту;
-- Probabilistic Machine Learning (Murphy): файл важить 92 МБ, а стеля одного завантаження у фабриці — 50 МБ;
-- стаття LightGBM (NeurIPS 2017) і звіт Decision Forests (Microsoft Research): сайти не відповідають програмі;
-- стаття Strobl та ін. про упередженість важливості ознак (2007): Springer віддає PDF лише після входу.
+## Обмеження текстів
 
 Формули в PDF витягуються як текст і часто розсипаються, а підписи до рисунків стоять посеред абзаців. Пояснення словами від цього
 не страждає.
@@ -79,15 +76,15 @@ Quantile Regression Forests, дисертація Louppe) поділено на 
 **корпус, індекс і файли книжок у git не потрапляють** (`corpus/`, `index/` і `raw/` у `.gitignore`). У git лежать лише
 налаштування примірника, а сервер працює лише на цій машині.
 
-**Де тексти.** Вони лежать в архіві `~/archives/docfactory/tree-models-corpus-2026-11-08.tar.gz` разом із паспортом, сховищем сирого
-і файлами книжок у `raw/local/`. Копія лежить на Windows: `C:\Distr\tree-models-corpus-2026-11-08.tar.gz`. Архів звірено з диском
+**Де тексти.** Вони лежать в архіві `~/archives/docfactory/tree-models-corpus-2026-11-09.tar.gz` разом із паспортом, сховищем сирого
+і файлами книжок у `raw/local/`. Копія лежить на Windows: `C:\Distr\tree-models-corpus-2026-11-09.tar.gz`. Архів звірено з диском
 файл за файлом, а копію — за SHA-256. Сервер підіймається з кешу `index/passages.json` і колекції Qdrant, тому тексти йому не
 потрібні.
 
 **Як повернути тексти** перед оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/tree-models-corpus-2026-11-08.tar.gz -C instances/tree-models
+tar -xzf ~/archives/docfactory/tree-models-corpus-2026-11-09.tar.gz -C instances/tree-models
 ./df tree-models smoke
 ```
 

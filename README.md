@@ -4371,12 +4371,12 @@ Algorithmic Trading with MQL5. Усі три файли PDF користувач
 
 Книжки й статті про дерева рішень, випадковий ліс і градієнтний бустинг: десять платних книжок із файлів користувача (Greenwell, Zhou,
 CART, Rokach і Maimon, Genuer і Poggi, Kuhn і Johnson, López de Prado, Jansen двох видань, Géron), безкоштовні Louppe, HOML, Molnar і
-FES, сторінки scikit-learn про дерева й ансамблі, дванадцять статей від Breiman 2001 до Grinsztajn 2022. Усього 1318 документів і
-10 731 фрагмент; нові читачі `pdf-outline` і `epub-local`.
+FES, ESL, ISLP, PML Мерфі, UML і звіт Criminisi про ліси рішень, сторінки scikit-learn про дерева й ансамблі, чотирнадцять статей
+від Strobl 2007 до Grinsztajn 2022. Усього 1868 документів і 15 257 фрагментів; нові читачі `pdf-outline` і `epub-local`.
 
 - порт `8961`; запис у Claude Code — `tree-models-docs`, адреса `http://127.0.0.1:8961/mcp`; інструменти `search_docs` і `read_section`;
 - версій немає: кожна книжка — одне видання;
-- не входять: довідники API XGBoost, LightGBM і NumPy (вони в своїх примірниках), ESL, ISLP, UML і PML (їх треба завантажити браузером);
+- не входять: довідники API XGBoost, LightGBM і NumPy (вони в своїх примірниках);
 - приклад питання агентові: `./df tree-models ask "Which random forest hyperparameters matter most and how should I tune them?"`;
 - корпус, індекс і файли книжок — лише на цій машині, у git їх немає;
 - докладніше — у [instances/tree-models/README.md](instances/tree-models/README.md).
