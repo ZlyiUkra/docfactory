@@ -4465,6 +4465,20 @@ CuPy — масиви NumPy на відеокарті: сайт docs.cupy.dev н
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/telegram-bot/README.md](instances/telegram-bot/README.md).
 
+### scikit-learn
+
+Бібліотека машинного навчання для Python: увесь сайт scikit-learn.org кожної мінорної лінії 0.15–1.9, кожна на останньому патчі, —
+посібник користувача (калібрування ймовірностей, крос-валідація й `TimeSeriesSplit`, підбір параметрів, метрики), довідник API зі
+сторінкою кожного класу й функції, галерея прикладів, what's new, — нотатки релізів GitHub і записи PyPI. Усього 14 782 документи і
+59 731 фрагмент.
+
+- порт `8965`; запис у Claude Code — `scikit-learn-docs`, адреса `http://127.0.0.1:8965/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія (`scikit-learn-1.9`, `scikit-learn-0.24`…);
+- не входять: лінії 0.9–0.14 (сайт їх не публікує, є лише PyPI), XGBoost, LightGBM, NumPy, pandas;
+- приклад питання агентові: `./df scikit-learn ask "How do I calibrate predicted probabilities with CalibratedClassifierCV?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/scikit-learn/README.md](instances/scikit-learn/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

@@ -374,6 +374,14 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   U+F0C1 in the old theme), takes the code language from the wrapper class (`highlight-console`), labels the tabs
   (sphinx-tabs keeps their names in `<button>`, which HTML parsing drops), keeps table rows on one line and cuts the
   `toctree`. Identical text of a page in several versions becomes one document carrying all of them.
+- **One `sphinx-html` source of many versions fetched in blocks** (scikit-learn.org: twenty folders 0.15–1.9, about
+  18 thousand pages): splitting it into several sources for good would make an unchanged page of twenty versions twenty
+  documents. Instead declare temporary sources with a part of the `versions` each, run one detached `list <id>` per
+  block (the reader reads every page while listing, so `list` fills the raw store and writes nothing to the corpus), put
+  the single source back and run `build <id>` without network. Twenty versions took 70 minutes in four blocks. A page
+  without `<h1>` stops the listing; on scikit-learn these are redirect stubs (`documentation.html` → `index.html`) and
+  the old theme's guide contents (`user_guide.html` 0.16), and `skip_untitled: true` makes them no document while
+  their links still join the crawl. Exclude app folders such as JupyterLite `lite/` with `exclude`.
 - **A changelog that lists a release's changes under its release candidates** (NVIDIA: «## v1.19.0» says only «Promote
   v1.19.0-rc.7 to v1.19.0»; the changes sit under «## v1.19.0-rc.1» … «-rc.7»): `skip` for `-rc` would leave one line
   per release, and documents labelled «1.19.0-rc.3» are not found by the filter «1.19.0». Reader
@@ -1457,6 +1465,14 @@ and what a taken port and a failed connection look like. A domain list in the ro
   різні. Він знімає якорі заголовків (`#`, у старій темі — значок шрифту U+F0C1), бере мову коду з класу обгортки
   (`highlight-console`), підписує вкладки (sphinx-tabs тримає їхні назви в `<button>`, які розбір HTML викидає), кладе
   рядок таблиці в один рядок і вирізає `toctree`. Однаковий текст сторінки кількох версій — один документ з усіма ними.
+- **Одне джерело `sphinx-html` багатьох версій, завантажене блоками** (scikit-learn.org: двадцять тек 0.15–1.9, близько
+  18 тисяч сторінок). Якщо назавжди поділити його на кілька джерел, незмінна сторінка двадцяти версій стане двадцятьма
+  документами. Натомість оголошують тимчасові джерела, кожне з частиною `versions`, і для кожного блоку запускають окремий
+  фоновий `list <id>`. Читач читає кожну сторінку ще під час переліку, тому `list` наповнює сховище сирого й нічого не пише
+  в корпус. Потім повертають одне джерело й виконують `build <id>` без мережі. Двадцять версій чотирма блоками зайняли 70
+  хвилин. Сторінка без `<h1>` зупиняє перелік. У scikit-learn це заглушки-переадресації (`documentation.html` →
+  `index.html`) і зміст посібника старої теми (`user_guide.html` 0.16). Поле `skip_untitled: true` не робить із них
+  документів, але посилання з них усе одно йдуть в обхід. Теки програм, як-от JupyterLite `lite/`, виключають полем `exclude`.
 - **Журнал, де зміни випуску записано під його передрелізами** (NVIDIA: «## v1.19.0» каже лише «Promote v1.19.0-rc.7
   to v1.19.0», а зміни — під «## v1.19.0-rc.1» … «-rc.7»): `skip` для `-rc` лишив би від випуску один рядок, а
   документів «1.19.0-rc.3» фільтр «1.19.0» не знаходить. Читач `changelog-prerelease` робить документ на сталий
@@ -2546,6 +2562,14 @@ errada.
   U+F0C1 no tema antigo), pega a linguagem do código da classe do invólucro (`highlight-console`), rotula as abas (o
   sphinx-tabs guarda os nomes em `<button>`, que a análise do HTML descarta), mantém cada linha de tabela numa linha e
   corta o `toctree`. O texto idêntico de uma página em várias versões vira um documento com todas elas.
+- **Uma fonte `sphinx-html` de muitas versões baixada em blocos** (scikit-learn.org: vinte pastas 0.15–1.9, cerca de 18
+  mil páginas): dividi-la de vez em várias fontes faria de uma página inalterada em vinte versões vinte documentos. Em vez
+  disso, declare fontes temporárias, cada uma com parte das `versions`, e rode um `list <id>` em segundo plano por bloco (o
+  leitor lê cada página já na listagem, então `list` enche o armazém bruto e não escreve nada no corpus); depois volte à
+  fonte única e rode `build <id>` sem rede. Vinte versões levaram 70 minutos em quatro blocos. Uma página sem `<h1>`
+  interrompe a listagem; no scikit-learn são stubs de redirecionamento (`documentation.html` → `index.html`) e o sumário
+  do guia no tema antigo (`user_guide.html` 0.16), e `skip_untitled: true` não faz delas documentos, enquanto os links
+  delas continuam na varredura. Pastas de aplicativos, como o JupyterLite `lite/`, saem por `exclude`.
 - **Um changelog que lista as mudanças de uma versão sob os seus release candidates** (NVIDIA: «## v1.19.0» diz só
   «Promote v1.19.0-rc.7 to v1.19.0»; as mudanças ficam sob «## v1.19.0-rc.1» … «-rc.7»): `skip` para `-rc` deixaria
   uma linha por versão, e documentos rotulados «1.19.0-rc.3» não são achados pelo filtro «1.19.0». O leitor
