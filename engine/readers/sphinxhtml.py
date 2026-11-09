@@ -13,6 +13,11 @@
                 `version_labels` — об'єкт «тека → номер»: Read the Docs називає теки
                 `release_3.3.0` і `stable`, а мітка версії мусить бути номером («3.3», «3.4»).
                 Тека без запису в об'єкті дає мітку з власної назви, як і без поля.
+                `skip_untitled` — `true`: сторінка без `<h1>` не документ, а посилання з неї все
+                одно йдуть в обхід. У scikit-learn такі сторінки двох видів: заглушки-переадресації
+                на місці перейменованих сторінок (`documentation.html` → `index.html`) і зміст
+                посібника старої теми (`user_guide.html` 0.16 — лише toctree). Без поля сторінка
+                без `<h1>`, як і раніше, зупиняє перелік.
 
 Навіщо. Документація NVIDIA Container Toolkit на docs.nvidia.com — сайт Sphinx, і кожна версія
 лежить своєю текою (`…/1.20.1/`, `…/1.6.0/`), а перелік версій (`versions1.json`) називає лише
@@ -134,6 +139,7 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
     ends = [re.compile(r) for r in source.get("end") or _ENDS]
     vprefix = source.get("version_prefix", "")
     vlabels = source.get("version_labels") or {}
+    untitled = bool(source.get("skip_untitled"))
 
     # Сторінка → {хеш тексту → [назва, тіло, адреса найновішої версії, версії]}; порядок
     # сторінок — порядок обходу найновішої версії, де сторінка з'явилася вперше.
@@ -159,6 +165,8 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
                         and ctx.allowed(link) and not any(r.search(link) for r in exclude)):
                     seen.add(link)
                     queue.append(link)
+            if untitled and not _H1.search(html):
+                continue
             title, body = page_text(html, url, ends)
             if not body.strip():
                 continue
