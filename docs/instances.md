@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 202. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 203. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8962, вільний усередині: 8769. Наступний новий: 8963.
+Зайняті порти: 8760–8963, вільний усередині: 8769. Наступний новий: 8964.
 
 ## Як обирати
 
@@ -325,6 +325,7 @@
 | [`binance-spot`](#binance-spot) | 8801 | Працюєте з API спотової торгівлі Binance. |
 | [`kraken-spot`](#kraken-spot) | 8824 | Працюєте з API спотової торгівлі Kraken. |
 | [`pine-script`](#pine-script) | 8957 | Пишете індикатор чи стратегію TradingView на Pine Script: вбудовані функції, змінні й константи мови v4–v6. |
+| [`dukascopy-node`](#dukascopy-node) | 8963 | Завантажуєте безкоштовну історію цін Dukascopy (тики, свічки, CSV чи JSON) через dukascopy-node: параметри, id інструментів і найраніші дати, кеш, обмеження частоти, помилки. |
 | [`mql5`](#mql5) | 8958 | Пишете торгового робота, індикатор чи скрипт для MetaTrader 5 на MQL5: торгові функції, індикатори, події, ONNX і OpenCL, нейромережі на MQL5. |
 
 ### Навчальні матеріали й архітектура
@@ -7622,6 +7623,34 @@ The User Manual, MQL5, NumPy and the TradingView REST APIs are not here.
 
 **Далі в [README](../instances/pine-script/README.md):** Що всередині; Чого тут немає; Чому файли зберігає людина;
 Корпус лише локально; Як запустити.
+
+### dukascopy-node
+
+**Коли піднімати.** Завантажуєте безкоштовну історію цін Dukascopy (тики, свічки, CSV чи JSON) через dukascopy-node: параметри, id інструментів і найраніші дати, кеш, обмеження частоти, помилки.
+
+**Порт** 8963, сервер `dukascopy-node-docs`. Підняти: `./df dukascopy-node serve`. Адреса: `http://127.0.0.1:8963/mcp`.
+
+**Обсяг.** Документів: 1 898, фрагментів: 4 384.
+
+**Опис.**
+
+Цей примірник зібрав документацію бібліотеки dukascopy-node і віддає її через сервер MCP, щоб модель відповідала з
+текстів бібліотеки, а не з пам'яті. Швейцарський банк Dukascopy безкоштовно публікує історію цін: кожну зміну ціни
+(тик) для валютних пар, акцій, фондів, індексів, сировини, облігацій і криптовалют. dukascopy-node — це бібліотека для
+Node.js і програма командного рядка, яка завантажує ці дані за вказаний період і повертає їх як масив, JSON чи файл
+CSV. Тики можна отримати як є або зібраними у свічки OHLC: для кожного проміжку часу (секунда, хвилина, година, день,
+місяць) свічка каже ціну відкриття, найвищу, найнижчу і ціну закриття.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the dukascopy-node documentation -- the site dukascopy-node.app as of version 1.51.1 with the guides, the
+configuration, the CLI and Node.js API reference and the page of every instrument, the README of every stable npm
+version, the README of the old package dukascopy-cli, the changelog, the GitHub release notes, the examples and the
+TypeScript source of the library, and the npm registry history. The documentation of the Dukascopy trading platform
+and of Node.js is not here.
+
+**Далі в [README](../instances/dukascopy-node/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як
+підняти сервер; Архівний режим: сервер без корпусу.
 
 ### mql5
 
