@@ -4408,6 +4408,20 @@ CuPy — масиви NumPy на відеокарті: сайт docs.cupy.dev н
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/dukascopy-node/README.md](instances/dukascopy-node/README.md).
 
+### telegram
+
+Документація розробника Telegram — увесь сайт core.telegram.org як знімок на 09.11.2026: довідник Bot API зі сторінкою на кожен метод
+і тип, журнал змін Bot API, посібники для ботів, Mini Apps і платежів; Telegram API (MTProto) з посібниками за темами і сторінкою
+кожного методу, конструктора й типу схеми; протокол MTProto, TDLib, Passport, Gateway API, віджети; README і журнал змін TDLib, README
+власного сервера Bot API. Усього 3797 документів і 17 821 фрагмент.
+
+- порт `8964`; запис у Claude Code — `telegram-docs`, адреса `http://127.0.0.1:8964/mcp`; інструменти `search_docs` і `read_section`;
+- версій немає: сайт описує чинний Bot API і чинний шар схеми, історія — у журналі змін і на сторінці шарів;
+- не входять: довідник класів TDLib (Doxygen, без markdown-версії), сторонні бібліотеки для ботів;
+- приклад питання агентові: `./df telegram ask "How do I receive updates with getUpdates and avoid getting the same update twice?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/telegram/README.md](instances/telegram/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

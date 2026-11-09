@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 203. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 204. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8963, вільний усередині: 8769. Наступний новий: 8964.
+Зайняті порти: 8760–8964, вільний усередині: 8769. Наступний новий: 8965.
 
 ## Як обирати
 
@@ -296,6 +296,7 @@
 | [`stripe`](#stripe) | 8863 | Приймаєте платежі через Stripe. |
 | [`payments-pt`](#payments-pt) | 8948 | Приймаєте платежі в Португалії через ifthenpay, Easypay, Eupago чи SIBS: MB WAY, Multibanco, дебет. |
 | [`rgpd`](#rgpd) | 8947 | Обробляєте персональні дані в Португалії: RGPD, закони, рішення CNPD, настанови EDPB. |
+| [`telegram`](#telegram) | 8964 | Пишете бота Telegram чи клієнт Telegram: методи й типи Bot API, getUpdates і webhook, клавіатури, форматування, Mini Apps, платежі й Stars, обмеження частоти; Telegram API (MTProto) і TDLib. |
 
 ### Штучний інтелект
 
@@ -7079,6 +7080,33 @@ these documents, it does not follow that the law is silent on it.
 
 **Далі в [README](../instances/rgpd/README.md):** Що тут є; Що треба знати про тексти; Що не взято; Що в цій теці;
 Звідки документація; Архівний режим: сервер без корпусу; Установка venv; Збирання корпусу; Як підняти сервер.
+
+### telegram
+
+**Коли піднімати.** Пишете бота Telegram чи клієнт Telegram: методи й типи Bot API, getUpdates і webhook, клавіатури, форматування, Mini Apps, платежі й Stars, обмеження частоти; Telegram API (MTProto) і TDLib.
+
+**Порт** 8964, сервер `telegram-docs`. Підняти: `./df telegram serve`. Адреса: `http://127.0.0.1:8964/mcp`.
+
+**Обсяг.** Документів: 3 797, фрагментів: 17 821.
+
+**Опис.**
+
+Цей примірник зібрав документацію розробника Telegram і віддає її через сервер MCP, щоб модель відповідала з текстів
+Telegram, а не з пам'яті. Telegram дає програмам два різні входи. Перший — Bot API: бот — це обліковий запис, яким
+керує програма, і вона шле звичайні HTTP-запити на `api.telegram.org` (`sendMessage`, `getUpdates`). Другий — Telegram
+API, яким працюють повноцінні застосунки від імені людини: він ходить власним протоколом MTProto, а щоб не писати цей
+протокол самому, беруть бібліотеку TDLib. Тут лежить документація обох входів.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the Telegram developer documentation -- the whole site core.telegram.org as of 09.11.2026: the Bot API
+reference with a page per method and type, the Bot API changelog, the guides for bots and Mini Apps, the Telegram API
+(MTProto) guides with a page per method, constructor and type, the MTProto protocol, the TL language, TDLib, Telegram
+Passport, the Gateway API and the widgets, and the README of TDLib and of the self-hosted Bot API server. Third-party
+bot libraries are not here.
+
+**Далі в [README](../instances/telegram/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
+сервер; Архівний режим: сервер без корпусу.
 
 <!-- тема: Штучний інтелект -->
 
