@@ -5,17 +5,17 @@
 #   tools/up.sh --help                ця довідка
 #
 # Що відбувається по черзі:
-#   1. Для кожного примірника скрипт бере порт із його config.json. Якщо порт уже хтось
-#      слухає, примірник пропускається: той сервер підняв не цей скрипт, тож і зупиняти
-#      його не йому.
+#   1. Для кожного примірника скрипт бере порт із його config.json. Якщо порт уже слухає
+#      сервер docfactory саме цього примірника, скрипт бере його під нагляд, як свій. Якщо
+#      порт тримає щось інше, примірник пропускається.
 #   2. Решта піднімаються командою `./df <примірник> serve`. Вивід сервера дописується в
 #      instances/<примірник>/out/serve.log (старий вміст лишається).
 #   3. Коли всі порти слухають, скрипт друкує таблицю і далі показує стрічку викликів:
 #      кожен новий рядок журналу instances/<примірник>/out/calls.log з назвою примірника.
 #      Старі рядки журналу в стрічку не потрапляють. Виклики від smoke чи quality теж
 #      пишуться в цей журнал, тож і вони з'являться в стрічці.
-#   4. Ctrl+C (або закрите вікно термінала) зупиняє ті сервери, які підняв цей скрипт, і
-#      лише їх, за їхніми PID. Корпус, журнали й вектори скрипт не чіпає.
+#   4. Ctrl+C (або закрите вікно термінала) зупиняє всі сервери під наглядом: і підняті
+#      скриптом, і підхоплені, за їхніми PID. Корпус, журнали й вектори скрипт не чіпає.
 #
 # Запускати з будь-якої теки: скрипт сам переходить у корінь docfactory/.
 
@@ -41,7 +41,19 @@ INSTANCES=("$@")
 
 listening() { ss -ltn "sport = :$1" 2>/dev/null | grep -q LISTEN; }
 
-NAMES=(); PORTS=(); PIDS=()
+# PID процесу, що слухає порт, або порожньо. ss бачить PID лише процесів свого
+# користувача, тож чужий процес тут дасть порожньо і буде пропущений.
+port_pid() { ss -ltnpH "sport = :$1" 2>/dev/null | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2; }
+
+# Чи процес — сервер docfactory саме цього примірника. Порт сам по собі нічого не
+# доводить: його міг зайняти будь-хто, а зупиняти чужий процес скрипт не має права.
+is_our_server() {
+  local pid=$1 dir=$2
+  tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q 'spec_mcp.py --serve' || return 1
+  tr '\0' '\n' <"/proc/$pid/environ" 2>/dev/null | grep -qx "DF_INSTANCE_DIR=$dir"
+}
+
+NAMES=(); PORTS=(); PIDS=(); ADOPTED=()
 STOPPING=0
 TAIL_PID=""
 
@@ -94,7 +106,12 @@ for inst in "${INSTANCES[@]}"; do
     continue
   fi
   if listening "$port"; then
-    printf "%-22s порт %s уже зайнятий, пропускаю (хто тримає: ss -ltnp | grep %s)\n" \
+    pid=$(port_pid "$port")
+    if [ -n "$pid" ] && is_our_server "$pid" "$PWD/$dir"; then
+      NAMES+=("$inst"); PORTS+=("$port"); PIDS+=("$pid"); ADOPTED+=("так")
+      continue
+    fi
+    printf "%-22s порт %s тримає не сервер цього примірника, пропускаю (хто: ss -ltnp | grep %s)\n" \
       "$inst" "$port" "$port"
     continue
   fi
@@ -104,11 +121,11 @@ for inst in "${INSTANCES[@]}"; do
     "$inst" "режим пошуку не записано: шукатиме лише за словами" "$inst"
   mkdir -p "$dir/out"
   ./df "$inst" serve >>"$dir/out/serve.log" 2>&1 </dev/null &
-  NAMES+=("$inst"); PORTS+=("$port"); PIDS+=("$!")
+  NAMES+=("$inst"); PORTS+=("$port"); PIDS+=("$!"); ADOPTED+=("")
 done
 
 if [ ${#PIDS[@]} -eq 0 ]; then
-  echo "Жодного сервера не піднято."
+  echo "Немає жодного сервера під наглядом."
   exit 1
 fi
 
@@ -117,7 +134,11 @@ declare -A DONE=()
 for t in $(seq 1 "$READY_TIMEOUT"); do
   for i in "${!PIDS[@]}"; do
     [ -n "${DONE[$i]:-}" ] && continue
-    if listening "${PORTS[$i]}"; then
+    if [ -n "${ADOPTED[$i]}" ]; then
+      DONE[$i]=ok
+      printf "%-22s порт %-5s pid %-8s уже працював, беру під нагляд\n" \
+        "${NAMES[$i]}" "${PORTS[$i]}" "${PIDS[$i]}"
+    elif listening "${PORTS[$i]}"; then
       DONE[$i]=ok
       printf "%-22s порт %-5s pid %-8s готовий\n" "${NAMES[$i]}" "${PORTS[$i]}" "${PIDS[$i]}"
     elif ! kill -0 "${PIDS[$i]}" 2>/dev/null; then
@@ -137,7 +158,7 @@ done
 
 # Ті, що не піднялися, з подальшого стеження прибираємо: зупиняти там уже нічого.
 for i in "${!PIDS[@]}"; do
-  [ "${DONE[$i]:-}" = dead ] && unset 'NAMES[i]' 'PORTS[i]' 'PIDS[i]'
+  [ "${DONE[$i]:-}" = dead ] && unset 'NAMES[i]' 'PORTS[i]' 'PIDS[i]' 'ADOPTED[i]'
 done
 if [ ${#PIDS[@]} -eq 0 ]; then
   echo "Жоден сервер не працює."
@@ -147,7 +168,7 @@ fi
 # ── 3. Стрічка викликів ──
 FILES=()
 for i in "${!PIDS[@]}"; do FILES+=("instances/${NAMES[$i]}/out/calls.log"); done
-echo "── виклики (Ctrl+C — зупинити всі підняті цим скриптом) ──"
+echo "── виклики (Ctrl+C — зупинити всі сервери під наглядом) ──"
 # tail -v ставить перед порцією рядків заголовок «==> файл <==», з нього awk бере
 # назву примірника. Рядок журналу: «дата час pid=N інструмент запит -> результат».
 tail -v -n0 -F "${FILES[@]}" 2>/dev/null | awk '
@@ -174,7 +195,7 @@ while :; do
       printf "── %s (pid %s) зупинився сам; кінець instances/%s/out/serve.log:\n" \
         "${NAMES[$i]}" "${PIDS[$i]}" "${NAMES[$i]}"
       tail -n 5 "instances/${NAMES[$i]}/out/serve.log" | sed 's/^/    /'
-      unset 'NAMES[i]' 'PORTS[i]' 'PIDS[i]'
+      unset 'NAMES[i]' 'PORTS[i]' 'PIDS[i]' 'ADOPTED[i]'
     fi
   done
   if [ "$alive" = 0 ]; then
