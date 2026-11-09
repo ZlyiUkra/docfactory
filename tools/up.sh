@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # up.sh — підняти кілька примірників разом, дивитися виклики до них і зупинити всі разом.
 #
-#   tools/up.sh                       примірники з масиву INSTANCES нижче
-#   tools/up.sh astro express mdn     примірники з аргументів (масив тоді не діє)
+#   tools/up.sh astro express mdn     підняти ці примірники; без жодного — помилка
 #   tools/up.sh --help                ця довідка
 #
 # Що відбувається по черзі:
@@ -22,9 +21,6 @@
 
 set -u
 
-# Примірники за замовчуванням. Аргументи командного рядка заміняють цей список.
-INSTANCES=(astro express postgresql node-postgres mdn)
-
 # Скільки секунд чекати, поки сервер почне слухати порт. Холодний старт astro з диска
 # Windows колись тривав близько трьох хвилин, тож межа з запасом.
 READY_TIMEOUT=300
@@ -32,10 +28,16 @@ READY_TIMEOUT=300
 cd "$(dirname "$0")/.." || exit 1
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
-  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 fi
-[ $# -gt 0 ] && INSTANCES=("$@")
+# Списку за замовчуванням навмисно немає: що піднімати, щоразу каже той, хто запускає.
+if [ $# -eq 0 ]; then
+  echo "Помилка: не вказано жодного примірника." >&2
+  echo "Приклад: tools/up.sh astro express mdn   (довідка: tools/up.sh --help)" >&2
+  exit 2
+fi
+INSTANCES=("$@")
 
 listening() { ss -ltn "sport = :$1" 2>/dev/null | grep -q LISTEN; }
 
