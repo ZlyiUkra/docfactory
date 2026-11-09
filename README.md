@@ -4493,6 +4493,20 @@ README. Усього 219 документів і 1575 фрагментів.
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/shap/README.md](instances/shap/README.md).
 
+### optuna
+
+Optuna — бібліотека, що сама підбирає параметри моделі, разом із пакетом інтеграцій optuna-integration і веб-панеллю
+optuna-dashboard: сайт optuna.readthedocs.io останнього патча кожної мінорної лінії 0.19–5.0 (посібник, рецепти, довідник API,
+FAQ), сайт optuna-integration 3.2–5.0 (колбеки обрізання XGBoost і LightGBM, `LightGBMTuner`, `OptunaSearchCV`), сайт
+optuna-dashboard 0.21, нотатки релізів GitHub і записи PyPI трьох пакетів. Усього 2 497 документів і 6 457 фрагментів.
+
+- порт `8967`; запис у Claude Code — `optuna-docs`, адреса `http://127.0.0.1:8967/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія з назвою пакета (`optuna-5.0`, `optuna-integration-4.0`, `optuna-dashboard-0.21`);
+- не входять: лінії Optuna 0.0–0.18 як сайт (є лише PyPI і релізи), XGBoost, LightGBM, scikit-learn;
+- приклад питання агентові: `./df optuna ask "How do I prune unpromising XGBoost trials with XGBoostPruningCallback?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/optuna/README.md](instances/optuna/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

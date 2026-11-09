@@ -381,7 +381,13 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   the single source back and run `build <id>` without network. Twenty versions took 70 minutes in four blocks. A page
   without `<h1>` stops the listing; on scikit-learn these are redirect stubs (`documentation.html` → `index.html`) and
   the old theme's guide contents (`user_guide.html` 0.16), and `skip_untitled: true` makes them no document while
-  their links still join the crawl. Exclude app folders such as JupyterLite `lite/` with `exclude`.
+  their links still join the crawl. Exclude app folders such as JupyterLite `lite/` with `exclude`. Blocks suit a site
+  without a request limit (scikit-learn.org on GitHub Pages took four). Read the Docs counts requests over a window:
+  three processes at one second ran clean for 11 minutes, six drew «429» within minutes, and after that even two did;
+  one process at one second then went on for an hour with no refusal (optuna). On Read the Docs keep one process, and
+  check that a version's start page answers 200 before declaring it: a version listed as active may have no build
+  (Optuna v3.1.1 and v3.0.6 answer 404). The `htmlzip` that Read the Docs offers is the `singlehtml` build, one page
+  for the whole version, so it does not replace the crawl.
 - **A changelog that lists a release's changes under its release candidates** (NVIDIA: «## v1.19.0» says only «Promote
   v1.19.0-rc.7 to v1.19.0»; the changes sit under «## v1.19.0-rc.1» … «-rc.7»): `skip` for `-rc` would leave one line
   per release, and documents labelled «1.19.0-rc.3» are not found by the filter «1.19.0». Reader
@@ -1473,6 +1479,13 @@ and what a taken port and a failed connection look like. A domain list in the ro
   хвилин. Сторінка без `<h1>` зупиняє перелік. У scikit-learn це заглушки-переадресації (`documentation.html` →
   `index.html`) і зміст посібника старої теми (`user_guide.html` 0.16). Поле `skip_untitled: true` не робить із них
   документів, але посилання з них усе одно йдуть в обхід. Теки програм, як-от JupyterLite `lite/`, виключають полем `exclude`.
+  Блоки годяться для сайту без обмеження частоти запитів: scikit-learn.org на GitHub Pages витримав чотири. Read the Docs
+  рахує запити за проміжок часу. Три процеси з паузою в секунду працювали без відмов 11 хвилин, шість за кілька хвилин
+  отримали «429», і після цього «429» отримували навіть два. Один процес із паузою в секунду потім пройшов годину без
+  жодної відмови (optuna). Тож на Read the Docs працюють одним процесом. Перед тим як оголосити версію, перевіряють, що її
+  стартова сторінка відповідає 200: версія, яку Read the Docs називає активною, буває без збірки (Optuna v3.1.1 і v3.0.6
+  відповідають 404). Архів `htmlzip`, який пропонує Read the Docs, — це збірка `singlehtml`, одна сторінка на всю версію, і
+  обхід він не замінює.
 - **Журнал, де зміни випуску записано під його передрелізами** (NVIDIA: «## v1.19.0» каже лише «Promote v1.19.0-rc.7
   to v1.19.0», а зміни — під «## v1.19.0-rc.1» … «-rc.7»): `skip` для `-rc` лишив би від випуску один рядок, а
   документів «1.19.0-rc.3» фільтр «1.19.0» не знаходить. Читач `changelog-prerelease` робить документ на сталий
@@ -2569,7 +2582,13 @@ errada.
   fonte única e rode `build <id>` sem rede. Vinte versões levaram 70 minutos em quatro blocos. Uma página sem `<h1>`
   interrompe a listagem; no scikit-learn são stubs de redirecionamento (`documentation.html` → `index.html`) e o sumário
   do guia no tema antigo (`user_guide.html` 0.16), e `skip_untitled: true` não faz delas documentos, enquanto os links
-  delas continuam na varredura. Pastas de aplicativos, como o JupyterLite `lite/`, saem por `exclude`.
+  delas continuam na varredura. Pastas de aplicativos, como o JupyterLite `lite/`, saem por `exclude`. Blocos servem
+  para um site sem limite de requisições (o scikit-learn.org no GitHub Pages aguentou quatro). O Read the Docs conta as
+  requisições numa janela de tempo: três processos com pausa de um segundo rodaram 11 minutos sem recusa, seis receberam
+  «429» em poucos minutos, e depois disso até dois recebiam; um processo com pausa de um segundo seguiu então uma hora sem
+  recusa (optuna). No Read the Docs use um processo só e confira que a página inicial de uma versão responde 200 antes de
+  declará-la: uma versão listada como ativa pode não ter build (Optuna v3.1.1 e v3.0.6 respondem 404). O `htmlzip` que o
+  Read the Docs oferece é o build `singlehtml`, uma página para a versão inteira, e não substitui a varredura.
 - **Um changelog que lista as mudanças de uma versão sob os seus release candidates** (NVIDIA: «## v1.19.0» diz só
   «Promote v1.19.0-rc.7 to v1.19.0»; as mudanças ficam sob «## v1.19.0-rc.1» … «-rc.7»): `skip` para `-rc` deixaria
   uma linha por versão, e documentos rotulados «1.19.0-rc.3» não são achados pelo filtro «1.19.0». O leitor
