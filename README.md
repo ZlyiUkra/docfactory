@@ -66,6 +66,7 @@ docfactory/
     react/         sources.json   corpus/   config   prompts/   checks.json   ← документація React усіх версій
     vue/  go/  …
   new              фабрика: створити порожній примірник
+  tools/up.sh      підняти кілька серверів з одного термінала, бачити виклики до них, Ctrl+C зупиняє всі
 ```
 
 ## `sources.json` — сховище лінків і водночас білий список
@@ -565,7 +566,9 @@ Plot бере в D3 шкали, фігури, проєкції й формати
 | `react-three-fiber` | `react-three-fiber-docs` | 8936 | @react-three/fiber 1.0–9.8 і drei 1.5–10.7: документація, README, релізи, реєстр npm |
 
 Щоб підняти родину: `./df <примірник> serve` для кожного члена в окремому терміналі (порти різні) і по одному
-`claude mcp add --transport http --scope user <сервер> http://127.0.0.1:<порт>/mcp` у WSL і у Windows.
+`claude mcp add --transport http --scope user <сервер> http://127.0.0.1:<порт>/mcp` у WSL і у Windows. Усю родину
+можна підняти й з одного термінала: `tools/up.sh <примірник> <примірник> …` (пункт 6 розділу «Як підняти
+локальний MCP-сервер»).
 
 ## Примірники
 
