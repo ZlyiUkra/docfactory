@@ -201,6 +201,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   Erickson наполягає, що опис має бути зрозумілим людині без коду: якщо ви не можете пояснити алгоритм словами, код вам не
   допоможе. Задачу формулюють для всіх можливих входів, а не для прикладу: «знайти найбільше число масиву» мусить сказати,
   що повернути для порожнього масиву.
+- **Лекція:** [Лекція. День 1. Що таке алгоритм і як його описати](lectures/f0-d01-what-is-an-algorithm.md).
+- **Розбір читання:** [Розбір читання. День 1](reading/f0-d01-reading.md).
 - **Читати:** Grokking — `1 introduction to algorithms`; Erickson — `Introduction`, `Describing Algorithms`, `Analyzing
   Algorithms`; CLRS — `1.1 Algorithms`, `1.2 Algorithms as a technology`.
 - **Сервери MCP:** `algorithms-docs`, `htdp-book`.
