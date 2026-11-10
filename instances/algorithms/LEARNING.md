@@ -335,6 +335,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   швидший за основну пам'ять. Прохід масивом використовує кожен прочитаний рядок повністю. Прохід списком майже щоразу
   читає новий рядок з основної пам'яті. Модель RAM, на якій тримається асимптотика, вважає всі звернення до пам'яті
   однаковими. Ця модель зручна, але неточна, і algorithmica показує, наскільки.
+- **Лекція:** [Лекція. День 7. Пам'ять комп'ютера і справжня ціна кроку](lectures/f0-d07-memory-and-cost.md).
+- **Розбір читання:** [Розбір читання. День 7](reading/f0-d07-reading.md).
 - **Читати:** Grokking — `How memory works`, `Arrays and linked lists`, `Which is used more, arrays or linked lists?`; MIT
   6.006 — `Lecture 2: Data Structures`; algorithmica — `RAM & CPU Caches`, `Cache Lines`.
 - **Сервери MCP:** `algorithms-docs`, `mdn-docs`.
