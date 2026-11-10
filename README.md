@@ -4507,6 +4507,22 @@ optuna-dashboard 0.21, нотатки релізів GitHub і записи PyPI
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/optuna/README.md](instances/optuna/README.md).
 
+### algorithms
+
+Алгоритми і структури даних: чотирнадцять книжок із файлів користувача (CLRS 4-те вид., Sedgewick і Wayne, Skiena, Kleinberg і
+Tardos, Knuth томи 1–3, Okasaki, Medjedovic, Petrov, Kleppmann і Riccomini 2-ге вид., Bhargava 2-ге вид., Bae, Beyond Cracking the
+Coding Interview, розпізнана зі скану), безкоштовні Erickson із конспектами поза книжкою, Morin, Mathematics for Computer Science і
+Laaksonen, курси MIT 6.006 (2020) і 6.046J (2015) з лекціями, завданнями й іспитами, усі статті cp-algorithms, Algorithms for Modern
+Hardware і вісім класичних статей (LLRB, diff Myers, skip list, Bloom, консистентне хешування, HyperLogLog, LSM-дерево, Raft).
+Усього 2215 документів і 24 453 фрагменти; новий читач `ocr-pages`.
+
+- порт `8968`; запис у Claude Code — `algorithms-docs`, адреса `http://127.0.0.1:8968/mcp`; інструменти `search_docs` і `read_section`;
+- версій немає: кожна книжка — одне видання;
+- не входять: довідники мов JavaScript, Python і Go (вони в `mdn`, `python`, `go`), стаття Count-Min 2005 року;
+- приклад питання агентові: `./df algorithms ask "How does a red-black tree restore its properties after an insertion?"`;
+- корпус, індекс, файли книжок і розпізнані сторінки — лише на цій машині, у git їх немає;
+- докладніше — у [instances/algorithms/README.md](instances/algorithms/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

@@ -790,6 +790,13 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   out of git. A heading parsed from a folded `description: >-` becomes the title `>-`: `title_from: "h1"` on `ghdocs` takes the first
   heading instead. SQL statement names are recognised by `title_match` with a `title_names` of capital words.
 
+- A book that exists only as a scan (DjVu without text) is recognised once, outside the build: each page goes to its own JSON file of
+  line boxes in `out/ocr/`, and the reader `ocr-pages` assembles chapters from them by a `page_titles` map taken from the table of
+  contents. Render at the scan's own resolution: at 300 dpi instead of 400 the recogniser glued words together. Bookmarks of an index
+  split into letters give one document per letter: extend `skip` of `pdf-outline` with `[A-Z]` and `Index .*`. Handwritten lecture
+  notes come out of OCR unreadable; leave them out when typed notes of the same lectures exist. When WSL cannot reach the address DNS
+  gives for github.com while Windows can, other GitHub addresses in `/etc/hosts` get the build through; remove them afterwards.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1875,6 +1882,13 @@ and what a taken port and a failed connection look like. A domain list in the ro
   зі сторінками сайту, тож документи зберігають справжні адреси. Якщо умови забороняють поширення, корпус та індекс лишаються поза git.
   Шапка зі згорнутим `description: >-` дає назву «>-»: поле `title_from: "h1"` у `ghdocs` бере перший заголовок. Назви інструкцій SQL
   розпізнає `title_match`, якщо `title_names` описує їх великими літерами.
+
+- Книжку, що існує лише сканом (DjVu без тексту), розпізнають один раз, окремо від збирання: кожна сторінка лягає своїм файлом JSON з
+  рамками рядків у `out/ocr/`, а читач `ocr-pages` складає з них розділи за переліком `page_titles`, узятим зі змісту книжки. Малювати
+  сторінку треба в роздільності самого скану: у 300 dpi замість 400 розпізнавач склеював слова. Закладки покажчика, поділеного на
+  літери, дають документ на кожну літеру: до `skip` читача `pdf-outline` додають `[A-Z]` і `Index .*`. Рукописні конспекти лекцій
+  після розпізнавання нечитабельні; їх не беруть, коли є друковані конспекти тих самих лекцій. Коли WSL не дістає до адреси, яку DNS
+  дає для github.com, а Windows дістає, збирання проходить з іншими адресами GitHub у `/etc/hosts`; після збирання їх прибирають.
 
 ## З чого складається примірник
 
@@ -3004,6 +3018,14 @@ errada.
   distribuição, o corpus e o índice ficam fora do git. Um cabeçalho com `description: >-` dobrado dá o título «>-»: o campo
   `title_from: "h1"` do `ghdocs` usa o primeiro título. Os nomes de instruções SQL são reconhecidos por `title_match` com um `title_names`
   de palavras em maiúsculas.
+
+- Um livro que só existe como digitalização (DjVu sem texto) é reconhecido uma vez, fora da montagem: cada página vai para o seu próprio
+  ficheiro JSON com as caixas das linhas em `out/ocr/`, e o leitor `ocr-pages` junta os capítulos por um mapa `page_titles` tirado do
+  índice do livro. Desenhe a página na resolução da própria digitalização: a 300 dpi em vez de 400 o reconhecedor colava as palavras.
+  Marcadores de um índice remissivo dividido por letras dão um documento por letra: acrescente `[A-Z]` e `Index .*` ao `skip` do
+  `pdf-outline`. Notas de aula manuscritas saem ilegíveis do OCR; deixe-as de fora quando existem notas impressas das mesmas aulas.
+  Quando o WSL não alcança o endereço que o DNS dá para github.com e o Windows alcança, outros endereços do GitHub em `/etc/hosts`
+  deixam passar a montagem; retire-os depois.
 
 ## Anatomia de uma instância
 
