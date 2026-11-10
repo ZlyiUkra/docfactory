@@ -311,6 +311,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   разом `n log₂ n`. Головна теорема (master theorem) дає відповідь одразу для рівнянь виду `T(n) = aT(n/b) + f(n)`: вона
   порівнює `f(n)` з `n` у степені `log_b a` і каже, яка частина переважає, робота на верхньому рівні чи кількість листків.
   Метод підстановки доводить вгадану відповідь індукцією.
+- **Лекція:** [Лекція. День 6. Рекурентні співвідношення](lectures/f0-d06-recurrences.md).
+- **Розбір читання:** [Розбір читання. День 6](reading/f0-d06-reading.md).
 - **Читати:** конспекти Erickson — `Appendix II. Solving Recurrences`; Erickson — `Recursion Trees`; CLRS — `4.4 The
   recursion-tree method for solving recurrences`, `4.5 The master method for solving recurrences`; MCS — `22 Recurrences`.
 - **Сервери MCP:** `algorithms-docs`.
