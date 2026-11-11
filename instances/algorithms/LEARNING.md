@@ -695,6 +695,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   тобто на найменший ключ правого піддерева. Якщо вставляти ключі у випадковому порядку, висота в середньому логарифмічна.
   Якщо вставляти їх відсортованими, кожен новий ключ стає правою дитиною попереднього, і дерево вироджується в список
   висотою `n - 1`.
+- **Лекція:** [Лекція. Фаза 2, день 1. Двійкове дерево пошуку](lectures/f2-d01-binary-search-tree.md).
+- **Розбір читання:** [Розбір читання. Фаза 2, день 1](reading/f2-d01-reading.md).
 - **Читати:** BCtCI — `Ch 35. Trees`; Sedgewick — `3.2 Binary Search Trees`; CLRS — `12.1 What is a binary search tree?`,
   `12.2 Querying a binary search tree`, `12.3 Insertion and deletion`; MIT 6.006 — `Lecture 6: Binary Trees, Part 1`.
 - **Сервери MCP:** `algorithms-docs`, `typescript-docs`.
