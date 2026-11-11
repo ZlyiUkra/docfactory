@@ -388,6 +388,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   переставити два-чотири посилання. Знайти ж вузол із номером `i` можна лише проходом від голови, тобто за `Θ(i)`. Morin
   додає фіктивний вузол-сторож (dummy), який стоїть перед першим справжнім вузлом. Зі сторожем вставка на початок і в
   середину пишуться однаково, і зникають окремі гілки коду для порожнього списку.
+- **Лекція:** [Лекція. Фаза 1, день 1. Зв'язні списки](lectures/f1-d01-linked-lists.md).
+- **Розбір читання:** [Розбір читання. Фаза 1, день 1](reading/f1-d01-reading.md).
 - **Читати:** BCtCI — `Ch 34. Linked Lists`; Morin — `SLList: A Singly-Linked List`, `DLList: A Doubly-Linked List`; CLRS —
   `10.2 Linked lists`; cp-algorithms — `Floyd's Linked List Cycle Finding Algorithm`.
 - **Сервери MCP:** `algorithms-docs`, `typescript-docs`.
