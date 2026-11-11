@@ -573,6 +573,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   `2 / (j − i + 1)`. Сума цих ймовірностей по всіх парах дає `O(n log n)`. Індикаторна величина дорівнює 1, коли подія
   сталася, і 0, коли ні, а її середнє дорівнює ймовірності події. Тому очікувана кількість подій — це просто сума
   ймовірностей.
+- **Лекція:** [Лекція. Фаза 1, день 9. Випадковість і аналіз quicksort](lectures/f1-d09-randomized-quicksort.md).
+- **Розбір читання:** [Розбір читання. Фаза 1, день 9](reading/f1-d09-reading.md).
 - **Читати:** CLRS — `7.3 A randomized version of quicksort`, `7.4 Analysis of quicksort`, `5.2 Indicator random variables`;
   MCS — `19 Random Variables`; Skiena — `4.6 Quicksort: Sorting by Randomization`.
 - **Сервери MCP:** `algorithms-docs`.
