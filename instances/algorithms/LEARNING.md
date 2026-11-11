@@ -639,6 +639,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   масив на п'ятірки, бере медіану кожної п'ятірки, рекурсивно знаходить медіану цих медіан і бере її опорним елементом.
   Такий опорний елемент гарантовано відрізає щонайменше приблизно 30 % масиву з кожного боку. На практиці частіше
   використовують quickselect, бо в нього менша стала.
+- **Лекція:** [Лекція. Фаза 1, день 12. Вибір k-го елемента](lectures/f1-d12-selection.md).
+- **Розбір читання:** [Розбір читання. Фаза 1, день 12](reading/f1-d12-reading.md).
 - **Читати:** CLRS — `9.2 Selection in expected linear time`, `9.3 Selection in worst-case linear time`; Erickson —
   `♥Linear-Time Selection`; Skiena — `17.3 Median and Selection`; cp-algorithms — `$K$th order statistic in $O(N)$`.
 - **Сервери MCP:** `algorithms-docs`.
