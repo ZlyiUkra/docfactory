@@ -173,8 +173,9 @@ doSomethingCritical()
 робить, тому внутрішній ланцюжок усе одно стає виконаним, і зовнішній іде далі до `moreCriticalStuff`.
 
 Функції в прикладі вигадані. Щоб побачити, як приклад працює, ми написали заглушки. Кожна заглушка друкує свою назву
-й повертає виконаний проміс. Лише та заглушка, чию назву передали під час запуску, повертає відхилений проміс. Файл
-`nest.mjs` складається із цих заглушок, після яких без змін стоїть код MDN:
+й повертає виконаний проміс. Лише та заглушка, чию назву передали під час запуску, повертає відхилений проміс. Нижче
+весь файл `nest.mjs`: спершу наші заглушки, а після них без змін код MDN із прикладу вище. Без коду MDN заглушок ніхто
+не викликає, і файл нічого не надрукує.
 
 ```js
 // Наші заглушки. Аргумент запуску вибирає, який крок зламається.
@@ -189,6 +190,16 @@ const doSomethingCritical = step("critical");
 const doSomethingOptional = step("optional");
 const doSomethingExtraNice = step("extraNice");
 const moreCriticalStuff = step("moreCritical");
+
+// Код MDN без змін.
+doSomethingCritical()
+  .then((result) =>
+    doSomethingOptional(result)
+      .then((optionalResult) => doSomethingExtraNice(optionalResult))
+      .catch((e) => {}),
+  ) // Ignore if optional stuff fails; proceed.
+  .then(() => moreCriticalStuff())
+  .catch((e) => console.error(`Critical failure: ${e.message}`));
 ```
 
 Ми запустили файл у Node 24 тричі: без збою, зі збоєм необов'язкового кроку й зі збоєм головного кроку. Рядки, що
