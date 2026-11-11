@@ -660,6 +660,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   (`Len`, `Less`, `Swap`, `Push`, `Pop`), пакет `sort` має окремо `sort.Slice` і стабільне `sort.SliceStable`, а пакет
   `slices` дає `slices.BinarySearch` і `slices.Sort`. Відображення `map` у Go свідомо обходиться у випадковому порядку, щоб
   ніхто не покладався на порядок ключів.
+- **Лекція:** [Лекція. Фаза 1, день 13. Переклад: Python і Go](lectures/f1-d13-python-go.md).
+- **Розбір читання:** [Розбір читання. Фаза 1, день 13](reading/f1-d13-reading.md).
 - **Читати:** у примірнику `python` — сторінки модулів `heapq` («Heap queue algorithm») і `bisect` («Array bisection
   algorithm»), `Sorting Techniques`; у примірнику `go` — `package container/heap`, `package sort`, `package slices`; у
   примірнику `learning-go` — `Arrays, Slices and Maps in Go`.
