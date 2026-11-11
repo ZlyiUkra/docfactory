@@ -507,6 +507,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   сортують за кількома ключами по черзі: спершу за іменем, потім стабільно за містом, і всередині кожного міста імена
   лишаються впорядкованими. `Array.prototype.sort` у JavaScript зобов'язаний бути стабільним, починаючи зі стандарту
   ECMAScript 2019.
+- **Лекція:** [Лекція. Фаза 1, день 6. Прості сортування і стабільність](lectures/f1-d06-simple-sorts-stability.md).
+- **Розбір читання:** [Розбір читання. Фаза 1, день 6](reading/f1-d06-reading.md).
 - **Читати:** Grokking — `2 selection sort`; Sedgewick — `2.1 Elementary Sorts`; Skiena — `4.1 Applications of Sorting`,
   `4.2 Pragmatics of Sorting`; у примірнику `mdn` — `Array.prototype.sort()`.
 - **Сервери MCP:** `algorithms-docs`, `mdn-docs`.
