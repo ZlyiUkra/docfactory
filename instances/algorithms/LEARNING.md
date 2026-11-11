@@ -411,6 +411,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   сталого розміру з номером голови й кількістю елементів, де номер іде по колу через остачу від ділення. Morin показує ще й
   чергу з двох стеків: один стек приймає елементи, другий віддає, а коли другий спорожнів, у нього перекладають увесь
   перший. Кожен елемент перекладають лише раз, тому амортизована вартість стала.
+- **Лекція:** [Лекція. Фаза 1, день 2. Стеки й черги](lectures/f1-d02-stacks-and-queues.md).
+- **Розбір читання:** [Розбір читання. Фаза 1, день 2](reading/f1-d02-reading.md).
 - **Читати:** Skiena — `3.2 Containers: Stacks and Queues`; BCtCI — `Ch 32. Stacks & Queues`; Morin — `ArrayStack: Fast Stack
   Operations Using an Array`, `ArrayQueue: An Array-Based Queue`, `DualArrayDeque: Building a Deque from Two Stacks`; CLRS —
   `10.1 Simple array-based data structures: arrays, matrices, stacks, queues`.
