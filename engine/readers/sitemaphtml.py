@@ -70,7 +70,11 @@ def _text(html: str, url: str, stamp: str, version: str, ends: list, drops: list
         m = _H1.search(html, at.end() if at else 0)
         if not m:
             raise SystemExit(f"На сторінці немає <h1> ({url}) — документ не записую.")
-        title = _markup.html_body(m.group(1)).strip()
+        # Ті самі вирізки, що й у тексті: якір заголовка («¶» на learnpytorch.io) стоїть і в <h1>.
+        head = m.group(1)
+        for r in drops:
+            head = r.sub("", head)
+        title = _markup.html_body(head).strip()
         start = m.end()
     stop = min((e.start() for e in (r.search(html, start) for r in ends) if e),
                default=len(html))

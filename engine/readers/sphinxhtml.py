@@ -13,6 +13,8 @@
                 `version_labels` — об'єкт «тека → номер»: Read the Docs називає теки
                 `release_3.3.0` і `stable`, а мітка версії мусить бути номером («3.3», «3.4»).
                 Тека без запису в об'єкті дає мітку з власної назви, як і без поля.
+                `qualify_titles` — `true`: сторінка класу, що починається сигнатурою «class
+                torch.nn.Linear(…», дістає назву «torch.nn.Linear» замість короткої «Linear».
                 `skip_untitled` — `true`: сторінка без `<h1>` не документ, а посилання з неї все
                 одно йдуть в обхід. У scikit-learn такі сторінки двох видів: заглушки-переадресації
                 на місці перейменованих сторінок (`documentation.html` → `index.html`) і зміст
@@ -128,6 +130,24 @@ def page_text(html: str, url: str, ends: list) -> tuple[str, str]:
     return title, _markup.html_body(part).replace("", "")
 
 
+# Сигнатура класу на першому рядку сторінки довідника autodoc: «class torch.nn.Linear(…».
+_CLASS_SIG = re.compile(r"\s*class\s+([\w.]+)\(")
+
+
+def _qualified(title: str, body: str) -> str:
+    """Повне ім'я класу замість короткого заголовка сторінки (`qualify_titles`).
+
+    PyTorch називає сторінку класу коротким ім'ям («CrossEntropyLoss»), а сторінку функції —
+    повним («torch.compile»). Модель питає повним ім'ям класу, а `title_match` свідомо не
+    зараховує «CrossEntropyLoss» у «torch.nn.CrossEntropyLoss» (так «toString» не збігається з
+    «Object.prototype.toString»), тож сторінка класу програвала сторінкам, де ім'я стоїть у
+    тексті. Назва замінюється, лише коли сигнатура закінчується саме коротким заголовком."""
+    m = _CLASS_SIG.match(body)
+    if m and m.group(1).rsplit(".", 1)[-1] == title and "." in m.group(1):
+        return m.group(1)
+    return title
+
+
 @register("sphinx-html")
 def sphinx_html(source: dict, ctx) -> list[Item]:
     template = source["url"]
@@ -140,6 +160,7 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
     vprefix = source.get("version_prefix", "")
     vlabels = source.get("version_labels") or {}
     untitled = bool(source.get("skip_untitled"))
+    qualify = bool(source.get("qualify_titles"))
 
     # Сторінка → {хеш тексту → [назва, тіло, адреса найновішої версії, версії]}; порядок
     # сторінок — порядок обходу найновішої версії, де сторінка з'явилася вперше.
@@ -168,6 +189,8 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
             if untitled and not _H1.search(html):
                 continue
             title, body = page_text(html, url, ends)
+            if qualify:
+                title = _qualified(title, body)
             if not body.strip():
                 continue
             key = _markup.slug(urlsplit(url).path[len(urlsplit(root).path):].rsplit(".", 1)[0])
