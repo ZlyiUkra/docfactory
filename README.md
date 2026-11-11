@@ -4523,6 +4523,36 @@ Hardware і вісім класичних статей (LLRB, diff Myers, skip l
 - корпус, індекс, файли книжок і розпізнані сторінки — лише на цій машині, у git їх немає;
 - докладніше — у [instances/algorithms/README.md](instances/algorithms/README.md).
 
+### deep-learning-theory
+
+Оксфордський курс C6.5 Theories of Deep Learning (Jared Tanner): слайди всіх лекцій за сім років 2020-21…2026-27, кожен слайд —
+окремий розділ, картки курсу, приклади міні-проєктів (розпізнані зі сканів), аркуші завдань 2020-21 і гостьова лекція про PINN.
+Поруч чотири книжки: Mathematics for Machine Learning, Understanding Deep Learning, Dive into Deep Learning, The Principles of Deep
+Learning Theory, і 97 статей arXiv, на які посилаються слайди. Усього 1675 документів і 13 455 фрагментів; новий читач
+`moodle-course`.
+
+- порт `8969`; запис у Claude Code — `deep-learning-theory-docs`, адреса `http://127.0.0.1:8969/mcp`; інструменти `search_docs` і `read_section`;
+- версія курсу — навчальний рік (`2026-27`); у книжок і статей версії немає;
+- не входять: аркуші завдань після 2020-21 і розв'язки (за входом), відео, книжка Goodfellow, документація PyTorch (вона в `pytorch`);
+- приклад питання агентові: `./df deep-learning-theory ask "Why does the variance of pre-activations explode or vanish with depth at initialisation?"`;
+- корпус, індекс і сховище сирого — лише на цій машині, у git їх немає;
+- докладніше — у [instances/deep-learning-theory/README.md](instances/deep-learning-theory/README.md).
+
+### pytorch
+
+PyTorch і torchvision: документація PyTorch 2.15 повністю зі сторінкою кожного класу й функції, оповідні сторінки останнього
+патча кожної мінорної лінії 0.1–2.14, офіційні підручники docs.pytorch.org/tutorials, torchvision 0.29, нотатки релізів GitHub і
+записи PyPI обох пакетів. Поруч Learn PyTorch for Deep Learning (Bourke), UvA Deep Learning Tutorials і чотири книжки з файлів
+користувача: Godoy, Raschka, Stevens 2-ге вид. (MEAP), Julian. Усього 7801 документ і 39 627 фрагментів; нове поле
+`qualify_titles` читача `sphinx-html`.
+
+- порт `8970`; запис у Claude Code — `pytorch-docs`, адреса `http://127.0.0.1:8970/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія PyTorch (`2.15`, `1.13`) чи torchvision (`torchvision-0.29`); у книжок і підручників версії немає;
+- не входять: сторінки окремих функцій версій до 2.15, TensorFlow, Keras, JAX, теорія глибокого навчання (вона в `deep-learning-theory`);
+- приклад питання агентові: `./df pytorch ask "What input does torch.nn.CrossEntropyLoss expect, logits or probabilities?"`;
+- корпус, індекс, сховище сирого і файли книжок — лише на цій машині, у git їх немає;
+- докладніше — у [instances/pytorch/README.md](instances/pytorch/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

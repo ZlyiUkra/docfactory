@@ -797,6 +797,19 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   notes come out of OCR unreadable; leave them out when typed notes of the same lectures exist. When WSL cannot reach the address DNS
   gives for github.com while Windows can, other GitHub addresses in `/etc/hosts` get the build through; remove them afterwards.
 
+- **A Moodle course open to guests** (Oxford C6.5): the `moodle-course` reader starts from the course page and takes each PDF
+  by its `view.php?id=` address, because the file address carries a revision number that changes with every update. Beamer slides
+  become one section per page. The text is rebuilt from the page's text runs (`visitor_text`), because LaTeX puts no space where
+  the font or colour changes, and plain extraction glues words together. Assignment attachments are often behind the login:
+  `assign: false`. One academic year can have several course page numbers with the same content.
+
+- **An autodoc reference with short class titles** (PyTorch names a class page «CrossEntropyLoss» but a function page
+  «torch.compile»): `title_match` does not count a short title inside a full name, so a query with the full class name loses to
+  old module pages. `qualify_titles: true` in `sphinx-html` takes the full name from the signature. A new title changes the
+  document hash: move the old files out of `corpus/` before `manifest`, picking them by the start time of the run, not by the
+  time of its log. A page that always answers 503 costs 21 minutes of retries, so old versions of a large site go into a source
+  of their own and are rebuilt with `build`.
+
 ## Anatomy of an instance
 
 Fourteen files, identical in shape across instances, plus five folders that create themselves.
@@ -1889,6 +1902,19 @@ and what a taken port and a failed connection look like. A domain list in the ro
   літери, дають документ на кожну літеру: до `skip` читача `pdf-outline` додають `[A-Z]` і `Index .*`. Рукописні конспекти лекцій
   після розпізнавання нечитабельні; їх не беруть, коли є друковані конспекти тих самих лекцій. Коли WSL не дістає до адреси, яку DNS
   дає для github.com, а Windows дістає, збирання проходить з іншими адресами GitHub у `/etc/hosts`; після збирання їх прибирають.
+
+- **Курс на Moodle, відкритий для гостя** (оксфордський C6.5): читач `moodle-course` іде від сторінки курсу і бере кожен PDF
+  за адресою `view.php?id=`, бо адреса самого файла містить номер ревізії, який змінюється з кожним оновленням. Слайди Beamer
+  стають розділом на сторінку. Текст складається зі шматків сторінки (`visitor_text`), бо LaTeX не ставить пробілу на межі
+  шрифту чи кольору, і звичайне видобування склеює слова. Вкладення завдань часто за входом: `assign: false`. Той самий
+  навчальний рік може мати кілька номерів сторінки курсу з однаковим вмістом.
+
+- **Довідник autodoc із короткими назвами класів** (PyTorch називає сторінку класу «CrossEntropyLoss», а сторінку функції —
+  «torch.compile»): `title_match` не зараховує коротку назву в повне ім'я, і запит повним ім'ям класу програє старим сторінкам
+  модуля. `qualify_titles: true` у `sphinx-html` бере повне ім'я з сигнатури. Нова назва змінює хеш документа: старі файли
+  переносять з `corpus/` перед `manifest`, вибираючи їх за часом початку прогону, а не за часом журналу. Сторінка, що завжди
+  відповідає 503, коштує 21 хвилину повторів, тому старі версії великого сайту виносять в окреме джерело і перезбирають через
+  `build`.
 
 ## З чого складається примірник
 
@@ -3026,6 +3052,19 @@ errada.
   `pdf-outline`. Notas de aula manuscritas saem ilegíveis do OCR; deixe-as de fora quando existem notas impressas das mesmas aulas.
   Quando o WSL não alcança o endereço que o DNS dá para github.com e o Windows alcança, outros endereços do GitHub em `/etc/hosts`
   deixam passar a montagem; retire-os depois.
+
+- **Um curso Moodle aberto a visitantes** (C6.5 de Oxford): o leitor `moodle-course` parte da página do curso e pega cada PDF
+  pelo endereço `view.php?id=`, porque o endereço do arquivo traz um número de revisão que muda a cada atualização. Os slides
+  Beamer viram uma seção por página. O texto é montado a partir dos trechos da página (`visitor_text`), porque o LaTeX não põe
+  espaço onde a fonte ou a cor muda, e a extração comum gruda as palavras. Os anexos das tarefas costumam exigir login:
+  `assign: false`. O mesmo ano letivo pode ter vários números de página do curso com o mesmo conteúdo.
+
+- **Uma referência autodoc com títulos curtos de classes** (o PyTorch chama a página de classe de «CrossEntropyLoss», mas a de
+  função de «torch.compile»): `title_match` não conta um título curto dentro de um nome completo, então a consulta com o nome
+  completo da classe perde para páginas antigas do módulo. `qualify_titles: true` no `sphinx-html` pega o nome completo da
+  assinatura. Um título novo muda o hash do documento: tire os arquivos antigos de `corpus/` antes do `manifest`, escolhendo-os
+  pela hora de início da execução, não pela hora do log. Uma página que sempre responde 503 custa 21 minutos de novas tentativas,
+  então as versões antigas de um site grande vão para uma fonte própria e são reconstruídas com `build`.
 
 ## Anatomia de uma instância
 
