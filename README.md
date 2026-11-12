@@ -4553,6 +4553,21 @@ PyTorch і torchvision: документація PyTorch 2.15 повністю �
 - корпус, індекс, сховище сирого і файли книжок — лише на цій машині, у git їх немає;
 - докладніше — у [instances/pytorch/README.md](instances/pytorch/README.md).
 
+### reinforcement-learning
+
+Книжки, курси й статті про навчання з підкріпленням і бандитів: Sutton і Barto 2-ге вид., три платні книжки з файлів користувача
+(Lapan 3-тє вид., Graesser і Keng, Morales), Bandit Algorithms (Lattimore і Szepesvári), Algorithms for Reinforcement Learning
+(Szepesvári), OpenAI Spinning Up, курс Hugging Face Deep RL, слайди курсу Сілвера і 19 статей від DQN 2013 до Implicit Q-Learning
+2022, серед них навчання на записаній історії та дві статті про торгівлю. Усього 1132 документи і 6521 фрагмент; нове поле
+`engine` читача `pdf-outline`.
+
+- порт `8971`; запис у Claude Code — `reinforcement-learning-docs`, адреса `http://127.0.0.1:8971/mcp`; інструменти `search_docs` і `read_section`;
+- версій немає: кожна книжка — одне видання;
+- не входять: довідники API Gymnasium, Stable-Baselines3, d3rlpy і PyTorch, документація брокерів;
+- приклад питання агентові: `./df reinforcement-learning ask "Why does DQN use a target network and experience replay?"`;
+- корпус, індекс, сховище сирого і файли книжок — лише на цій машині, у git їх немає;
+- докладніше — у [instances/reinforcement-learning/README.md](instances/reinforcement-learning/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

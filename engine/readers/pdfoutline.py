@@ -7,7 +7,9 @@
                 рівень закладок, що стає окремим документом (типово 1: глави й розділи); глибші пункти
                 стають підзаголовками всередині документа; `skip` — вираз назв пунктів, що не беруться
                 (зміст, покажчик, список літератури); `name_prefix` — початок імені кожного документа (типово id джерела);
-                `version` — мітка версії; `min_chars` — найкоротше тіло. PDF без закладок — один
+                `version` — мітка версії; `min_chars` — найкоротше тіло; `engine: "pdfium"` — текст
+                усіх сторінок бере PDFium: у книжці, де pypdf склеює слова без пробілів («Thereinforce
+                mentlearning», Graesser і Keng), інакше не знайти жодного слова. PDF без закладок — один
                 документ на кожні `chunk_pages` сторінок (типово 4) з назвою «назва, с. N–M».
 
 Навіщо. Книжки й статті про дерева рішень лежать PDF-файлами, зверстаними щоразу інакше (LaTeX,
@@ -56,11 +58,16 @@ def _key(text: str) -> str:
     return re.sub(r"\W+", "", text).lower()[:40]
 
 
+class _UsePdfium(Exception):
+    """Поле `engine: "pdfium"`: сторінку одразу читає PDFium, без спроби pypdf."""
+
+
 class _Pages:
     """Рядки сторінок без колонтитулів; сторінку, на якій pypdf падає, читає PDFium."""
 
-    def __init__(self, reader, data, label):
+    def __init__(self, reader, data, label, pdfium_only=False):
         self.reader, self.data, self.label = reader, data, label
+        self.pdfium_only = pdfium_only
         self.raw: dict[int, list[str]] = {}
         self.pdfium = None
         self.furniture: set[str] = set()
@@ -68,6 +75,8 @@ class _Pages:
     def lines(self, n: int) -> list[str]:
         if n not in self.raw:
             try:
+                if self.pdfium_only:
+                    raise _UsePdfium()
                 text = self.reader.pages[n].extract_text() or ""
             except Exception as exc:  # pypdf падає на окремих шрифтах
                 import pypdfium2
@@ -78,8 +87,9 @@ class _Pages:
                 text = text_page.get_text_range().replace("\r", "")
                 text_page.close()
                 page.close()
-                print(f"  {self.label}: сторінку {n + 1} pypdf не прочитав ({type(exc).__name__}), "
-                      f"прочитано через PDFium", flush=True)
+                if not self.pdfium_only:
+                    print(f"  {self.label}: сторінку {n + 1} pypdf не прочитав ({type(exc).__name__}), "
+                          f"прочитано через PDFium", flush=True)
             # Математичні знаки поза основною площиною Юнікоду pypdf подекуди віддає парою чи й
             # одиноким сурогатом («\ud835»), а такий рядок не записати в UTF-8: пара зливається в
             # знак, одинокий стає «�».
@@ -158,7 +168,7 @@ def pdf_outline(source: dict, ctx) -> list[Item]:
         raise SystemExit(f"{source['id']}: читач pdf-outline потребує поля file або url.")
     reader = pypdf.PdfReader(io.BytesIO(data))
     total = len(reader.pages)
-    pages = _Pages(reader, data, label)
+    pages = _Pages(reader, data, label, source.get("engine") == "pdfium")
     pages.learn_furniture(total)
     page_url = source.get("page") or source.get("url") or ""
     depth_max = int(source.get("depth", 1))
