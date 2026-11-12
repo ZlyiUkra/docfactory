@@ -6168,7 +6168,7 @@ dataset) are meant to be connected together -- when a question belongs to anothe
 
 **Порт** 8972, сервер `gymnasium-docs`. Підняти: `./df gymnasium serve`. Адреса: `http://127.0.0.1:8972/mcp`.
 
-**Обсяг.** Документів: 943, фрагментів: 4 121.
+**Обсяг.** Документів: 1 084, фрагментів: 5 161.
 
 **Родина.** Цей примірник відповідає не на все сам, тому разом із ним піднімають: `d3rlpy-docs` (8974),
 `reinforcement-learning-docs` (8971), `stable-baselines3-docs` (8973).
@@ -6189,12 +6189,13 @@ Stable-Baselines3, приймають середовище саме в цьом�
 
 **Склад (так його описано моделі, англійською).**
 
-Documents of Gymnasium: the gymnasium.farama.org site of every minor line 0.26-1.4, the GitHub release notes and the
-PyPI records. The theory of reinforcement learning, Stable-Baselines3 and PyTorch are not here. This set is part of
-the Reinforcement Learning family: gymnasium-docs (this one: Gymnasium, the environment interface),
-reinforcement-learning-docs (the theory: books, courses and papers), stable-baselines3-docs (Stable-Baselines3,
-sb3-contrib and RL Zoo, the ready algorithms), d3rlpy-docs (d3rlpy, offline reinforcement learning from a fixed
-dataset) are meant to be connected together -- when a question belongs to another member, name its server.
+Documents of Gymnasium: the gymnasium.farama.org site of every minor line 0.26-1.4, the ale.farama.org site 0.12 with
+the Atari environments, the GitHub release notes and the PyPI records. The theory of reinforcement learning,
+Stable-Baselines3 and PyTorch are not here. This set is part of the Reinforcement Learning family: gymnasium-docs
+(this one: Gymnasium, the environment interface), reinforcement-learning-docs (the theory: books, courses and papers),
+stable-baselines3-docs (Stable-Baselines3, sb3-contrib and RL Zoo, the ready algorithms), d3rlpy-docs (d3rlpy, offline
+reinforcement learning from a fixed dataset) are meant to be connected together -- when a question belongs to another
+member, name its server.
 
 **Далі в [README](../instances/gymnasium/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
 сервер; Родина «Навчання з підкріпленням»: піднімати разом; Архівний режим: сервер без корпусу.
