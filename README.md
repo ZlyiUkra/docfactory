@@ -4569,6 +4569,20 @@ PyTorch і torchvision: документація PyTorch 2.15 повністю �
 - корпус, індекс, сховище сирого і файли книжок — лише на цій машині, у git їх немає;
 - докладніше — у [instances/reinforcement-learning/README.md](instances/reinforcement-learning/README.md).
 
+### gymnasium
+
+Gymnasium — бібліотека Farama Foundation, що задає стандартний інтерфейс між агентом навчання з підкріпленням і середовищем (колишній
+OpenAI Gym): сайт gymnasium.farama.org дев'яти мінорних ліній 0.26–1.4 (вступ, довідник API `Env`, просторів, обгорток, векторних
+середовищ і реєстру, сторінка кожного вбудованого середовища, підручники), нотатки релізів GitHub і записи PyPI. Усього 943
+документи і 4 121 фрагмент.
+
+- порт `8972`; запис у Claude Code — `gymnasium-docs`, адреса `http://127.0.0.1:8972/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія (`1.4`, `0.29`);
+- не входять: середовища Atari ліній 1.0 і новіших (вони на ale.farama.org), старий OpenAI Gym, теорія (вона в `reinforcement-learning`);
+- приклад питання агентові: `./df gymnasium ask "What does Env.step return and how do terminated and truncated differ?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/gymnasium/README.md](instances/gymnasium/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
