@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 213. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 214. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8973, вільний усередині: 8769. Наступний новий: 8974.
+Зайняті порти: 8760–8974, вільний усередині: 8769. Наступний новий: 8975.
 
 ## Як обирати
 
@@ -254,6 +254,7 @@
 | [`reinforcement-learning`](#reinforcement-learning) | 8971 | Вчите агента приймати рішення методом спроб: марковський процес рішень, Q-learning, DQN, PPO, SAC, бандити й контекстні бандити, навчання на записаній історії, торгове середовище; книжки, курси й статті. |
 | [`gymnasium`](#gymnasium) | 8972 | Пишете або під'єднуєте середовище для навчання з підкріпленням через Gymnasium: Env, reset і step, простори, обгортки, векторні середовища, вбудовані середовища. |
 | [`stable-baselines3`](#stable-baselines3) | 8973 | Навчаєте агента готовим алгоритмом через Stable-Baselines3: PPO, DQN, SAC, колбеки, векторні середовища, VecNormalize, власна політика; MaskablePPO і RecurrentPPO із sb3-contrib; RL Zoo. |
+| [`d3rlpy`](#d3rlpy) | 8974 | Навчаєте агента на записаній історії без живого середовища через d3rlpy: MDPDataset, ReplayBuffer, CQL, IQL, TD3+BC, Decision Transformer, оцінка політики через FQE, вивантаження в ONNX. |
 
 ### PHP
 
@@ -6131,6 +6132,9 @@ it.
 
 **Обсяг.** Документів: 1 540, фрагментів: 7 698.
 
+**Родина.** Цей примірник відповідає не на все сам, тому разом із ним піднімають: `d3rlpy-docs` (8974),
+`gymnasium-docs` (8972), `stable-baselines3-docs` (8973).
+
 **Опис.**
 
 Цей примірник шукає в книжках, курсах і статтях про навчання з підкріпленням. Навчання з підкріпленням (reinforcement
@@ -6149,9 +6153,14 @@ learning, RL) — це спосіб навчити програму прийма
 
 Documents : chapters of books, course pages, lecture slides and sections of papers about reinforcement learning and
 bandits. Library API references (Gymnasium, Stable-Baselines3, d3rlpy, PyTorch) are not here: other servers hold them.
+This set is part of the Reinforcement Learning family: reinforcement-learning-docs (this one: the theory: books,
+courses and papers), gymnasium-docs (Gymnasium, the environment interface), stable-baselines3-docs (Stable-Baselines3,
+sb3-contrib and RL Zoo, the ready algorithms), d3rlpy-docs (d3rlpy, offline reinforcement learning from a fixed
+dataset) are meant to be connected together -- when a question belongs to another member, name its server.
 
 **Далі в [README](../instances/reinforcement-learning/README.md):** Що всередині; Слайди російською; Чого тут немає;
-Обмеження текстів; Як читаються файли; Корпус лише локально; Як запустити.
+Обмеження текстів; Як читаються файли; Родина «Навчання з підкріпленням»: піднімати разом; Корпус лише локально; Як
+запустити.
 
 ### gymnasium
 
@@ -6160,6 +6169,9 @@ bandits. Library API references (Gymnasium, Stable-Baselines3, d3rlpy, PyTorch) 
 **Порт** 8972, сервер `gymnasium-docs`. Підняти: `./df gymnasium serve`. Адреса: `http://127.0.0.1:8972/mcp`.
 
 **Обсяг.** Документів: 943, фрагментів: 4 121.
+
+**Родина.** Цей примірник відповідає не на все сам, тому разом із ним піднімають: `d3rlpy-docs` (8974),
+`reinforcement-learning-docs` (8971), `stable-baselines3-docs` (8973).
 
 **Опис.**
 
@@ -6178,10 +6190,14 @@ Stable-Baselines3, приймають середовище саме в цьом�
 **Склад (так його описано моделі, англійською).**
 
 Documents of Gymnasium: the gymnasium.farama.org site of every minor line 0.26-1.4, the GitHub release notes and the
-PyPI records. The theory of reinforcement learning, Stable-Baselines3 and PyTorch are not here.
+PyPI records. The theory of reinforcement learning, Stable-Baselines3 and PyTorch are not here. This set is part of
+the Reinforcement Learning family: gymnasium-docs (this one: Gymnasium, the environment interface),
+reinforcement-learning-docs (the theory: books, courses and papers), stable-baselines3-docs (Stable-Baselines3,
+sb3-contrib and RL Zoo, the ready algorithms), d3rlpy-docs (d3rlpy, offline reinforcement learning from a fixed
+dataset) are meant to be connected together -- when a question belongs to another member, name its server.
 
 **Далі в [README](../instances/gymnasium/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
-сервер; Архівний режим: сервер без корпусу.
+сервер; Родина «Навчання з підкріпленням»: піднімати разом; Архівний режим: сервер без корпусу.
 
 ### stable-baselines3
 
@@ -6190,6 +6206,9 @@ PyPI records. The theory of reinforcement learning, Stable-Baselines3 and PyTorc
 **Порт** 8973, сервер `stable-baselines3-docs`. Підняти: `./df stable-baselines3 serve`. Адреса: `http://127.0.0.1:8973/mcp`.
 
 **Обсяг.** Документів: 686, фрагментів: 3 845.
+
+**Родина.** Цей примірник відповідає не на все сам, тому разом із ним піднімають: `d3rlpy-docs` (8974),
+`gymnasium-docs` (8972), `reinforcement-learning-docs` (8971).
 
 **Опис.**
 
@@ -6211,10 +6230,50 @@ Python на PyTorch з готовими алгоритмами навчання 
 
 Documents of Stable-Baselines3: the stable-baselines3.readthedocs.io site of every minor line 0.11-2.9, the
 sb3-contrib site 1.0-2.9, the RL Baselines3 Zoo site 1.8-2.9, the GitHub release notes and the PyPI records of all
-three packages. Gymnasium, PyTorch and the theory of reinforcement learning are not here.
+three packages. Gymnasium, PyTorch and the theory of reinforcement learning are not here. This set is part of the
+Reinforcement Learning family: stable-baselines3-docs (this one: Stable-Baselines3, sb3-contrib and RL Zoo, the ready
+algorithms), reinforcement-learning-docs (the theory: books, courses and papers), gymnasium-docs (Gymnasium, the
+environment interface), d3rlpy-docs (d3rlpy, offline reinforcement learning from a fixed dataset) are meant to be
+connected together -- when a question belongs to another member, name its server.
 
 **Далі в [README](../instances/stable-baselines3/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як
-підняти сервер; Архівний режим: сервер без корпусу.
+підняти сервер; Родина «Навчання з підкріпленням»: піднімати разом; Архівний режим: сервер без корпусу.
+
+### d3rlpy
+
+**Коли піднімати.** Навчаєте агента на записаній історії без живого середовища через d3rlpy: MDPDataset, ReplayBuffer, CQL, IQL, TD3+BC, Decision Transformer, оцінка політики через FQE, вивантаження в ONNX.
+
+**Порт** 8974, сервер `d3rlpy-docs`. Підняти: `./df d3rlpy serve`. Адреса: `http://127.0.0.1:8974/mcp`.
+
+**Обсяг.** Документів: 1 036, фрагментів: 4 317.
+
+**Родина.** Цей примірник відповідає не на все сам, тому разом із ним піднімають: `gymnasium-docs` (8972),
+`reinforcement-learning-docs` (8971), `stable-baselines3-docs` (8973).
+
+**Опис.**
+
+Цей примірник зібрав документацію d3rlpy і віддає її через сервер MCP, щоб модель відповідала з текстів бібліотеки, а
+не з пам'яті. d3rlpy — бібліотека для Python на PyTorch для навчання з підкріпленням на записаній історії (offline
+reinforcement learning). Звичайний агент учиться, пробуючи дії в середовищі. Тут середовища під час навчання немає: є
+лише набір уже записаних переходів, тобто спостережень, дій, винагород і позначок кінця епізоду. Агент мусить вивести
+з них добру політику, не маючи змоги перевірити дію, якої в записах не було. Тому алгоритми цієї бібліотеки (CQL, IQL,
+TD3+BC та інші) навмисно обережні з діями, яких у даних мало. Так описується навчання на історичних котируваннях:
+ринок не можна «переграти» з іншою дією. Набір даних збирають у `MDPDataset` або `ReplayBuffer`. Алгоритм створюють із
+його налаштувань, наприклад `CQLConfig().create(device="cuda:0")`, і навчають методом `fit`. Навчену політику оцінюють
+без середовища класом `FQE`, зберігають і вивантажують у TorchScript чи ONNX методом `save_policy`. Метод `fit_online`
+дозволяє довчити агента вже в живому середовищі.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of d3rlpy: the d3rlpy.readthedocs.io site at the last patch of every minor line 0.2-2.8, the GitHub release
+notes and the PyPI records. The theory of offline reinforcement learning, Gymnasium, Stable-Baselines3 and PyTorch are
+not here. This set is part of the Reinforcement Learning family: d3rlpy-docs (this one: d3rlpy, offline reinforcement
+learning from a fixed dataset), reinforcement-learning-docs (the theory: books, courses and papers), gymnasium-docs
+(Gymnasium, the environment interface), stable-baselines3-docs (Stable-Baselines3, sb3-contrib and RL Zoo, the ready
+algorithms) are meant to be connected together -- when a question belongs to another member, name its server.
+
+**Далі в [README](../instances/d3rlpy/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
+сервер; Родина «Навчання з підкріпленням»: піднімати разом; Архівний режим: сервер без корпусу.
 
 <!-- тема: PHP -->
 

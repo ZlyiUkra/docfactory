@@ -4610,6 +4610,21 @@ Stable-Baselines3 — бібліотека готових алгоритмів �
 - член родини «Навчання з підкріпленням» (розділ «Родини примірників»): піднімати разом з `reinforcement-learning`, `gymnasium` і `d3rlpy`;
 - докладніше — у [instances/stable-baselines3/README.md](instances/stable-baselines3/README.md).
 
+### d3rlpy
+
+d3rlpy — бібліотека навчання з підкріпленням на записаній історії, без живого середовища: сайт d3rlpy.readthedocs.io останнього
+патча кожної з 19 мінорних ліній 0.2–2.8 (перші кроки, підручники, довідник API зі сторінкою кожного алгоритму й класу — CQL, IQL,
+TD3+BC, Decision Transformer, `MDPDataset`, `ReplayBuffer`, `FQE` —, командний рядок), нотатки релізів GitHub і записи PyPI. Усього
+1 036 документів і 4 317 фрагментів.
+
+- порт `8974`; запис у Claude Code — `d3rlpy-docs`, адреса `http://127.0.0.1:8974/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія (`2.8`, `1.1`, `0.9`);
+- не входять: лінія 0.1 як сайт, зошити з репозиторію, теорія навчання на записаній історії (вона в `reinforcement-learning`);
+- приклад питання агентові: `./df d3rlpy ask "How do I build an MDPDataset from logged data and train CQL on it?"`;
+- член родини «Навчання з підкріпленням» (розділ «Родини примірників»): піднімати разом з `reinforcement-learning`, `gymnasium` і `stable-baselines3`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/d3rlpy/README.md](instances/d3rlpy/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
