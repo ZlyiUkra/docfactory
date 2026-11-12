@@ -570,6 +570,16 @@ Plot бере в D3 шкали, фігури, проєкції й формати
 можна підняти й з одного термінала: `tools/up.sh <примірник> <примірник> …` (пункт 6 розділу «Як підняти
 локальний MCP-сервер»).
 
+**Родина «Навчання з підкріпленням»** — теорія і бібліотеки, якими її застосовують (PyTorch, на якому працюють Stable-Baselines3
+і d3rlpy, сюди не входить: він окремий примірник `pytorch`):
+
+| Примірник | Сервер | Порт | Що |
+|-----------|--------|-----:|----|
+| `reinforcement-learning` | `reinforcement-learning-docs` | 8971 | теорія: книжки, курси й статті про навчання з підкріпленням і бандитів, торгове середовище, навчання на записаній історії |
+| `gymnasium` | `gymnasium-docs` | 8972 | Gymnasium 0.26–1.4: інтерфейс середовища, простори, обгортки, векторні середовища |
+| `stable-baselines3` | `stable-baselines3-docs` | 8973 | Stable-Baselines3 0.11–2.9, sb3-contrib і RL Zoo: готові алгоритми, колбеки, векторні середовища |
+| `d3rlpy` | `d3rlpy-docs` | 8974 | d3rlpy 0.2–2.8: навчання на записаній історії без живого середовища (CQL, IQL, Decision Transformer) |
+
 ## Примірники
 
 Який сервер підняти під конкретну розробку, підкаже [каталог примірників](docs/instances.md). У ньому примірники зібрано за
@@ -4567,6 +4577,7 @@ PyTorch і torchvision: документація PyTorch 2.15 повністю �
 - не входять: довідники API Gymnasium, Stable-Baselines3, d3rlpy і PyTorch, документація брокерів;
 - приклад питання агентові: `./df reinforcement-learning ask "Why does DQN use a target network and experience replay?"`;
 - корпус, індекс, сховище сирого і файли книжок — лише на цій машині, у git їх немає;
+- член родини «Навчання з підкріпленням» (розділ «Родини примірників»): піднімати разом з `gymnasium`, `stable-baselines3` і `d3rlpy`;
 - докладніше — у [instances/reinforcement-learning/README.md](instances/reinforcement-learning/README.md).
 
 ### gymnasium
@@ -4581,6 +4592,7 @@ OpenAI Gym): сайт gymnasium.farama.org дев'яти мінорних лін
 - не входять: середовища Atari ліній 1.0 і новіших (вони на ale.farama.org), старий OpenAI Gym, теорія (вона в `reinforcement-learning`);
 - приклад питання агентові: `./df gymnasium ask "What does Env.step return and how do terminated and truncated differ?"`;
 - корпус — в архіві від самого початку;
+- член родини «Навчання з підкріпленням» (розділ «Родини примірників»): піднімати разом з `reinforcement-learning`, `stable-baselines3` і `d3rlpy`;
 - докладніше — у [instances/gymnasium/README.md](instances/gymnasium/README.md).
 
 ### stable-baselines3
@@ -4595,6 +4607,7 @@ Stable-Baselines3 — бібліотека готових алгоритмів �
 - не входять: лінії без теки на Read the Docs (є лише PyPI і релізи), Gymnasium (він у `gymnasium`), теорія (вона в `reinforcement-learning`);
 - приклад питання агентові: `./df stable-baselines3 ask "Which PPO parameters control the size of each policy update?"`;
 - корпус — в архіві від самого початку;
+- член родини «Навчання з підкріпленням» (розділ «Родини примірників»): піднімати разом з `reinforcement-learning`, `gymnasium` і `d3rlpy`;
 - докладніше — у [instances/stable-baselines3/README.md](instances/stable-baselines3/README.md).
 
 ## Захист
