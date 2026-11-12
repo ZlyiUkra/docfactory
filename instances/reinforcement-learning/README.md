@@ -22,6 +22,12 @@ RL) — це спосіб навчити програму приймати рі�
 | Lapan, Deep Reinforcement Learning Hands-On, 3-тє вид. (Packt, 2024) | 183 |
 | Graesser, Keng, Foundations of Deep Reinforcement Learning: Theory and Practice in Python (Addison-Wesley, 2020) | 145 |
 | Morales, Grokking Deep Reinforcement Learning (Manning, 2020) | 51 |
+| Hilpisch, Reinforcement Learning for Finance: A Python-Based Introduction (O'Reilly, 2025) | 68 |
+| Zai, Brown, Deep Reinforcement Learning in Action (Manning, 2020) | 93 |
+
+**Слайди платного курсу з файлів користувача:** OTUS, курс Reinforcement Learning (2026), російською: слайди 22 занять і три
+домашні завдання, 247 документів. Серед занять є застосування в рекомендаціях, кредитному скорингу й керуванні фінансовим
+портфелем. Зошити Jupyter, презентації `.pptx` і відео курсу в корпус не входять.
 
 **Безкоштовні книжки й курси:**
 
@@ -40,12 +46,20 @@ Dueling DQN (2016), Prioritized Experience Replay (2016), Rainbow (2018). Про
 Levine, Kumar, Tucker, Fu (2020), Conservative Q-Learning (2020), Implicit Q-Learning (2022), Decision Transformer (2021). Про
 торгівлю: Zhang, Zohren, Roberts, Deep Reinforcement Learning for Trading (2020) і FinRL (Liu та ін., 2020).
 
-Усього 1132 документи, з них пошук будує 6521 фрагмент. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
-книжки — глава чи розділ за закладками PDF, документ статті — її розділ. PDF без закладок (слайди Сілвера, статті Double DQN,
+Усього 1540 документів, з них пошук будує 7698 фрагментів. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
+книжки — глава чи розділ за закладками PDF, документ статті — її розділ. PDF без закладок (слайди Сілвера й OTUS, статті Double DQN,
 Dueling DQN, Rainbow, A3C, PPO, TD3, SAC) поділено на шматки по чотири сторінки з назвою «pp. N–M».
 
 Замір `quality` на 12.11.2026 дав такі числа. Запити назвами методів знаходять потрібне 10 із 10, а модель зазвичай питає саме
 так. Запити своїми словами знаходять потрібне 8 із 10.
+
+## Слайди російською
+
+Пошук цього примірника розрахований на англійську: модель векторів навчена на англійських текстах. Щоб російські слайди OTUS
+знаходилися, зроблено дві речі. Кожне заняття має назву двома мовами («Basic algorithms: value-based / Основные алгоритмы RL. Value
+based»), і ця назва входить у текст кожного фрагмента, тому англійський запит доходить до слайдів. У `config.json` стоїть
+`"cyrillic_words": true`, тому російський запит шукається по словах. Назви алгоритмів (DQN, PPO, TD3) у слайдах написано латиницею,
+і вони знаходяться за будь-якої мови запиту.
 
 ## Чого тут немає
 
@@ -71,15 +85,15 @@ Hugging Face — `ghdocs-history`.
 **корпус, індекс і файли книжок у git не потрапляють** (`corpus/`, `index/` і `raw/` у `.gitignore`). У git лежать лише
 налаштування примірника, а сервер працює лише на цій машині.
 
-**Де тексти.** Вони лежать в архіві `~/archives/docfactory/reinforcement-learning-corpus-2026-11-12.tar.gz` разом із паспортом,
+**Де тексти.** Вони лежать в архіві `~/archives/docfactory/reinforcement-learning-corpus-2026-11-12-finance.tar.gz` разом із паспортом,
 сховищем сирого і файлами книжок у `raw/local/`. Копія лежить на Windows:
-`C:\Distr\reinforcement-learning-corpus-2026-11-12.tar.gz`. Архів звірено з диском файл за файлом, а копію — за SHA-256. Сервер
+`C:\Distr\reinforcement-learning-corpus-2026-11-12-finance.tar.gz`. Архів звірено з диском файл за файлом, а копію — за SHA-256. Сервер
 підіймається з кешу `index/passages.json` і колекції Qdrant, тому тексти йому не потрібні.
 
 **Як повернути тексти** перед оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/reinforcement-learning-corpus-2026-11-12.tar.gz -C instances/reinforcement-learning
+tar -xzf ~/archives/docfactory/reinforcement-learning-corpus-2026-11-12-finance.tar.gz -C instances/reinforcement-learning
 ./df reinforcement-learning smoke
 ```
 

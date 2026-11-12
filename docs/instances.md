@@ -6127,7 +6127,7 @@ it.
 
 **Порт** 8971, сервер `reinforcement-learning-docs`. Підняти: `./df reinforcement-learning serve`. Адреса: `http://127.0.0.1:8971/mcp`.
 
-**Обсяг.** Документів: 1 132, фрагментів: 6 521.
+**Обсяг.** Документів: 1 540, фрагментів: 7 698.
 
 **Опис.**
 
@@ -6148,8 +6148,8 @@ learning, RL) — це спосіб навчити програму прийма
 Documents : chapters of books, course pages, lecture slides and sections of papers about reinforcement learning and
 bandits. Library API references (Gymnasium, Stable-Baselines3, d3rlpy, PyTorch) are not here: other servers hold them.
 
-**Далі в [README](../instances/reinforcement-learning/README.md):** Що всередині; Чого тут немає; Обмеження текстів;
-Як читаються файли; Корпус лише локально; Як запустити.
+**Далі в [README](../instances/reinforcement-learning/README.md):** Що всередині; Слайди російською; Чого тут немає;
+Обмеження текстів; Як читаються файли; Корпус лише локально; Як запустити.
 
 <!-- тема: PHP -->
 
