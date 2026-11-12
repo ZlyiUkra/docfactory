@@ -24,6 +24,7 @@ RL) — це спосіб навчити програму приймати рі�
 | Morales, Grokking Deep Reinforcement Learning (Manning, 2020) | 51 |
 | Hilpisch, Reinforcement Learning for Finance: A Python-Based Introduction (O'Reilly, 2025) | 68 |
 | Zai, Brown, Deep Reinforcement Learning in Action (Manning, 2020) | 93 |
+| Ravichandiran, Deep Reinforcement Learning with Python, 2-ге вид. (Packt, 2020) | 150 |
 
 **Слайди платного курсу з файлів користувача:** OTUS, курс Reinforcement Learning (2026), російською: слайди 22 занять і три
 домашні завдання, 247 документів. Серед занять є застосування в рекомендаціях, кредитному скорингу й керуванні фінансовим
@@ -46,7 +47,7 @@ Dueling DQN (2016), Prioritized Experience Replay (2016), Rainbow (2018). Про
 Levine, Kumar, Tucker, Fu (2020), Conservative Q-Learning (2020), Implicit Q-Learning (2022), Decision Transformer (2021). Про
 торгівлю: Zhang, Zohren, Roberts, Deep Reinforcement Learning for Trading (2020) і FinRL (Liu та ін., 2020).
 
-Усього 1540 документів, з них пошук будує 7698 фрагментів. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
+Усього 1690 документів, з них пошук будує 8530 фрагментів. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
 книжки — глава чи розділ за закладками PDF, документ статті — її розділ. PDF без закладок (слайди Сілвера й OTUS, статті Double DQN,
 Dueling DQN, Rainbow, A3C, PPO, TD3, SAC) поділено на шматки по чотири сторінки з назвою «pp. N–M».
 
@@ -108,15 +109,15 @@ cd ~/Projects/docfactory && tools/up.sh reinforcement-learning gymnasium stable-
 **корпус, індекс і файли книжок у git не потрапляють** (`corpus/`, `index/` і `raw/` у `.gitignore`). У git лежать лише
 налаштування примірника, а сервер працює лише на цій машині.
 
-**Де тексти.** Вони лежать в архіві `~/archives/docfactory/reinforcement-learning-corpus-2026-11-12-finance.tar.gz` разом із паспортом,
+**Де тексти.** Вони лежать в архіві `~/archives/docfactory/reinforcement-learning-corpus-2026-11-12-ravichandiran.tar.gz` разом із паспортом,
 сховищем сирого і файлами книжок у `raw/local/`. Копія лежить на Windows:
-`C:\Distr\reinforcement-learning-corpus-2026-11-12-finance.tar.gz`. Архів звірено з диском файл за файлом, а копію — за SHA-256. Сервер
+`C:\Distr\reinforcement-learning-corpus-2026-11-12-ravichandiran.tar.gz`. Архів звірено з диском файл за файлом, а копію — за SHA-256. Сервер
 підіймається з кешу `index/passages.json` і колекції Qdrant, тому тексти йому не потрібні.
 
 **Як повернути тексти** перед оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/reinforcement-learning-corpus-2026-11-12-finance.tar.gz -C instances/reinforcement-learning
+tar -xzf ~/archives/docfactory/reinforcement-learning-corpus-2026-11-12-ravichandiran.tar.gz -C instances/reinforcement-learning
 ./df reinforcement-learning smoke
 ```
 

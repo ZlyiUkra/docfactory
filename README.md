@@ -4566,10 +4566,10 @@ PyTorch і torchvision: документація PyTorch 2.15 повністю �
 ### reinforcement-learning
 
 Книжки, курси й статті про навчання з підкріпленням і бандитів: Sutton і Barto 2-ге вид., три платні книжки з файлів користувача
-(Lapan 3-тє вид., Graesser і Keng, Morales, Hilpisch «Reinforcement Learning for Finance», Zai і Brown), слайди курсу OTUS
+(Lapan 3-тє вид., Graesser і Keng, Morales, Hilpisch «Reinforcement Learning for Finance», Zai і Brown, Ravichandiran), слайди курсу OTUS
 російською, Bandit Algorithms (Lattimore і Szepesvári), Algorithms for Reinforcement Learning
 (Szepesvári), OpenAI Spinning Up, курс Hugging Face Deep RL, слайди курсу Сілвера і 19 статей від DQN 2013 до Implicit Q-Learning
-2022, серед них навчання на записаній історії та дві статті про торгівлю. Усього 1540 документів і 7698 фрагментів; нове поле
+2022, серед них навчання на записаній історії та дві статті про торгівлю. Усього 1690 документів і 8530 фрагментів; нове поле
 `engine` читача `pdf-outline`.
 
 - порт `8971`; запис у Claude Code — `reinforcement-learning-docs`, адреса `http://127.0.0.1:8971/mcp`; інструменти `search_docs` і `read_section`;
