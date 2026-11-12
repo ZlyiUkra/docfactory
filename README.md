@@ -4583,6 +4583,20 @@ OpenAI Gym): сайт gymnasium.farama.org дев'яти мінорних лін
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/gymnasium/README.md](instances/gymnasium/README.md).
 
+### stable-baselines3
+
+Stable-Baselines3 — бібліотека готових алгоритмів навчання з підкріпленням на PyTorch, разом із пакетом експериментальних
+алгоритмів sb3-contrib і набором сценаріїв RL Baselines3 Zoo: сайт stable-baselines3.readthedocs.io 17 мінорних ліній 0.11–2.9
+(посібник, сторінка кожного алгоритму, спільні модулі, журнал змін), сайт sb3-contrib 1.0–2.9 (`MaskablePPO`, `RecurrentPPO`,
+`QRDQN`, `TQC`), сайт RL Zoo 1.8–2.9, нотатки релізів GitHub і записи PyPI трьох пакетів. Усього 686 документів і 3 845 фрагментів.
+
+- порт `8973`; запис у Claude Code — `stable-baselines3-docs`, адреса `http://127.0.0.1:8973/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія з назвою пакета (`sb3-2.9`, `sb3-contrib-2.9`, `rl-zoo-2.9`);
+- не входять: лінії без теки на Read the Docs (є лише PyPI і релізи), Gymnasium (він у `gymnasium`), теорія (вона в `reinforcement-learning`);
+- приклад питання агентові: `./df stable-baselines3 ask "Which PPO parameters control the size of each policy update?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/stable-baselines3/README.md](instances/stable-baselines3/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
