@@ -259,7 +259,8 @@ Claude Code розводить їх сам, тобто `search_docs` серве�
 
 ```
 ./df react check                         # переліки всіх незаморожених джерел: що з'явилося, що зникло
-./df react check --deep react-19 react-blog react-changelog react-releases react-versions   # тексти живих джерел
+./df react check --deep react-19 react-blog react-changelog react-releases react-versions react-npm
+                                         # тексти живих джерел
 ./df react refresh --missing             # докачати відсутнє, нічого не перезаписуючи
 ./df react refresh <файл…>               # перезаписати змінене — поіменно
 ./df react manifest                      # перегенерувати паспорт

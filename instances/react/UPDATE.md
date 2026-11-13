@@ -41,6 +41,7 @@
 | живе | `react-changelog` | 125 | 1 | те саме одне звернення: файл один |
 | живе | `react-releases` | 133 | 2, GitHub API | ті самі 2: тексти приходять у переліку |
 | живе | `react-versions` | 1 | без звернень | 1 |
+| живе | `react-npm` | 7 | 1, реєстр npm | те саме одне звернення: тексти приходять у переліку |
 | архівне | `react-18` | 136 | 2 | ~12 хв |
 | архівне | `react-18-legacy`, `react-17`, `react-16` | 86, 90, 89 | по 1 | ~7 хв кожне |
 | архівне | `react-blog-legacy` | 140 | 1 | ~12 хв |
@@ -55,7 +56,7 @@
 tar -xzf ~/archives/docfactory/react-corpus-РРРР-ММ-ДД.tar.gz -C instances/react
                                          # 0. тексти — з чинного архіву
 ./df react check                         # 1. переліки всіх незаморожених джерел: ~2 хв, 2 звернення до GitHub API
-./df react check --deep react-19 react-blog react-changelog react-releases react-versions
+./df react check --deep react-19 react-blog react-changelog react-releases react-versions react-npm
                                          # 2. тексти живих джерел: ~20 хв
 ```
 
@@ -303,7 +304,7 @@ Canary, react.dev публікує разом зі стабільними, з п
 # щомісяця і після анонсу релізу
 tar -xzf ~/archives/docfactory/react-corpus-РРРР-ММ-ДД.tar.gz -C instances/react    # тексти з архіву
 ./df react check
-./df react check --deep react-19 react-blog react-changelog react-releases react-versions
+./df react check --deep react-19 react-blog react-changelog react-releases react-versions react-npm
 
 # є нове чи змінене
 ./df react refresh --missing
