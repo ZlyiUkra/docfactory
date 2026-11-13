@@ -1012,7 +1012,7 @@ chrome-extensions-samples. Web platform APIs, web.dev, Firefox and Safari extens
 
 **Порт** 8761, сервер `react-docs`. Підняти: `./df react serve`. Адреса: `http://127.0.0.1:8761/mcp`.
 
-**Обсяг.** Документів: 3 657, фрагментів: 12 803.
+**Обсяг.** Документів: 3 664, фрагментів: 12 922.
 
 **Опис.**
 
