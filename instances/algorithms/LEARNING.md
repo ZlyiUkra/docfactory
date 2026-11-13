@@ -1118,6 +1118,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   найлегше ребро між частинами входить у якесь мінімальне дерево. Крускал сортує ребра за вагою і бере ребро, якщо воно не
   замикає циклу; перевірку робить union-find з фази 2. Прим вирощує одне дерево від стартової вершини, щоразу додаючи
   найлегше ребро, що виходить з дерева, і бере його з купи. Обидва коштують `O(E log V)`.
+- **Лекція:** [Лекція. Фаза 3, день 9. Мінімальне кістякове дерево](lectures/f3-d09-mst.md).
+- **Розбір читання:** [Розбір читання. Фаза 3, день 9](reading/f3-d09-reading.md).
 - **Читати:** Erickson — `Minimum Spanning Trees`, `The Only Minimum Spanning Tree Algorithm`, `Kruskal’s Algorithm`; CLRS —
   `21.1 Growing a minimum spanning tree`, `21.2 The algorithms of Kruskal and Prim`; MIT 6.046J — `Lecture 12 Notes`;
   cp-algorithms — `Minimum spanning tree - Kruskal with Disjoint Set Union`.
