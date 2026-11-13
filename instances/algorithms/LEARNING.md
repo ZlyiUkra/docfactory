@@ -945,6 +945,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   це в тисячі разів менше. Тому всі оцінки фази записано як `O(V + E)`: алгоритм торкається кожної вершини і кожного ребра
   сталу кількість разів. Багато графів не зберігають зовсім: сітка клітинок, дошка гри чи стани головоломки породжують
   сусідів функцією на ходу.
+- **Лекція:** [Лекція. Фаза 3, день 1. Як зберігати граф](lectures/f3-d01-graph-representation.md).
+- **Розбір читання:** [Розбір читання. Фаза 3, день 1](reading/f3-d01-reading.md).
 - **Читати:** BCtCI — `Ch 36. Graphs`; CLRS — `20.1 Representations of graphs`; Morin — `AdjacencyMatrix: Representing a Graph
   by a Matrix`, `AdjacencyLists: A Graph as a Collection of Lists`; Erickson — `Basic Graph Algorithms`.
 - **Сервери MCP:** `algorithms-docs`, `typescript-docs`.
