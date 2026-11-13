@@ -245,10 +245,36 @@ Claude Code розводить їх сам, тобто `search_docs` серве�
 | перед оновленням векторів 13.11.2026, початкові десять тем | 10 | 8 / 8 / 10 | 9 |
 | після оновлення, ті самі десять тем | 10 | 8 / 8 / 10 | 9 |
 | після оновлення, усі теми | 50 | 37 / 35 / 42 | 45 |
+| після розширення цілей у трьох темах, усі теми | 50 | 37 / 35 / 42 | 47 |
 
-Початкові десять тем не змінилися ні в одному стовпці, тож промахи не розбиралися. Не знайшли ціль у «як модель» п'ять
-запитів: «Suspense fallback» (він промахувався й до оновлення), «You Might Not Need an Effect», «Rendering Lists key»,
-«Render and Commit» і «title meta components».
+Початкові десять тем після оновлення не змінилися ні в одному стовпці. Тринадцять промахів набору з 50 розібрано так
+(13.11.2026); «місце» нижче — це місце сторінки у видачі сервера, коли просили 5, 10 і 20 уривків.
+
+**Ціль була вужчою за відповідь** (два запити, виправлено). Сторінка Suspense сама документує `fallback`: його описано
+в корені сторінки, в розділі `props` і в розділі «Displaying a fallback», тож для запиту «Suspense fallback» ціллю
+стали всі три. Для «You Might Not Need an Effect» додано два розділи-вказівники з тією самою назвою, які відсилають
+до сторінки: в уроці «Synchronizing with Effects» і у вступі глави «Escape Hatches». Так само в цілях початкових тем
+про `useRef` і `useEffect` вступ глави «Escape Hatches» зараховано як відповідь. Через це «як модель» стало 47, а на
+початкових десяти темах — 10 із 10. Пошук при цьому той самий, тож для порівняння з базовою лінією чесне число
+початкових десяти — 9.
+
+**Правильну сторінку заглушили сторінки інших версій** (п'ять запитів, змінювати нічого). З `version "19"` сторінка
+стоїть у перших п'яти: «make two sibling components share one piece of data», «display many items from an array…»,
+«which conventions must hook calls follow…», «Rendering Lists key» і «title meta components». Промпт `search.txt` велить
+шукати вдруге з `version "19"`, коли знайдені уривки не покривають 19.x, і саме цей випадок він і лікує. Замір
+`quality_model` шукає без версії, тому першу видачу й показує.
+
+**Пошук не поставив сторінку в п'ятірку навіть з версією** (шість запитів, лишаються базовою лінією):
+«keep data in a component that changes over time…», «stop a function from being recreated on every render», «throw away
+a component's state when something about it changes», «what happens between a state change and the screen updating»,
+«load data from a server… without showing a stale response» і «Render and Commit». Правильна сторінка є в корпусі, але
+на місцях від 13-го і глибше (у двох запитів — навіть не в перших двадцяти): запит розмитий (немає слів «state» чи
+«useCallback») або ділить слова з чужими сторінками («recreated on every render» дослівно збігається зі сторінкою про
+`use`). Для «throw away a component's state…» ціль розширено на розділи про скидання стану (`useState`: «Resetting state
+with a key»; «You Might Not Need an Effect»: «Resetting all state when a prop changes»), але результат не змінився.
+Запит «Render and Commit» дослівно збігається із заголовком кореня сторінки. Сервер вміє піднімати першими розділи,
+назва яких є в запиті (поле `title_match` у `config.json`), але для `react` воно не ввімкнене; це зміна поведінки
+сервера, тож її не чіпали і не перевіряли, чи вона допомогла б.
 
 ## Оновлення корпусу
 
