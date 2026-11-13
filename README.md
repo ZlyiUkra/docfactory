@@ -4398,11 +4398,12 @@ Python API із сайту для ліній 3.2–4.7, нотатки релі�
 Документація MQL5 — мови торгового терміналу MetaTrader 5 для торгових роботів, індикаторів і скриптів: довідник MQL5 (мова, обробники
 подій, усі групи функцій, ONNX, OpenCL, стандартна бібліотека) і дві книжки MetaQuotes, MQL5 Programming for Traders і Neural Networks for
 Algorithmic Trading with MQL5. Усі три файли PDF користувач завантажив браузером, бо умови mql5.com забороняють збирати сайт програмами.
-Усього 4821 документ і 19 447 фрагментів; новий читач `helpmanual-pdf`.
+З 13.11.2026 тут і довідка терміналу MetaTrader 5 з файла `mt5terminal.chm`, який термінал кладе сам: види наказів, графіки, вбудовані
+індикатори з формулами, тестер стратегій. Усього 5198 документів і 20 933 фрагменти; нові читачі `helpmanual-pdf` і `chm-local`.
 
 - порт `8958`; запис у Claude Code — `mql5-docs`, адреса `http://127.0.0.1:8958/mcp`; інструменти `search_docs` і `read_section`;
 - версій немає: кожен файл — одне поточне видання;
-- не входять: MQL4 (є лише сторінка про перехід з нього), статті, форум і база коду mql5.com;
+- не входять: MQL4 (є лише сторінка про перехід з нього; MQL4 має свій примірник `mql4`), статті, форум і база коду mql5.com;
 - приклад питання агентові: `./df mql5 ask "How do I read the values of iMA into an array with CopyBuffer?"`;
 - корпус, індекс і файли PDF — лише на цій машині, у git їх немає;
 - докладніше — у [instances/mql5/README.md](instances/mql5/README.md).
@@ -4624,6 +4625,62 @@ TD3+BC, Decision Transformer, `MDPDataset`, `ReplayBuffer`, `FQE` —, кома�
 - член родини «Навчання з підкріпленням» (розділ «Родини примірників»): піднімати разом з `reinforcement-learning`, `gymnasium` і `stable-baselines3`;
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/d3rlpy/README.md](instances/d3rlpy/README.md).
+
+### ta-indicators
+
+Бібліотеки технічних індикаторів для Python: сайт ta-lib.org TA-Lib 0.8 зі сторінкою на кожну функцію (формула, нестійкий початок,
+параметри), документація обгортки TA-Lib для Python 0.4–0.8, документація й код індикаторів pandas-ta-classic 0.3–0.9 (форк видаленого
+pandas-ta; опис індикатора записано в його функції), код бібліотеки ta 0.1–0.11, журнали змін і релізи. Усього 1775 документів і 7930
+фрагментів.
+
+- порт `8976`; запис у Claude Code — `ta-indicators-docs`, адреса `http://127.0.0.1:8976/mcp`; інструменти `search_docs` і `read_section`;
+- версію пишуть з префіксом бібліотеки: `ta-lib-0.8`, `talib-python-0.8`, `pandas-ta-classic-0.9`, `ta-0.11`;
+- не входять: вбудовані індикатори MetaTrader (вони в `mql5` і `mql4`), pandas, NumPy; записи PyPI ще не дозбирано (pypi.org з WSL
+  відповідав через раз);
+- приклад питання агентові: `./df ta-indicators ask "How does TA-Lib smooth the averages in RSI, and how many first values are unstable?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/ta-indicators/README.md](instances/ta-indicators/README.md).
+
+### onnx
+
+Формат моделей ONNX і інструменти навколо нього: сайт onnx.ai/onnx 1.23 зі сторінкою на кожен оператор (серед них TreeEnsembleClassifier і
+ZipMap), сайт і довідник Python API ONNX Runtime 1.32, сайт skl2onnx 1.20, приклади й перетворювачі onnxmltools 1.16, нотатки релізів
+ONNX і ONNX Runtime, журнали змін. Усього 617 документів і 9139 фрагментів; читач `sphinx-html` отримав поле `name_prefix`.
+
+- порт `8977`; запис у Claude Code — `onnx-docs`, адреса `http://127.0.0.1:8977/mcp`; інструменти `search_docs` і `read_section`;
+- версію пишуть з префіксом бібліотеки: `onnx-1.23`, `onnxruntime-1.32`, `skl2onnx-1.20`, `onnxmltools-1.16`; сайти — лише поточні;
+- не входять: виконання ONNX у MetaTrader 5 (воно в `mql5`), експорт із PyTorch (він у `pytorch`); записи PyPI ще не дозбирано;
+- приклад питання агентові: `./df onnx ask "How do I convert an LGBMClassifier to ONNX and get probabilities as an array?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/onnx/README.md](instances/onnx/README.md).
+
+### quant-trading
+
+Книжки й статті про системну торгівлю: десять книжок із файлів користувача (Tharp 2-ге вид. з EPUB, Carver Leveraged Trading, Aronson,
+Pardo 2-ге вид., Chan Algorithmic Trading і Quantitative Trading 2-ге вид., Hilpisch Python for Algorithmic Trading і AI in Finance,
+Vishwas і Patel, Sperandeo зі скану DjVu) і чотири статті Bailey та López de Prado про перепідгонку під історію. Усього 908 документів і
+4642 фрагменти; новий читач `epub-toc`, читач `pdf-outline` отримав поле `titles`.
+
+- порт `8978`; запис у Claude Code — `quant-trading-docs`, адреса `http://127.0.0.1:8978/mcp`; інструменти `search_docs` і `read_section`;
+- версій немає: кожна книжка — одне видання;
+- не входять: документація платформ і бібліотек, книжки López de Prado і Jansen (вони в `tree-models`), книжки про RL (вони в
+  `reinforcement-learning`);
+- приклад питання агентові: `./df quant-trading ask "What is an R-multiple and how does Tharp compute expectancy?"`;
+- корпус, індекс і файли книжок — лише на цій машині, у git їх немає;
+- докладніше — у [instances/quant-trading/README.md](instances/quant-trading/README.md).
+
+### backtesting
+
+Бібліотеки тестування стратегій на історії для Python: код і приклади-посібники Backtesting.py 0.1–0.6 (довідник збирається з коду),
+README, сторінка про інші бібліотеки, журнал змін; код vectorbt 0.20–1.2, сторінки vectorbt.dev і релізи. Усього 518 документів і 4815
+фрагментів.
+
+- порт `8979`; запис у Claude Code — `backtesting-docs`, адреса `http://127.0.0.1:8979/mcp`; інструменти `search_docs` і `read_section`;
+- версію пишуть з префіксом бібліотеки: `backtesting-0.6`, `vectorbt-1.2`;
+- не входять: тестер MetaTrader (він у `mql5` і `mql4`), формули індикаторів (вони в `ta-indicators`); записи PyPI ще не дозбирано;
+- приклад питання агентові: `./df backtesting ask "How do I attach a stop-loss and a take-profit to an order in Backtesting.py?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/backtesting/README.md](instances/backtesting/README.md).
 
 ## Захист
 
