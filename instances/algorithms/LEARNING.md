@@ -1074,6 +1074,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   алгоритм коштує `O(V · E)`. Якщо після цього ще якесь ребро можна послабити, у графі є від'ємний цикл, досяжний зі
   старту. Для ациклічного графа є швидший спосіб: обійти вершини в топологічному порядку і послабити ребра кожної один раз,
   за `O(V + E)`, з будь-якими вагами.
+- **Лекція:** [Лекція. Фаза 3, день 7. Беллман–Форд і найкоротші шляхи в ациклічному графі](lectures/f3-d07-bellman-ford-dag.md).
+- **Розбір читання:** [Розбір читання. Фаза 3, день 7](reading/f3-d07-reading.md).
 - **Читати:** Erickson — `Relax ALL the Edges: Bellman-Ford`; CLRS — `22.1 The Bellman-Ford algorithm`, `22.2 Single-source
   shortest paths in directed acyclic graphs`; MIT 6.006 — `Lecture 12: Bellman-Ford`; cp-algorithms — `Bellman-Ford
   Algorithm`, `Finding a negative cycle in the graph`.
