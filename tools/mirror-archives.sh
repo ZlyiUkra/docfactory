@@ -3,6 +3,7 @@
 #
 #   tools/mirror-archives.sh            звірка: показує, що відсутнє в копії; нічого не копіює
 #   tools/mirror-archives.sh --apply    докопіювати в копію те, чого там ще немає
+#   tools/mirror-archives.sh --deep     до звірки додати порівняння SHA-256 усіх пар (довго: читає все цілком)
 #   tools/mirror-archives.sh --help     ця довідка
 #
 # Два місця й навіщо вони:
@@ -13,8 +14,8 @@
 # Що скрипт робить:
 #   1. Порівнює імена `*.tar.gz` в обох теках. Список теки Windows він просить у cmd.exe, бо
 #      звичайне читання цієї теки з WSL іноді падає з помилкою введення-виведення.
-#   2. Архів, який уже є в обох місцях, перевіряє лише за розміром. Розбіжність розміру
-#      скрипт показує і не чіпає ні один з двох файлів.
+#   2. Архів, який уже є в обох місцях, перевіряє за розміром, а з --deep ще й за SHA-256.
+#      Розбіжність скрипт показує і не чіпає ні один з двох файлів.
 #   3. Архів, якого в копії немає, з --apply копіюється під тимчасовим іменем `.part`; потім
 #      скрипт порівнює SHA-256 оригіналу й копії і тільки після збігу дає файлу справжнє ім'я.
 #   4. Архів, який є лише в копії, скрипт показує і не копіює назад: це може бути замінена
@@ -28,13 +29,16 @@ set -u
 SRC="${DF_ARCHIVES:-$HOME/archives/docfactory}"
 DST="${DF_ARCHIVES_MIRROR:-/mnt/c/Distr}"
 
-case "${1:-}" in
-  -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-  ""|--apply) ;;
-  *) echo "Помилка: невідомий аргумент «$1» (довідка: tools/mirror-archives.sh --help)" >&2; exit 2 ;;
-esac
 APPLY=0
-[ "${1:-}" = "--apply" ] && APPLY=1
+DEEP=0
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --apply) APPLY=1 ;;
+    --deep) DEEP=1 ;;
+    *) echo "Помилка: невідомий аргумент «$arg» (довідка: tools/mirror-archives.sh --help)" >&2; exit 2 ;;
+  esac
+done
 
 [ -d "$SRC" ] || { echo "Помилка: немає теки з оригіналами: $SRC" >&2; exit 2; }
 [ -d "$DST" ] || { echo "Помилка: немає теки з копіями: $DST" >&2; exit 2; }
@@ -65,6 +69,21 @@ while IFS= read -r name; do
   [ "$a" = "$b" ] || echo "$name  оригінал $a Б, копія $b Б" >> "$TMP/mismatch.txt"
 done < "$TMP/both.txt"
 
+# Повна звірка: SHA-256 обох файлів кожної пари. Читає все цілком, тож довго (десятки гігабайт).
+if [ "$DEEP" -eq 1 ]; then
+  total=$(wc -l < "$TMP/both.txt")
+  echo "── Повна звірка SHA-256: $total пар ──"
+  i=0
+  while IFS= read -r name; do
+    i=$((i + 1))
+    if ! grep -qF "$name  " "$TMP/mismatch.txt"; then
+      ha=$(sha256sum < "$SRC/$name" | cut -d' ' -f1); hb=$(sha256sum < "$DST/$name" | cut -d' ' -f1)
+      [ "$ha" = "$hb" ] || echo "$name  SHA-256 оригіналу $ha, копії $hb" >> "$TMP/mismatch.txt"
+    fi
+    [ $((i % 20)) -eq 0 ] && echo "  звірено $i з $total"
+  done < "$TMP/both.txt"
+fi
+
 need=0
 while IFS= read -r name; do need=$((need + $(stat -c %s "$SRC/$name"))); done < "$TMP/missing.txt"
 
@@ -73,10 +92,10 @@ n_both=$(wc -l < "$TMP/both.txt"); n_miss=$(wc -l < "$TMP/missing.txt")
 n_only=$(wc -l < "$TMP/mirror_only.txt"); n_bad=$(wc -l < "$TMP/mismatch.txt")
 
 echo "── Оригінали $SRC: $n_src · копії $DST_WIN: $n_dst ──"
-echo "в обох місцях $n_both · лише в оригіналі $n_miss ($((need / 1048576)) МіБ) · лише в копії $n_only · розбіжність розміру $n_bad"
+echo "в обох місцях $n_both · лише в оригіналі $n_miss ($((need / 1048576)) МіБ) · лише в копії $n_only · розбіжностей $n_bad"
 if [ "$n_miss" -gt 0 ]; then echo; echo "Немає в копії:"; sed 's/^/  /' "$TMP/missing.txt"; fi
 if [ "$n_only" -gt 0 ]; then echo; echo "Лише в копії (нічого не роблю):"; sed 's/^/  /' "$TMP/mirror_only.txt"; fi
-if [ "$n_bad" -gt 0 ]; then echo; echo "РОЗБІЖНІСТЬ РОЗМІРУ (нічого не чіпаю):"; sed 's/^/  /' "$TMP/mismatch.txt"; fi
+if [ "$n_bad" -gt 0 ]; then echo; echo "РОЗБІЖНОСТІ (нічого не чіпаю):"; sed 's/^/  /' "$TMP/mismatch.txt"; fi
 
 fail=0
 [ "$n_bad" -gt 0 ] && fail=1
