@@ -1052,6 +1052,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   ребра: якщо шлях через щойно взяту вершину коротший, відстань сусіда зменшують. Остаточність тримається на одній умові:
   ваги не від'ємні. Тоді жоден пізніший шлях не може стати коротшим за вже взятий. Зі звичайною двійковою купою алгоритм
   коштує `O((V + E) log V)`.
+- **Лекція:** [Лекція. Фаза 3, день 6. Алгоритм Дейкстри](lectures/f3-d06-dijkstra.md).
+- **Розбір читання:** [Розбір читання. Фаза 3, день 6](reading/f3-d06-reading.md).
 - **Читати:** Grokking — `9 Dijkstra’s algorithm`; CLRS — `22.3 Dijkstra’s algorithm`; MIT 6.006 — `Lecture 13: Dijkstra's
   Algorithm`; Erickson — `Best-First: Dijkstra’s Algorithm`; cp-algorithms — `Dijkstra on sparse graphs`.
 - **Сервери MCP:** `algorithms-docs`.
