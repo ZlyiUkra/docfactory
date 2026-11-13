@@ -11,6 +11,9 @@
                 усіх сторінок бере PDFium: у книжці, де pypdf склеює слова без пробілів («Thereinforce
                 mentlearning», Graesser і Keng), інакше не знайти жодного слова. PDF без закладок — один
                 документ на кожні `chunk_pages` сторінок (типово 4) з назвою «назва, с. N–M».
+                `titles` — об'єкт «назва пункту закладок → назва документа»: у книжці Aronson закладки
+                глав названо «ch1»…«ch9», у Carver — «Chapter One»…«Chapter Eleven», і в назві
+                документа й відповіді моделі не видно, про що глава. Без поля назви ті самі, що й були.
 
 Навіщо. Книжки й статті про дерева рішень лежать PDF-файлами, зверстаними щоразу інакше (LaTeX,
 Springer, CRC, Packt, O'Reilly), і підлаштовувати під кожну розбір шрифтів, як у `pdf-book`, означало б
@@ -177,6 +180,8 @@ def pdf_outline(source: dict, ctx) -> list[Item]:
     # книжках і статтях одного примірника, і без префікса їхні розділи злилися б в один ключ.
     lead = f"{_markup.slug(source.get('name_prefix') or source['id'])}-"
     min_chars = int(source.get("min_chars", 200))
+    # Назва пункту закладок → назва документа; пункти, яких немає в об'єкті, лишаються як є.
+    titles = source.get("titles") or {}
 
     marks = _outline(reader, reader.outline, []) if reader.outline else []
     marks.sort(key=lambda m: m[1])
@@ -229,8 +234,9 @@ def pdf_outline(source: dict, ctx) -> list[Item]:
         body = "\n\n".join(b for b in blocks if b.strip())
         if len(body) < min_chars:
             continue
-        full = f"{label}: {title}"
-        slug = lead + _markup.slug(title)
+        shown = titles.get(title, title)
+        full = f"{label}: {shown}"
+        slug = lead + _markup.slug(shown)
         names[slug] += 1
         if names[slug] > 1:
             slug = f"{slug}-{names[slug]}"

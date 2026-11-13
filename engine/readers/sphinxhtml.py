@@ -15,6 +15,10 @@
                 Тека без запису в об'єкті дає мітку з власної назви, як і без поля.
                 `qualify_titles` — `true`: сторінка класу, що починається сигнатурою «class
                 torch.nn.Linear(…», дістає назву «torch.nn.Linear» замість короткої «Linear».
+                `name_prefix` — рядок перед іменем кожного документа: у примірнику onnx три сайти
+                Sphinx (onnx, onnxruntime, skl2onnx) мають сторінки `index.html` і
+                `api_summary.html`, і без префікса вони ділили б один ключ розділу. Без поля імена
+                ті самі, що й були.
                 `skip_untitled` — `true`: сторінка без `<h1>` не документ, а посилання з неї все
                 одно йдуть в обхід. У scikit-learn такі сторінки двох видів: заглушки-переадресації
                 на місці перейменованих сторінок (`documentation.html` → `index.html`) і зміст
@@ -201,6 +205,7 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
     if not pages:
         raise SystemExit(f"{source['id']}: жодної сторінки з текстом у теках {versions} — "
                          f"розмітка сайту змінилася.")
+    lead = f"{_markup.slug(source['name_prefix'])}-" if source.get("name_prefix") else ""
     items = []
     for key, revisions in pages.items():
         for digest, (title, body, url, vers) in revisions.items():
@@ -210,7 +215,7 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
                 return _markup.document(title, url, ctx.stamp, body,
                                         ", ".join(vprefix + vlabels.get(v, v) for v in vers))
 
-            name = f"{key}-{digest}"
+            name = f"{lead}{key}-{digest}"
             items.append(Item(id=f"{source['id']}/{name}",
                               file=f"{source['id']}--{name}.txt", make=make))
     return items
