@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 225. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 226. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8986, вільний усередині: 8769, 8982. Наступний новий: 8987.
+Зайняті порти: 8760–8986, вільний усередині: 8769. Наступний новий: 8987.
 
 ## Як обирати
 
@@ -252,6 +252,7 @@
 | [`pytest`](#pytest) | 8985 | Пишете тести на Python через pytest: фікстури й conftest.py, параметризація, pytest.raises і pytest.approx, monkeypatch, tmp_path, capsys і caplog, маркери skip і xfail, конфігурація в pyproject.toml, плагіни й хуки, що змінилося між версіями. |
 | [`mplfinance`](#mplfinance) | 8983 | Малюєте свічкові графіки котирувань у Python через mplfinance: mpf.plot з type, volume і mav, make_addplot для індикаторів, позначок угод і окремих панелей (panel, panel_ratios), hlines і tlines, make_marketcolors і make_mpf_style, savefig і returnfig, зовнішні осі, анімація. |
 | [`plotly`](#plotly) | 8984 | Малюєте інтерактивні графіки в Python через plotly: go.Candlestick і go.Ohlc, rangebreaks без вихідних і ночей, повзунок діапазону, make_subplots з обсягами під ціною і secondary_y, add_hline і add_vrect, hovertemplate, шаблони й теми, write_html і write_image через Kaleido, Plotly Express. |
+| [`seaborn`](#seaborn) | 8982 | Малюєте статистичні графіки в Python через seaborn: розподіл прибутковості (histplot, kdeplot, displot), матриця кореляцій (heatmap з annot, clustermap), порівняння груп (boxplot, violinplot), сітки графіків (FacetGrid, relplot, pairplot), регресія, set_theme і палітри, інтерфейс seaborn.objects. |
 | [`pyarrow`](#pyarrow) | 8986 | Зберігаєте й читаєте таблиці через PyArrow: файли Parquet (write_table, read_table з columns і filters, стиснення), набори даних по теках (pyarrow.dataset, partitioning), обмін з pandas і NumPy без копіювання, pyarrow.compute, позначки часу й часові пояси, Feather і потік IPC. |
 | [`shap`](#shap) | 8966 | Пояснюєте прогнози моделі через SHAP: TreeExplainer для XGBoost і LightGBM, значення SHAP окремого прогнозу, графіки waterfall, beeswarm, bar і scatter, взаємодії ознак. |
 | [`optuna`](#optuna) | 8967 | Підбираєте параметри моделі автоматично через Optuna: create_study і optimize, suggest_float і suggest_int, семплери й прунери, колбеки обрізання XGBoost і LightGBM, LightGBMTuner, збереження Study в базу, панель optuna-dashboard. |
@@ -6190,6 +6191,38 @@ reference of plotly.com/python-api-reference for 7.1, the change log, the GitHub
 Dash, plotly.js for JavaScript, Plotly for R and Julia, matplotlib and mplfinance are not here.
 
 **Далі в [README](../instances/plotly/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
+сервер; Архівний режим: сервер без корпусу.
+
+### seaborn
+
+**Коли піднімати.** Малюєте статистичні графіки в Python через seaborn: розподіл прибутковості (histplot, kdeplot, displot), матриця кореляцій (heatmap з annot, clustermap), порівняння груп (boxplot, violinplot), сітки графіків (FacetGrid, relplot, pairplot), регресія, set_theme і палітри, інтерфейс seaborn.objects.
+
+**Порт** 8982, сервер `seaborn-docs`. Підняти: `./df seaborn serve`. Адреса: `http://127.0.0.1:8982/mcp`.
+
+**Обсяг.** Документів: 837, фрагментів: 1 998.
+
+**Опис.**
+
+Цей примірник зібрав документацію seaborn і віддає її через сервер MCP, щоб модель відповідала з текстів бібліотеки, а
+не з пам'яті. seaborn — це бібліотека Python, яка малює статистичні графіки поверх matplotlib. Вона бере таблицю
+pandas, сама рахує те, що треба показати (розподіл, середнє з довірчим інтервалом, лінію регресії), і малює це однією
+функцією. Самі графіки — звичайні фігури matplotlib, тож їх можна доналаштувати засобами matplotlib. Для торгового
+бота тут найважливіші такі речі: - розподіл прибутковості. Функції `histplot` і `kdeplot` показують, як часто
+трапляються прибутки й збитки певного розміру: перша — стовпчиками гістограми, друга — гладкою кривою густини.
+`displot` робить те саме з окремими панелями для кожної групи; - кореляції між валютними парами. Функція `heatmap`
+малює матрицю кольоровими клітинками, а параметр `annot=True` пише в кожну клітинку її число; `clustermap` ще й групує
+схожі рядки; - порівняння груп: `boxplot` і `violinplot` показують розкид значень, наприклад прибутку угод за
+стратегіями чи сесіями; - багато малих графіків: `FacetGrid`, `relplot` і `pairplot` малюють сітку графіків, по одному
+на кожну категорію чи пару стовпчиків; - оформлення: `set_theme` і `color_palette` задають стиль і кольори для всіх
+графіків одразу.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of seaborn: the seaborn.pydata.org site of the current line 0.13 and of the archived lines 0.9-0.12 (user
+guide, tutorial, API reference, example gallery, what's new), the GitHub release notes and the PyPI records.
+matplotlib itself, pandas, plotly and mplfinance are not here.
+
+**Далі в [README](../instances/seaborn/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
 сервер; Архівний режим: сервер без корпусу.
 
 ### pyarrow
