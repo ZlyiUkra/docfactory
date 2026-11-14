@@ -4711,6 +4711,20 @@ README, сторінка про інші бібліотеки, журнал зм
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/statsmodels/README.md](instances/statsmodels/README.md).
 
+### matplotlib
+
+Основна бібліотека графіків Python: увесь сайт matplotlib.org кожної мінорної лінії 1.2–3.11, кожна на останньому патчі, — посібник
+користувача (Figure і Axes, `subplots`, компонування, осі з датами, анотації, анімація, бекенди, збереження у файл), довідник API зі
+сторінкою кожної функції `pyplot` і методу `Axes`, галерея прикладів, what's new і зміни API, — нотатки релізів GitHub і записи PyPI.
+Усього 21 977 документів і 61 274 фрагменти.
+
+- порт `8981`; запис у Claude Code — `matplotlib-docs`, адреса `http://127.0.0.1:8981/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія (`matplotlib-3.11`, `matplotlib-2.2`…);
+- не входять: лінії 0.x–1.1 (сайт їх не публікує, є лише PyPI), seaborn, mplfinance, plotly, графіки pandas;
+- приклад питання агентові: `./df matplotlib ask "How do I save a figure without a display using the Agg backend?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/matplotlib/README.md](instances/matplotlib/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

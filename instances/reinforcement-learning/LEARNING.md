@@ -222,6 +222,7 @@ Reinforcement Learning in Action (Manning, 2020), далі ZB.
 | `optuna` | 8967 | `optuna-docs` | фаза 5: підбір гіперпараметрів |
 | `quant-trading` | 8978 | `quant-trading-docs` | фаза 7: формула Келлі й розмір ставки (Hilpisch, Chan, Pardo) |
 | `dukascopy-node` | 8963 | `dukascopy-node-docs` | фаза 0: звідки беруться хвилинні бари `pine` |
+| `matplotlib` | 8981 | `matplotlib-docs` | фаза 2, дні 4 і 6: графіки цінності й винагород, за бажанням |
 | `python` | 8944 | `python-docs` | мова Python, якщо вона нова |
 
 # Фаза 0. Ґрунт — 5 днів
@@ -604,7 +605,7 @@ Reinforcement Learning in Action (Manning, 2020), далі ZB.
   про блекджек, сторінка `tutorials/training_agents/blackjack_q_learning` (підручник навчає Q-learning: сьогодні
   візьміть із нього опис середовища, виклики `reset` і `step` та ε-жадібний вибір дії, а метод `update` і графіки
   лишіть на день 6).
-- **Сервери MCP:** `reinforcement-learning-docs`, `gymnasium-docs`.
+- **Сервери MCP:** `reinforcement-learning-docs`, `gymnasium-docs`, `matplotlib-docs` (графік — за бажанням).
 - **Зробити:** 1) оцініть методом Монте-Карло політику «брати карту, поки сума менша за 20» у `Blackjack-v1` на 100
   000 епізодів; 2) намалюйте цінність стану як функцію суми гравця, окремо для станів із придатним тузом і без нього:
   таблицею в консолі, а за бажанням і графіком через Matplotlib; 3) подивіться, як оцінка одного стану змінюється
@@ -691,7 +692,7 @@ Reinforcement Learning in Action (Manning, 2020), далі ZB.
   документи `3.5`–`3.7` про реалізацію з нейронною мережею лишаються до фази 4); HF — `unit2-q-learning`;
   Ravichandiran — `TD control` (відкладено з дня 5); сервер `gymnasium-docs` — сторінка `Cliff Walking` і з підручника
   `Solving Blackjack with Tabular Q-Learning` метод `update` та графіки навчання (відкладено з дня 4).
-- **Сервери MCP:** `reinforcement-learning-docs`, `gymnasium-docs`.
+- **Сервери MCP:** `reinforcement-learning-docs`, `gymnasium-docs`, `matplotlib-docs` (графік — за бажанням).
 - **Зробити:** 1) реалізуйте обидва алгоритми на `CliffWalking-v1` з `ε = 0,1` і кроком `α = 0,5` на п'ятистах
   епізодах; 2) порахуйте середню суму винагород за епізод під час навчання за блоками по сто епізодів і надрукуйте
   таблицею (графік через Matplotlib — за бажанням); 3) намалюйте в консолі стрілками в сітці 4 × 12 шлях, який кожен
