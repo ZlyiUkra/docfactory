@@ -51,6 +51,28 @@ def pause_of(instance_dir) -> float:
     return float(value)
 
 
+def retry_waits_of(instance_dir) -> tuple:
+    """Очікування перед повторами на 429/503: поле `retry_waits` у config.json примірника
+    (перелік секунд), інакше типові RETRY_WAITS. statsmodels.org на GitHub Pages під
+    навантаженням відповідає «503» замість «404» на биті посилання, і кожне таке
+    посилання стояло б 21 хвилину; примірник задає коротші очікування даними."""
+    path = instance_dir / "config.json"
+    if not path.exists():
+        return RETRY_WAITS
+    try:
+        value = json.loads(path.read_text(encoding="utf-8")).get("retry_waits")
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"{path}: не читається ({exc})")
+    if value is None:
+        return RETRY_WAITS
+    if not isinstance(value, list) or not all(
+            isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 3600
+            for v in value):
+        raise SystemExit(f"{path}: поле retry_waits мусить бути переліком чисел 0–3600, "
+                         f"а не {value!r}")
+    return tuple(float(v) for v in value)
+
+
 class Ctx:
     """Контекст читача: звернення крізь білий список примірника і дата прогону.
 
@@ -66,8 +88,10 @@ class Ctx:
     мережі немає зовсім, лише сховище; адреси, якої там немає, — збій, як у мережі."""
 
     def __init__(self, sources, stamp: str, pause: float | None = None,
-                 store: "rawstore.Store | None" = None, offline: bool = False):
+                 store: "rawstore.Store | None" = None, offline: bool = False,
+                 retry_waits: tuple = RETRY_WAITS):
         self._sources = sources
+        self.retry_waits = tuple(retry_waits)
         self._stamp = stamp
         self.pause = net.PAUSE_SEC if pause is None else pause
         self._last = 0.0
@@ -91,7 +115,7 @@ class Ctx:
 
     def _call(self, url: str, request):
         """Звернення `request()` з паузою між зверненнями і повторами на 429/503."""
-        for wait in RETRY_WAITS + (None,):
+        for wait in self.retry_waits + (None,):
             gap = self._last + self.pause - time.monotonic()
             if gap > 0:
                 time.sleep(gap)
@@ -193,7 +217,7 @@ def refresh(instance_dir, targets: set, do_refresh: bool, listing: bool,
         print("── Збираю тексти зі сховища сирого, без мережі ──")
     if not listing:
         corpus.mkdir(exist_ok=True)
-    ctx = Ctx(src, stamp, pause_of(instance_dir), store, offline)
+    ctx = Ctx(src, stamp, pause_of(instance_dir), store, offline, retry_waits_of(instance_dir))
     rules = R.rules(instance_dir)
     written = skipped = failed = 0
 

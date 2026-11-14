@@ -24,6 +24,11 @@
                 на місці перейменованих сторінок (`documentation.html` → `index.html`) і зміст
                 посібника старої теми (`user_guide.html` 0.16 — лише toctree). Без поля сторінка
                 без `<h1>`, як і раніше, зупиняє перелік.
+                `param_types` — `true`: між назвою параметра й типом у довіднику numpydoc
+                (`<strong>endog</strong><span class="classifier">array_like</span>`) стає
+                « : », як у старій темі. Без цього назва зливається з типом в одне слово
+                («seasonal_orderiterable»), і пошук за назвою параметра її не знаходить
+                (statsmodels). Без поля текст той самий, що й був.
 
 Навіщо. Документація NVIDIA Container Toolkit на docs.nvidia.com — сайт Sphinx, і кожна версія
 лежить своєю текою (`…/1.20.1/`, `…/1.6.0/`), а перелік версій (`versions1.json`) називає лише
@@ -80,6 +85,8 @@ _CELL_P = re.compile(r"</?p\b[^>]*>")
 # пункт відривався б від свого маркера.
 _LI_P = re.compile(r"(<li\b[^>]*>)\s*<p>(.*?)</p>", re.S)
 _TOCTREE = re.compile(r'<div class="toctree-wrapper\b')
+# Тип параметра numpydoc новішої теми: окремий <span> одразу за назвою, без розділювача.
+_CLASSIFIER = re.compile(r'</strong>\s*<span class="classifier">')
 # Мови, які нічого не кажуть: блок без мови — так само простий текст.
 _NO_LANG = {"default", "none", "text"}
 
@@ -115,7 +122,7 @@ def _label_tabs(html: str) -> str:
     return _SD_LABEL.sub(lambda m: f"<p>{_plain(m.group(1))}:</p>", html)
 
 
-def page_text(html: str, url: str, ends: list) -> tuple[str, str]:
+def page_text(html: str, url: str, ends: list, param_types: bool = False) -> tuple[str, str]:
     """(назва, тіло) сторінки Sphinx; тіло порожнє, коли на сторінці, крім змісту, нічого."""
     m = _H1.search(html)
     if not m:
@@ -125,6 +132,8 @@ def page_text(html: str, url: str, ends: list) -> tuple[str, str]:
                default=len(html))
     part = _HEADERLINK.sub("", html[m.end():stop])
     part = _cut_divs(part, _TOCTREE)
+    if param_types:
+        part = _CLASSIFIER.sub('</strong> : <span class="classifier">', part)
     part = _label_tabs(part)
     part = _ADMONITION_TITLE.sub(lambda t: f"<p>{_plain(t.group(1)).rstrip(':')}:</p>", part)
     part = _TABLE.sub(lambda t: _CELL_P.sub(" ", t.group(0)), part)
@@ -165,6 +174,7 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
     vlabels = source.get("version_labels") or {}
     untitled = bool(source.get("skip_untitled"))
     qualify = bool(source.get("qualify_titles"))
+    param_types = bool(source.get("param_types"))
 
     # Сторінка → {хеш тексту → [назва, тіло, адреса найновішої версії, версії]}; порядок
     # сторінок — порядок обходу найновішої версії, де сторінка з'явилася вперше.
@@ -192,7 +202,7 @@ def sphinx_html(source: dict, ctx) -> list[Item]:
                     queue.append(link)
             if untitled and not _H1.search(html):
                 continue
-            title, body = page_text(html, url, ends)
+            title, body = page_text(html, url, ends, param_types)
             if qualify:
                 title = _qualified(title, body)
             if not body.strip():

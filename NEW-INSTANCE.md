@@ -388,6 +388,12 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   check that a version's start page answers 200 before declaring it: a version listed as active may have no build
   (Optuna v3.1.1 and v3.0.6 answer 404). The `htmlzip` that Read the Docs offers is the `singlehtml` build, one page
   for the whole version, so it does not replace the crawl.
+- **A numpydoc API reference in the new Sphinx theme** (statsmodels.org 0.10–0.15): the type of a parameter sits in its
+  own `<span class="classifier">` right after the name, with no separator, so text extraction glues them into one word
+  («seasonal_orderiterable») and a search for the parameter name misses the page. The `sphinx-html` field
+  `param_types: true` puts « : » between them, as the old theme does. When a slow site limits the speed by its response
+  time rather than by the pause, one block per version is faster than a few large blocks: nine versions of
+  statsmodels.org took about two hours in nine blocks, where four blocks were heading for ten.
 - **A changelog that lists a release's changes under its release candidates** (NVIDIA: «## v1.19.0» says only «Promote
   v1.19.0-rc.7 to v1.19.0»; the changes sit under «## v1.19.0-rc.1» … «-rc.7»): `skip` for `-rc` would leave one line
   per release, and documents labelled «1.19.0-rc.3» are not found by the filter «1.19.0». Reader
@@ -896,6 +902,7 @@ from the root `.env`; the instance's own file, if it has that line, overrides it
 | `collection` | Qdrant collection name | — |
 | `embed_model` | embedding model key | — |
 | `pause_sec` | seconds between requests to the same site while fetching | — |
+| `retry_waits` | list of seconds to wait before each retry when a site answers «429» or «503». A GitHub Pages site under load answers «503» instead of «404» for broken links, and the default waits hold every such link for 21 minutes (statsmodels.org: `[10]`) | `[60, 300, 900]` |
 | `redact` | list of `{"pattern": regex, "with": text}`: matches are replaced in every document before it is written, and `check` compares the same text. For placeholder tokens the documentation shows in the format of a real one: GitHub push protection blocks them | none |
 | `server_name` | the name the MCP client shows | `<folder>-docs` |
 | `doc_set` | set label in diagnostics and in the Qdrant collection name | `suite` |
@@ -1509,6 +1516,12 @@ and what a taken port and a failed connection look like. A domain list in the ro
   стартова сторінка відповідає 200: версія, яку Read the Docs називає активною, буває без збірки (Optuna v3.1.1 і v3.0.6
   відповідають 404). Архів `htmlzip`, який пропонує Read the Docs, — це збірка `singlehtml`, одна сторінка на всю версію, і
   обхід він не замінює.
+- **Довідник API numpydoc у новій темі Sphinx** (statsmodels.org 0.10–0.15): тип параметра стоїть в окремому
+  `<span class="classifier">` одразу за назвою, без розділювача. Тому під час вилучення тексту назва й тип зливаються в одне
+  слово («seasonal_orderiterable»), і пошук за назвою параметра сторінки не знаходить. Поле `sphinx-html`
+  `param_types: true` ставить між ними « : », як це робить стара тема. Коли повільний сайт обмежує швидкість часом
+  відповіді, а не паузою, один блок на кожну версію швидший за кілька великих блоків: дев'ять версій statsmodels.org
+  дев'ятьма блоками зайняли близько двох годин, а чотирма блоками тривали б близько десяти.
 - **Журнал, де зміни випуску записано під його передрелізами** (NVIDIA: «## v1.19.0» каже лише «Promote v1.19.0-rc.7
   to v1.19.0», а зміни — під «## v1.19.0-rc.1» … «-rc.7»): `skip` для `-rc` лишив би від випуску один рядок, а
   документів «1.19.0-rc.3» фільтр «1.19.0» не знаходить. Читач `changelog-prerelease` робить документ на сталий
@@ -2004,6 +2017,7 @@ cd ../..
 | `collection` | ім'я колекції Qdrant | — |
 | `embed_model` | ключ моделі векторів | — |
 | `pause_sec` | пауза в секундах між зверненнями до того самого сайту | — |
+| `retry_waits` | перелік секунд очікування перед кожною повторною спробою, коли сайт відповідає «429» чи «503». Сайт на GitHub Pages під навантаженням відповідає «503» замість «404» на биті посилання, і типові очікування тримають кожне таке посилання 21 хвилину (statsmodels.org: `[10]`) | `[60, 300, 900]` |
 | `redact` | перелік `{"pattern": вираз, "with": текст}`: збіги замінюються в кожному документі перед записом, а `check` порівнює той самий текст. Для заглушок токенів, які документація показує у форматі справжнього: GitHub блокує їхній push | немає |
 | `server_name` | ім'я, яке бачить MCP-клієнт | `<тека>-docs` |
 | `doc_set` | мітка набору в діагностиці й в імені колекції | `suite` |
@@ -2635,6 +2649,12 @@ errada.
   recusa (optuna). No Read the Docs use um processo só e confira que a página inicial de uma versão responde 200 antes de
   declará-la: uma versão listada como ativa pode não ter build (Optuna v3.1.1 e v3.0.6 respondem 404). O `htmlzip` que o
   Read the Docs oferece é o build `singlehtml`, uma página para a versão inteira, e não substitui a varredura.
+- **Uma referência de API numpydoc no tema novo do Sphinx** (statsmodels.org 0.10–0.15): o tipo de um parâmetro fica num
+  `<span class="classifier">` próprio logo após o nome, sem separador, então a extração do texto cola os dois numa palavra
+  («seasonal_orderiterable») e a busca pelo nome do parâmetro não acha a página. O campo `param_types: true` do
+  `sphinx-html` põe « : » entre eles, como faz o tema antigo. Quando um site lento limita a velocidade pelo tempo de
+  resposta e não pela pausa, um bloco por versão é mais rápido que poucos blocos grandes: nove versões do statsmodels.org
+  levaram cerca de duas horas em nove blocos, e quatro blocos iam levar cerca de dez.
 - **Um changelog que lista as mudanças de uma versão sob os seus release candidates** (NVIDIA: «## v1.19.0» diz só
   «Promote v1.19.0-rc.7 to v1.19.0»; as mudanças ficam sob «## v1.19.0-rc.1» … «-rc.7»): `skip` para `-rc` deixaria
   uma linha por versão, e documentos rotulados «1.19.0-rc.3» não são achados pelo filtro «1.19.0». O leitor
@@ -3157,6 +3177,7 @@ Um `.env` próprio só é necessário para chaves privadas (`ANTHROPIC_API_KEY`,
 | `collection` | nome da coleção no Qdrant | — |
 | `embed_model` | chave do modelo de vetores | — |
 | `pause_sec` | pausa em segundos entre requisições ao mesmo site | — |
+| `retry_waits` | lista de segundos de espera antes de cada nova tentativa quando o site responde «429» ou «503». Um site no GitHub Pages sob carga responde «503» em vez de «404» para links quebrados, e as esperas padrão seguram cada link desses por 21 minutos (statsmodels.org: `[10]`) | `[60, 300, 900]` |
 | `redact` | lista de `{"pattern": regex, "with": texto}`: as ocorrências são substituídas em cada documento antes de gravar, e `check` compara o mesmo texto. Para tokens de exemplo que a documentação mostra no formato de um real: a proteção de push do GitHub os bloqueia | nenhum |
 | `server_name` | nome que o cliente MCP exibe | `<pasta>-docs` |
 | `doc_set` | rótulo do conjunto no diagnóstico e no nome da coleção | `suite` |
