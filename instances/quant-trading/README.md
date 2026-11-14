@@ -26,7 +26,7 @@
 | Vishwas, Patel, Hands-on Time Series Analysis with Python (Apress, 2020) | 139 |
 | Sperandeo, Methods of a Wall Street Master (Wiley, 1991), PDF з цифровим текстом | 19 |
 | Sperandeo, Trader Vic on Commodities (Wiley, 2008) | 77 |
-| LumiTraders, Unlocking Success in ICT 2022 Mentorship (2023), 407 сторінок без закладок | 102 |
+| LumiTraders, Unlocking Success in ICT 2022 Mentorship (2023), 407 сторінок без закладок, поділено за змістом | 35 |
 | Frost, Prechter, Elliott Wave Principle, 12-те вид. (New Classics Library), з EPUB | 13 |
 | два короткі посібники: Smart Money Trading Guide (forexeconomia.com, 2023) і Fakolujo, ICT Trading Strategy (howtotrade.com) | 7 |
 
@@ -34,7 +34,7 @@
 Overfitting (2017); Bailey, López de Prado, The Deflated Sharpe Ratio (2014); Bailey, López de Prado, The Sharpe Ratio Efficient
 Frontier (2012); Bailey, Borwein, Salehipour, López de Prado, Zhu, Backtest Overfitting in Financial Markets (2016).
 
-Усього 1107 документів, з них пошук будує 6075 фрагментів. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
+Усього 1040 документів, з них пошук будує 6053 фрагменти. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
 книжки — глава чи розділ за закладками PDF або змістом EPUB, документ статті чи книжки без закладок — шматок у чотири сторінки (у
 двох коротких посібниках — у три) з назвою «pp. N–M». Книжки López de Prado (Advances in Financial Machine Learning) і Jansen лежать у примірнику `tree-models`, а книжки про
 навчання з підкріпленням для фінансів — у `reinforcement-learning`.
@@ -67,6 +67,10 @@ Frontier (2012); Bailey, Borwein, Salehipour, López de Prado, Zhu, Backtest Ove
   трейдери, а не перевірені правила: що з них можна перевірити кодом (зняття ліквідності, fair value gap, глибина відкату за
   Фібоначчі), треба перевіряти на історії самому. Aronson у Evidence-Based Technical Analysis пояснює, чому хвильовий рахунок
   суб'єктивний.
+- ICT 2022 Mentorship не має закладок, але її зміст називає 33 глави з номерами сторінок. Читач `pdf-outline` отримав
+  необов'язкове поле `page_titles`: об'єкт «номер сторінки PDF → назва глави». Кожна названа сторінка починає документ, що
+  триває до наступної названої. Номери взято зі змісту книжки з поправкою на три сторінки обкладинки (сторінка PDF = сторінка
+  книжки + 3). Без поля книжка ділилася б на шматки по чотири сторінки з назвою «pp. N–M».
 - Глави Trader Vic on Commodities лежать у закладках під одним пунктом з назвою книжки, тому в нього `depth: 2`: документом стає
   і глава, і кожен її розділ.
 
@@ -76,15 +80,15 @@ Frontier (2012); Bailey, Borwein, Salehipour, López de Prado, Zhu, Backtest Ove
 **корпус, індекс і файли книжок у git не потрапляють** (`corpus/`, `index/`, `raw/` і `out/` у `.gitignore`). У git лежать лише
 налаштування примірника, а сервер працює лише на цій машині.
 
-**Де тексти.** Вони лежать в архіві `~/archives/docfactory/quant-trading-corpus-2026-11-14-books.tar.gz` разом із паспортом, сховищем
+**Де тексти.** Вони лежать в архіві `~/archives/docfactory/quant-trading-corpus-2026-11-14-ict.tar.gz` разом із паспортом, сховищем
 сирого, файлами книжок у `raw/local/` і сторінками Sperandeo в `out/ocr/` (стара тека `sperandeo` зі скану і нова `sperandeo-pdf`). Копія лежить на Windows:
-`C:\Distr\quant-trading-corpus-2026-11-14-books.tar.gz`. Архів звірено з диском файл за файлом, а копію — за SHA-256. Сервер підіймається з
+`C:\Distr\quant-trading-corpus-2026-11-14-ict.tar.gz`. Архів звірено з диском файл за файлом, а копію — за SHA-256. Сервер підіймається з
 кешу `index/passages.json` і колекції Qdrant, тому тексти йому не потрібні.
 
 **Як повернути тексти** перед оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/quant-trading-corpus-2026-11-14-books.tar.gz -C instances/quant-trading
+tar -xzf ~/archives/docfactory/quant-trading-corpus-2026-11-14-ict.tar.gz -C instances/quant-trading
 ./df quant-trading smoke
 ```
 
