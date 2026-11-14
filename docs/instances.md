@@ -346,7 +346,7 @@
 | [`dukascopy-node`](#dukascopy-node) | 8963 | Завантажуєте безкоштовну історію цін Dukascopy (тики, свічки, CSV чи JSON) через dukascopy-node: параметри, id інструментів і найраніші дати, кеш, обмеження частоти, помилки. |
 | [`mql4`](#mql4) | 8975 | Пишете або читаєте торгового робота, індикатор чи скрипт для MetaTrader 4 на MQL4: OrderSend і робота з ордерами, MarketInfo, iMA та інші індикатори з параметром shift, start() проти OnTick(), #property strict; довідка терміналу MT4: види ордерів, формули вбудованих індикаторів, тестер стратегій і три способи моделювання; підручник MQL4 Tutorial. |
 | [`mql5`](#mql5) | 8958 | Пишете торгового робота, індикатор чи скрипт для MetaTrader 5 на MQL5: торгові функції, індикатори, події, ONNX і OpenCL, нейромережі на MQL5; довідка терміналу: види наказів, формули вбудованих індикаторів, тестер стратегій. |
-| [`quant-trading`](#quant-trading) | 8978 | Будуєте торгову систему з правилами й перевіряєте її: ризик в одиницях R і очікуваний прибуток, розмір позиції, стоп-лос і тейк-профіт, walk-forward, перепідгонка під історію, deflated Sharpe, Kelly, форекс з плечем; книжки Tharp, Carver, Aronson, Pardo, Chan, Hilpisch і статті Bailey. |
+| [`quant-trading`](#quant-trading) | 8978 | Будуєте торгову систему з правилами й перевіряєте її: ризик в одиницях R і очікуваний прибуток, розмір позиції, стоп-лос і тейк-профіт, walk-forward, перепідгонка під історію, deflated Sharpe, Kelly, форекс з плечем; книжки Tharp, Carver, Aronson, Pardo, Chan, Hilpisch і статті Bailey; правило 2B Сперандео, поняття ICT і Smart Money (зняття ліквідності, fair value gap), хвилі Еліотта. |
 
 ### Навчальні матеріали й архітектура
 
@@ -8275,11 +8275,11 @@ Networks for Algorithmic Trading with MQL5. MQL4, Pine Script and Python are not
 
 ### quant-trading
 
-**Коли піднімати.** Будуєте торгову систему з правилами й перевіряєте її: ризик в одиницях R і очікуваний прибуток, розмір позиції, стоп-лос і тейк-профіт, walk-forward, перепідгонка під історію, deflated Sharpe, Kelly, форекс з плечем; книжки Tharp, Carver, Aronson, Pardo, Chan, Hilpisch і статті Bailey.
+**Коли піднімати.** Будуєте торгову систему з правилами й перевіряєте її: ризик в одиницях R і очікуваний прибуток, розмір позиції, стоп-лос і тейк-профіт, walk-forward, перепідгонка під історію, deflated Sharpe, Kelly, форекс з плечем; книжки Tharp, Carver, Aronson, Pardo, Chan, Hilpisch і статті Bailey; правило 2B Сперандео, поняття ICT і Smart Money (зняття ліквідності, fair value gap), хвилі Еліотта.
 
 **Порт** 8978, сервер `quant-trading-docs`. Підняти: `./df quant-trading serve`. Адреса: `http://127.0.0.1:8978/mcp`.
 
-**Обсяг.** Документів: 908, фрагментів: 4 642.
+**Обсяг.** Документів: 1 107, фрагментів: 6 075.
 
 **Опис.**
 
@@ -8294,8 +8294,9 @@ Networks for Algorithmic Trading with MQL5. MQL4, Pine Script and Python are not
 
 **Склад (так його описано моделі, англійською).**
 
-Documents of ten books and four papers on systematic trading (Tharp, Carver, Aronson, Pardo, Chan, Hilpisch, Vishwas
-and Patel, Sperandeo, Bailey and López de Prado). Platform and library documentation is not here.
+Documents of thirteen books, two short guides and four papers on systematic and discretionary trading (Tharp, Carver,
+Aronson, Pardo, Chan, Hilpisch, Vishwas and Patel, Sperandeo, LumiTraders on ICT, Frost and Prechter on Elliott waves,
+Bailey and López de Prado). Platform and library documentation is not here.
 
 **Далі в [README](../instances/quant-trading/README.md):** Що всередині; Обмеження текстів; Як читаються файли; Корпус
 лише локально; Як запустити.

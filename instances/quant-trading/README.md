@@ -25,17 +25,21 @@
 | Hilpisch, Artificial Intelligence in Finance (O'Reilly, 2020) | 206 |
 | Vishwas, Patel, Hands-on Time Series Analysis with Python (Apress, 2020) | 139 |
 | Sperandeo, Methods of a Wall Street Master (Wiley, 1991), PDF з цифровим текстом | 19 |
+| Sperandeo, Trader Vic on Commodities (Wiley, 2008) | 77 |
+| LumiTraders, Unlocking Success in ICT 2022 Mentorship (2023), 407 сторінок без закладок | 102 |
+| Frost, Prechter, Elliott Wave Principle, 12-те вид. (New Classics Library), з EPUB | 13 |
+| два короткі посібники: Smart Money Trading Guide (forexeconomia.com, 2023) і Fakolujo, ICT Trading Strategy (howtotrade.com) | 7 |
 
 **Статті** (PDF із сайту David H. Bailey, усього 37 документів): Bailey, Borwein, López de Prado, Zhu, The Probability of Backtest
 Overfitting (2017); Bailey, López de Prado, The Deflated Sharpe Ratio (2014); Bailey, López de Prado, The Sharpe Ratio Efficient
 Frontier (2012); Bailey, Borwein, Salehipour, López de Prado, Zhu, Backtest Overfitting in Financial Markets (2016).
 
-Усього 908 документів, з них пошук будує 5199 фрагментів. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
-книжки — глава чи розділ за закладками PDF або змістом EPUB, документ статті без закладок — шматок у чотири сторінки з назвою
-«pp. N–M». Книжки López de Prado (Advances in Financial Machine Learning) і Jansen лежать у примірнику `tree-models`, а книжки про
+Усього 1107 документів, з них пошук будує 6075 фрагментів. Фрагмент — це невеликий шматок тексту, який знаходить пошук. Документ
+книжки — глава чи розділ за закладками PDF або змістом EPUB, документ статті чи книжки без закладок — шматок у чотири сторінки (у
+двох коротких посібниках — у три) з назвою «pp. N–M». Книжки López de Prado (Advances in Financial Machine Learning) і Jansen лежать у примірнику `tree-models`, а книжки про
 навчання з підкріпленням для фінансів — у `reinforcement-learning`.
 
-Замір `quality` на 14.11.2026 дав такі числа. Запити назвами з книжок знаходять потрібне 10 із 10, а модель зазвичай питає саме так.
+Замір `quality` на 14.11.2026, уже з новими книжками, дав такі числа. Запити назвами з книжок знаходять потрібне 10 із 10, а модель зазвичай питає саме так.
 Запити своїми словами знаходять потрібне 7 із 10.
 
 ## Обмеження текстів
@@ -59,6 +63,12 @@ Frontier (2012); Bailey, Borwein, Salehipour, López de Prado, Zhu, Backtest Ove
   текст один раз записано бібліотекою PDFium у теку `out/ocr/sperandeo-pdf` у тому самому вигляді, що й раніше: сторінка — файл
   JSON, рядок тексту — запис. Тому читач `ocr-pages`, поділ на глави полем `page_titles` за змістом книжки й імена документів
   лишилися ті самі, а тексту стало близько 720 тисяч символів.
+- Книжки про ICT, Smart Money і хвилі Еліотта додано 14.11.2026 за словом користувача. Вони описують поняття, якими користуються
+  трейдери, а не перевірені правила: що з них можна перевірити кодом (зняття ліквідності, fair value gap, глибина відкату за
+  Фібоначчі), треба перевіряти на історії самому. Aronson у Evidence-Based Technical Analysis пояснює, чому хвильовий рахунок
+  суб'єктивний.
+- Глави Trader Vic on Commodities лежать у закладках під одним пунктом з назвою книжки, тому в нього `depth: 2`: документом стає
+  і глава, і кожен її розділ.
 
 ## Корпус лише локально
 
@@ -66,15 +76,15 @@ Frontier (2012); Bailey, Borwein, Salehipour, López de Prado, Zhu, Backtest Ove
 **корпус, індекс і файли книжок у git не потрапляють** (`corpus/`, `index/`, `raw/` і `out/` у `.gitignore`). У git лежать лише
 налаштування примірника, а сервер працює лише на цій машині.
 
-**Де тексти.** Вони лежать в архіві `~/archives/docfactory/quant-trading-corpus-2026-11-14.tar.gz` разом із паспортом, сховищем
+**Де тексти.** Вони лежать в архіві `~/archives/docfactory/quant-trading-corpus-2026-11-14-books.tar.gz` разом із паспортом, сховищем
 сирого, файлами книжок у `raw/local/` і сторінками Sperandeo в `out/ocr/` (стара тека `sperandeo` зі скану і нова `sperandeo-pdf`). Копія лежить на Windows:
-`C:\Distr\quant-trading-corpus-2026-11-14.tar.gz`. Архів звірено з диском файл за файлом, а копію — за SHA-256. Сервер підіймається з
+`C:\Distr\quant-trading-corpus-2026-11-14-books.tar.gz`. Архів звірено з диском файл за файлом, а копію — за SHA-256. Сервер підіймається з
 кешу `index/passages.json` і колекції Qdrant, тому тексти йому не потрібні.
 
 **Як повернути тексти** перед оновленням:
 
 ```
-tar -xzf ~/archives/docfactory/quant-trading-corpus-2026-11-14.tar.gz -C instances/quant-trading
+tar -xzf ~/archives/docfactory/quant-trading-corpus-2026-11-14-books.tar.gz -C instances/quant-trading
 ./df quant-trading smoke
 ```
 
