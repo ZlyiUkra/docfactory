@@ -220,6 +220,7 @@ Reinforcement Learning in Action (Manning, 2020), далі ZB.
 | `tree-models` | 8961 | `tree-models-docs` | фаза 3: поділ за часом і перевірка без витоку (López de Prado), бустери `pine` |
 | `xgboost` | 8954 | `xgboost-docs` | фаза 3: як читати оцінку бустера |
 | `optuna` | 8967 | `optuna-docs` | фаза 5: підбір гіперпараметрів |
+| `quant-trading` | 8978 | `quant-trading-docs` | фаза 7: формула Келлі й розмір ставки (Hilpisch, Chan, Pardo) |
 | `dukascopy-node` | 8963 | `dukascopy-node-docs` | фаза 0: звідки беруться хвилинні бари `pine` |
 | `python` | 8944 | `python-docs` | мова Python, якщо вона нова |
 
@@ -1122,7 +1123,8 @@ DQN вчить цінності дій, а політику виводить і�
 
 # Фаза 7. Підсумковий проєкт — 6 днів
 
-**Сервери MCP фази:** `reinforcement-learning-docs`, `stable-baselines3-docs`, `gymnasium-docs`, `tree-models-docs`.
+**Сервери MCP фази:** `reinforcement-learning-docs`, `stable-baselines3-docs`, `gymnasium-docs`, `tree-models-docs`,
+`quant-trading-docs`.
 
 Остання фаза відповідає на питання, заради якого план написано: чи дає агент щось понад нинішнє правило `pine`.
 Розв'язків тут немає за природою завдання. Це ваше дослідження, і наставник лише ставить запитання.
@@ -1153,8 +1155,13 @@ DQN вчить цінності дій, а політику виводить і�
   завелика, і рахунок просідає. Тому на практиці ставлять частку від Келлі. Дія агента тепер має дві частини: кого
   брати і яким рівнем ставки.
 - **Читати:** Hilpisch — `Chapter 8. Dynamic Asset Allocation`; слайди OTUS — заняття 21 про керування фінансовим
-  портфелем; SB — `Goals and Rewards`.
-- **Сервери MCP:** `reinforcement-learning-docs`.
+  портфелем; SB — `Goals and Rewards`. На сервері `quant-trading-docs`: Hilpisch, Python for Algorithmic Trading —
+  `Kelly Criterion in Binomial Setting` (формулу виведено на грі з двома наслідками, тобто саме для ставки «виграв або
+  програв»), `Optimal Leverage`; Chan, Quantitative Trading — `OPTIMAL CAPITAL ALLOCATION AND LEVERAGE` (як ділити
+  рахунок між кількома стратегіями, що торгують одночасно, як дошки `pine`) і додаток `A SIMPLE DERIVATION OF THE
+  KELLY FORMULA WHEN RETURN DISTRIBUTION IS GAUSSIAN`; Chan, Algorithmic Trading — `Kelly Formula`; Pardo — `POSITION
+  SIZING`.
+- **Сервери MCP:** `reinforcement-learning-docs`, `quant-trading-docs`.
 - **Зробити:** 1) порахуйте частку Келлі для `p` від 0,58 до 0,66 при виплаті 70 %; 2) змоделюйте 2000 ставок із
   повною часткою Келлі, з половиною і зі сталою ставкою 1 % при справжньому `p = 0,60` і оцінці `p = 0,62`; 3) додайте
   в `PoEnv` три рівні ставки і зробіть винагородою зміну логарифма рахунку.
