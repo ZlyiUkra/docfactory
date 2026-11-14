@@ -14,6 +14,12 @@
                 `titles` — об'єкт «назва пункту закладок → назва документа»: у книжці Aronson закладки
                 глав названо «ch1»…«ch9», у Carver — «Chapter One»…«Chapter Eleven», і в назві
                 документа й відповіді моделі не видно, про що глава. Без поля назви ті самі, що й були.
+                `page_titles` — об'єкт «номер сторінки PDF (з 1) → назва глави»: кожна названа сторінка
+                починає документ, що триває до наступної названої, а сторінки перед першою назвою не
+                беруться. Для книжки без закладок, чий зміст називає глави з номерами сторінок (LumiTraders,
+                ICT 2022 Mentorship: 407 сторінок): без поля вона ділиться на шматки по `chunk_pages`
+                сторінок з назвою «pp. N–M», і в назві документа не видно, про що він. Поле має перевагу над
+                закладками. Без поля поділ той самий, що й був.
 
 Навіщо. Книжки й статті про дерева рішень лежать PDF-файлами, зверстаними щоразу інакше (LaTeX,
 Springer, CRC, Packt, O'Reilly), і підлаштовувати під кожну розбір шрифтів, як у `pdf-book`, означало б
@@ -186,7 +192,13 @@ def pdf_outline(source: dict, ctx) -> list[Item]:
     marks = _outline(reader, reader.outline, []) if reader.outline else []
     marks.sort(key=lambda m: m[1])
     spans = []    # (назва, перша сторінка, остання сторінка не включно, назви глибших пунктів)
-    if marks:
+    if source.get("page_titles"):
+        named = sorted((int(k) - 1, v) for k, v in source["page_titles"].items())
+        for i, (page, title) in enumerate(named):
+            end = named[i + 1][0] if i + 1 < len(named) else total
+            if 0 <= page < total and not skip.search(title):
+                spans.append((title, page, max(end, page + 1), [], None))
+    elif marks:
         tops = [m for m in marks if m[2] <= depth_max]
         for i, (title, page, depth) in enumerate(tops):
             end = tops[i + 1][1] if i + 1 < len(tops) else total

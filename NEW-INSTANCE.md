@@ -394,6 +394,11 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   `param_types: true` puts « : » between them, as the old theme does. When a slow site limits the speed by its response
   time rather than by the pause, one block per version is faster than a few large blocks: nine versions of
   statsmodels.org took about two hours in nine blocks, where four blocks were heading for ten.
+- **A PDF book without bookmarks whose contents page names its chapters** (LumiTraders, ICT 2022 Mentorship, 407 pages):
+  `pdf-outline` cuts such a book into `chunk_pages` slices titled «pp. N–M», and the title says nothing about the content.
+  The field `page_titles`, an object «PDF page (from 1) → chapter title», starts a document at every named page that runs
+  to the next named one; pages before the first name are not taken. Take the numbers from the book's contents and add the
+  offset of the front pages (there: PDF page = book page + 3), and check a few chapters by their first lines.
 - **A changelog that lists a release's changes under its release candidates** (NVIDIA: «## v1.19.0» says only «Promote
   v1.19.0-rc.7 to v1.19.0»; the changes sit under «## v1.19.0-rc.1» … «-rc.7»): `skip` for `-rc` would leave one line
   per release, and documents labelled «1.19.0-rc.3» are not found by the filter «1.19.0». Reader
@@ -1522,6 +1527,11 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `param_types: true` ставить між ними « : », як це робить стара тема. Коли повільний сайт обмежує швидкість часом
   відповіді, а не паузою, один блок на кожну версію швидший за кілька великих блоків: дев'ять версій statsmodels.org
   дев'ятьма блоками зайняли близько двох годин, а чотирма блоками тривали б близько десяти.
+- **Книжка PDF без закладок, чий зміст називає глави** (LumiTraders, ICT 2022 Mentorship, 407 сторінок): `pdf-outline`
+  ріже таку книжку на шматки по `chunk_pages` сторінок з назвою «pp. N–M», і з назви не видно, про що документ. Поле
+  `page_titles`, об'єкт «сторінка PDF (з 1) → назва глави», починає документ на кожній названій сторінці, і документ триває до
+  наступної названої; сторінки перед першою назвою не беруться. Номери беруть зі змісту книжки з поправкою на передні сторінки
+  (там: сторінка PDF = сторінка книжки + 3) і звіряють кілька глав за їхніми першими рядками.
 - **Журнал, де зміни випуску записано під його передрелізами** (NVIDIA: «## v1.19.0» каже лише «Promote v1.19.0-rc.7
   to v1.19.0», а зміни — під «## v1.19.0-rc.1» … «-rc.7»): `skip` для `-rc` лишив би від випуску один рядок, а
   документів «1.19.0-rc.3» фільтр «1.19.0» не знаходить. Читач `changelog-prerelease` робить документ на сталий
@@ -2655,6 +2665,12 @@ errada.
   `sphinx-html` põe « : » entre eles, como faz o tema antigo. Quando um site lento limita a velocidade pelo tempo de
   resposta e não pela pausa, um bloco por versão é mais rápido que poucos blocos grandes: nove versões do statsmodels.org
   levaram cerca de duas horas em nove blocos, e quatro blocos iam levar cerca de dez.
+- **Um livro PDF sem marcadores cujo sumário nomeia os capítulos** (LumiTraders, ICT 2022 Mentorship, 407 páginas): o
+  `pdf-outline` corta esse livro em fatias de `chunk_pages` páginas com o título «pp. N–M», que nada diz do conteúdo. O campo
+  `page_titles`, um objeto «página do PDF (a partir de 1) → título do capítulo», inicia um documento em cada página nomeada que
+  vai até a próxima nomeada; as páginas antes do primeiro nome não entram. Os números vêm do sumário do livro com o
+  deslocamento das páginas iniciais (ali: página do PDF = página do livro + 3), e alguns capítulos são conferidos pelas
+  primeiras linhas.
 - **Um changelog que lista as mudanças de uma versão sob os seus release candidates** (NVIDIA: «## v1.19.0» diz só
   «Promote v1.19.0-rc.7 to v1.19.0»; as mudanças ficam sob «## v1.19.0-rc.1» … «-rc.7»): `skip` para `-rc` deixaria
   uma linha por versão, e documentos rotulados «1.19.0-rc.3» não são achados pelo filtro «1.19.0». O leitor
