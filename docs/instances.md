@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 222. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 223. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8985, вільний усередині: 8769, 8982, 8983, 8984. Наступний новий: 8986.
+Зайняті порти: 8760–8986, вільний усередині: 8769, 8982, 8983, 8984. Наступний новий: 8987.
 
 ## Як обирати
 
@@ -250,6 +250,7 @@
 | [`statsmodels`](#statsmodels) | 8980 | Будуєте статистичні моделі й моделі часових рядів через statsmodels: ARIMA і SARIMAX з прогнозом і довірчими інтервалами, експоненційне згладжування, VAR і VECM, перемикання режимів Маркова, тести на стаціонарність (adfuller, kpss) і коінтеграцію (coint, Йогансен), тест Льюнга — Бокса, регресія OLS і RollingOLS зі стійкими похибками. |
 | [`matplotlib`](#matplotlib) | 8981 | Малюєте графіки в Python через Matplotlib: Figure і Axes, subplots і subplot_mosaic, лінії, стовпчики, гістограми, fill_between, axhline, друга вісь twinx, осі з датами й ConciseDateFormatter, анотації, constrained_layout, збереження savefig без екрана через бекенд Agg, анімація FuncAnimation. |
 | [`pytest`](#pytest) | 8985 | Пишете тести на Python через pytest: фікстури й conftest.py, параметризація, pytest.raises і pytest.approx, monkeypatch, tmp_path, capsys і caplog, маркери skip і xfail, конфігурація в pyproject.toml, плагіни й хуки, що змінилося між версіями. |
+| [`pyarrow`](#pyarrow) | 8986 | Зберігаєте й читаєте таблиці через PyArrow: файли Parquet (write_table, read_table з columns і filters, стиснення), набори даних по теках (pyarrow.dataset, partitioning), обмін з pandas і NumPy без копіювання, pyarrow.compute, позначки часу й часові пояси, Feather і потік IPC. |
 | [`shap`](#shap) | 8966 | Пояснюєте прогнози моделі через SHAP: TreeExplainer для XGBoost і LightGBM, значення SHAP окремого прогнозу, графіки waterfall, beeswarm, bar і scatter, взаємодії ознак. |
 | [`optuna`](#optuna) | 8967 | Підбираєте параметри моделі автоматично через Optuna: create_study і optimize, suggest_float і suggest_int, семплери й прунери, колбеки обрізання XGBoost і LightGBM, LightGBMTuner, збереження Study в базу, панель optuna-dashboard. |
 | [`cupy`](#cupy) | 8962 | Рахуєте масиви на відеокарті через CuPy: які функції NumPy є і чим відрізняються, перенесення між пам'яттю комп'ютера й відеокарти, пул пам'яті, потоки, власні ядра, встановлення під версію CUDA. |
@@ -6121,6 +6122,39 @@ folder of the repository for the lines the site lacks (2.8-6.1 and 9.1), the PyP
 notes. Plugins such as pytest-asyncio, pytest-mock and pytest-cov, unittest.mock and the Python language are not here.
 
 **Далі в [README](../instances/pytest/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
+сервер; Архівний режим: сервер без корпусу.
+
+### pyarrow
+
+**Коли піднімати.** Зберігаєте й читаєте таблиці через PyArrow: файли Parquet (write_table, read_table з columns і filters, стиснення), набори даних по теках (pyarrow.dataset, partitioning), обмін з pandas і NumPy без копіювання, pyarrow.compute, позначки часу й часові пояси, Feather і потік IPC.
+
+**Порт** 8986, сервер `pyarrow-docs`. Підняти: `./df pyarrow serve`. Адреса: `http://127.0.0.1:8986/mcp`.
+
+**Обсяг.** Документів: 6 434, фрагментів: 17 922.
+
+**Опис.**
+
+Цей примірник зібрав документацію PyArrow і віддає її через сервер MCP, щоб модель відповідала з текстів бібліотеки, а
+не з пам'яті. PyArrow — це бібліотека Python для Apache Arrow. Arrow — це спосіб тримати таблицю в пам'яті
+стовпчиками: усі значення одного стовпчика лежать поруч, тому їх швидко підсумовувати, фільтрувати й передавати іншим
+програмам без копіювання. Навколо цього формату PyArrow вміє читати й записувати файли Parquet, Feather, CSV і JSON.
+Для торгового бота тут найважливіші такі речі: - файли Parquet. Parquet — це стовпчиковий формат файлів зі стисненням.
+Історія котирувань у Parquet займає в рази менше місця, ніж у CSV, і читається в рази швидше. Функція
+`pyarrow.parquet.write_table` записує таблицю (параметри `compression`, `row_group_size`), а `read_table` читає лише
+потрібні стовпчики (`columns`) і рядки (`filters`); - набори даних, розбиті по теках (`pyarrow.dataset`). Котирування
+зручно класти в теки за датою чи валютною парою, а читати всі разом як одну таблицю. Таке розбиття називається
+`partitioning`; - обмін з pandas: `Table.from_pandas` і `to_pandas` перетворюють таблиці в обидва боки; посібник
+пояснює, коли це обходиться без копіювання, і які типи змінюються дорогою; - обчислення без pandas
+(`pyarrow.compute`): суми, середні, фільтри, групування за символом; - позначки часу й часові пояси: котирування мають
+час, і посібник `timestamps` пояснює, що стається з часовим поясом при переході між Arrow і pandas.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of PyArrow: the Python section of arrow.apache.org of every major line 1.0-26.0 (User Guide and API
+reference), the PyPI records and the GitHub release notes of Apache Arrow. pandas, NumPy, Polars, DuckDB and the Arrow
+libraries for C++, Java and other languages are not here.
+
+**Далі в [README](../instances/pyarrow/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
 сервер; Архівний режим: сервер без корпусу.
 
 ### shap

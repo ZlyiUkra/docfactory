@@ -4738,6 +4738,20 @@ how-to (фікстури, параметризація, `pytest.raises`, `monkey
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/pytest/README.md](instances/pytest/README.md).
 
+### pyarrow
+
+Бібліотека Python для Apache Arrow — стовпчикових таблиць у пам'яті та файлів навколо них: розділ Python сайту arrow.apache.org
+кожної мажорної лінії 1.0–26.0 — посібник (Parquet, Feather, CSV, набори даних по теках, обмін з pandas і NumPy, `pyarrow.compute`,
+позначки часу, IPC) і довідник API зі сторінкою кожного класу й функції, — нотатки релізів GitHub і записи PyPI. Усього 6434
+документи і 17 922 фрагменти.
+
+- порт `8986`; запис у Claude Code — `pyarrow-docs`, адреса `http://127.0.0.1:8986/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мажорна лінія (`pyarrow-26.0`, `pyarrow-18.1`…);
+- не входять: лінії 0.x (сайт їх не публікує, є лише PyPI), Arrow для C++, Java та інших мов, pandas, Polars, DuckDB;
+- приклад питання агентові: `./df pyarrow ask "How do I write a Parquet file with zstd compression in PyArrow?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/pyarrow/README.md](instances/pyarrow/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
