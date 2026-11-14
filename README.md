@@ -4752,6 +4752,20 @@ how-to (фікстури, параметризація, `pytest.raises`, `monkey
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/pyarrow/README.md](instances/pyarrow/README.md).
 
+### mplfinance
+
+Бібліотека Python для фінансових графіків від команди matplotlib: README, сторінки `markdown/` і зошити-приклади `examples/`
+(додаткові ряди й панелі, стилі й кольори свічок, ширини, лінії `hlines`, `vlines`, `alines`, `tlines`, збереження в файл,
+зовнішні осі, приклади індикаторів) на останньому тезі ліній 0.12.4, 0.12.8, 0.12.9 і 0.12.10, код бібліотеки з описом кожного
+параметра `mpf.plot`, журнал змін, нотатки релізів GitHub, записи PyPI і сторінки вікі. Усього 131 документ і 690 фрагментів.
+
+- порт `8983`; запис у Claude Code — `mplfinance-docs`, адреса `http://127.0.0.1:8983/mcp`; інструменти `search_docs` і `read_section`;
+- версія — номер випуску (`0.12.10b0`, `0.12.4a0`…); сталих випусків mplfinance не має, тож усі версії альфа чи бета;
+- не входять: сам matplotlib (окремий примірник `matplotlib`), pandas, формули індикаторів, чернетки `examples/scratch_pad`;
+- приклад питання агентові: `./df mplfinance ask "How do I add a MACD panel below candlesticks in mplfinance?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/mplfinance/README.md](instances/mplfinance/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

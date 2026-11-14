@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 223. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 224. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8986, вільний усередині: 8769, 8982, 8983, 8984. Наступний новий: 8987.
+Зайняті порти: 8760–8986, вільний усередині: 8769, 8982, 8984. Наступний новий: 8987.
 
 ## Як обирати
 
@@ -250,6 +250,7 @@
 | [`statsmodels`](#statsmodels) | 8980 | Будуєте статистичні моделі й моделі часових рядів через statsmodels: ARIMA і SARIMAX з прогнозом і довірчими інтервалами, експоненційне згладжування, VAR і VECM, перемикання режимів Маркова, тести на стаціонарність (adfuller, kpss) і коінтеграцію (coint, Йогансен), тест Льюнга — Бокса, регресія OLS і RollingOLS зі стійкими похибками. |
 | [`matplotlib`](#matplotlib) | 8981 | Малюєте графіки в Python через Matplotlib: Figure і Axes, subplots і subplot_mosaic, лінії, стовпчики, гістограми, fill_between, axhline, друга вісь twinx, осі з датами й ConciseDateFormatter, анотації, constrained_layout, збереження savefig без екрана через бекенд Agg, анімація FuncAnimation. |
 | [`pytest`](#pytest) | 8985 | Пишете тести на Python через pytest: фікстури й conftest.py, параметризація, pytest.raises і pytest.approx, monkeypatch, tmp_path, capsys і caplog, маркери skip і xfail, конфігурація в pyproject.toml, плагіни й хуки, що змінилося між версіями. |
+| [`mplfinance`](#mplfinance) | 8983 | Малюєте свічкові графіки котирувань у Python через mplfinance: mpf.plot з type, volume і mav, make_addplot для індикаторів, позначок угод і окремих панелей (panel, panel_ratios), hlines і tlines, make_marketcolors і make_mpf_style, savefig і returnfig, зовнішні осі, анімація. |
 | [`pyarrow`](#pyarrow) | 8986 | Зберігаєте й читаєте таблиці через PyArrow: файли Parquet (write_table, read_table з columns і filters, стиснення), набори даних по теках (pyarrow.dataset, partitioning), обмін з pandas і NumPy без копіювання, pyarrow.compute, позначки часу й часові пояси, Feather і потік IPC. |
 | [`shap`](#shap) | 8966 | Пояснюєте прогнози моделі через SHAP: TreeExplainer для XGBoost і LightGBM, значення SHAP окремого прогнозу, графіки waterfall, beeswarm, bar і scatter, взаємодії ознак. |
 | [`optuna`](#optuna) | 8967 | Підбираєте параметри моделі автоматично через Optuna: create_study і optimize, suggest_float і suggest_int, семплери й прунери, колбеки обрізання XGBoost і LightGBM, LightGBMTuner, збереження Study в базу, панель optuna-dashboard. |
@@ -6124,6 +6125,39 @@ notes. Plugins such as pytest-asyncio, pytest-mock and pytest-cov, unittest.mock
 **Далі в [README](../instances/pytest/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
 сервер; Архівний режим: сервер без корпусу.
 
+### mplfinance
+
+**Коли піднімати.** Малюєте свічкові графіки котирувань у Python через mplfinance: mpf.plot з type, volume і mav, make_addplot для індикаторів, позначок угод і окремих панелей (panel, panel_ratios), hlines і tlines, make_marketcolors і make_mpf_style, savefig і returnfig, зовнішні осі, анімація.
+
+**Порт** 8983, сервер `mplfinance-docs`. Підняти: `./df mplfinance serve`. Адреса: `http://127.0.0.1:8983/mcp`.
+
+**Обсяг.** Документів: 131, фрагментів: 690.
+
+**Опис.**
+
+Цей примірник зібрав документацію mplfinance і віддає її через сервер MCP, щоб модель відповідала з текстів
+бібліотеки, а не з пам'яті. mplfinance — це бібліотека Python, яку веде команда matplotlib. Вона малює фінансові
+графіки: на вхід бере таблицю pandas зі стовпчиками Open, High, Low, Close і Volume, а на виході дає свічковий графік,
+графік з барами OHLC, лінію, графік ренко чи «хрестики-нулики» (point and figure). Усе це робить одна функція
+`mpf.plot`. Для торгового бота тут найважливіші такі речі: - свічки з обсягами й ковзними середніми. Ковзне середнє —
+це середня ціна за останні N свічок, яку малюють лінією поверх графіка. `mpf.plot` малює його параметром `mav`, а
+обсяги — параметром `volume=True`; - власні лінії й позначки. Функція `mpf.make_addplot` додає на графік будь-який ряд
+даних: лінію індикатора, точки входу й виходу з угоди (`type='scatter'`, `marker='^'`), гістограму MACD. Параметр
+`panel` кладе такий ряд в окрему панель під ціною, а `panel_ratios` задає висоту панелей; - рівні й трендові лінії:
+параметри `hlines`, `vlines`, `alines` і `tlines` малюють горизонтальні, вертикальні, довільні й трендові лінії; -
+кольори й стилі: `mpf.make_marketcolors` задає кольори свічок, що ростуть і падають, а `mpf.make_mpf_style` збирає з
+них стиль; - збереження в файл (`savefig`) і доступ до фігури matplotlib (`returnfig=True`), щоб домалювати щось своє
+чи вбудувати графік у власне вікно.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of mplfinance: the README, the markdown pages and the example notebooks at the last tag of the lines 0.12.4,
+0.12.8, 0.12.9 and 0.12.10, the library code split into classes and functions, the release notes, the GitHub wiki and
+the PyPI records. matplotlib itself, pandas, plotly and indicator formulas are not here.
+
+**Далі в [README](../instances/mplfinance/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
+сервер; Архівний режим: сервер без корпусу.
+
 ### pyarrow
 
 **Коли піднімати.** Зберігаєте й читаєте таблиці через PyArrow: файли Parquet (write_table, read_table з columns і filters, стиснення), набори даних по теках (pyarrow.dataset, partitioning), обмін з pandas і NumPy без копіювання, pyarrow.compute, позначки часу й часові пояси, Feather і потік IPC.
@@ -8279,7 +8313,7 @@ Networks for Algorithmic Trading with MQL5. MQL4, Pine Script and Python are not
 
 **Порт** 8978, сервер `quant-trading-docs`. Підняти: `./df quant-trading serve`. Адреса: `http://127.0.0.1:8978/mcp`.
 
-**Обсяг.** Документів: 1 107, фрагментів: 6 075.
+**Обсяг.** Документів: 1 040, фрагментів: 6 053.
 
 **Опис.**
 
