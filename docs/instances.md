@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 224. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 225. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8986, вільний усередині: 8769, 8982, 8984. Наступний новий: 8987.
+Зайняті порти: 8760–8986, вільний усередині: 8769, 8982. Наступний новий: 8987.
 
 ## Як обирати
 
@@ -251,6 +251,7 @@
 | [`matplotlib`](#matplotlib) | 8981 | Малюєте графіки в Python через Matplotlib: Figure і Axes, subplots і subplot_mosaic, лінії, стовпчики, гістограми, fill_between, axhline, друга вісь twinx, осі з датами й ConciseDateFormatter, анотації, constrained_layout, збереження savefig без екрана через бекенд Agg, анімація FuncAnimation. |
 | [`pytest`](#pytest) | 8985 | Пишете тести на Python через pytest: фікстури й conftest.py, параметризація, pytest.raises і pytest.approx, monkeypatch, tmp_path, capsys і caplog, маркери skip і xfail, конфігурація в pyproject.toml, плагіни й хуки, що змінилося між версіями. |
 | [`mplfinance`](#mplfinance) | 8983 | Малюєте свічкові графіки котирувань у Python через mplfinance: mpf.plot з type, volume і mav, make_addplot для індикаторів, позначок угод і окремих панелей (panel, panel_ratios), hlines і tlines, make_marketcolors і make_mpf_style, savefig і returnfig, зовнішні осі, анімація. |
+| [`plotly`](#plotly) | 8984 | Малюєте інтерактивні графіки в Python через plotly: go.Candlestick і go.Ohlc, rangebreaks без вихідних і ночей, повзунок діапазону, make_subplots з обсягами під ціною і secondary_y, add_hline і add_vrect, hovertemplate, шаблони й теми, write_html і write_image через Kaleido, Plotly Express. |
 | [`pyarrow`](#pyarrow) | 8986 | Зберігаєте й читаєте таблиці через PyArrow: файли Parquet (write_table, read_table з columns і filters, стиснення), набори даних по теках (pyarrow.dataset, partitioning), обмін з pandas і NumPy без копіювання, pyarrow.compute, позначки часу й часові пояси, Feather і потік IPC. |
 | [`shap`](#shap) | 8966 | Пояснюєте прогнози моделі через SHAP: TreeExplainer для XGBoost і LightGBM, значення SHAP окремого прогнозу, графіки waterfall, beeswarm, bar і scatter, взаємодії ознак. |
 | [`optuna`](#optuna) | 8967 | Підбираєте параметри моделі автоматично через Optuna: create_study і optimize, suggest_float і suggest_int, семплери й прунери, колбеки обрізання XGBoost і LightGBM, LightGBMTuner, збереження Study в базу, панель optuna-dashboard. |
@@ -6156,6 +6157,39 @@ Documents of mplfinance: the README, the markdown pages and the example notebook
 the PyPI records. matplotlib itself, pandas, plotly and indicator formulas are not here.
 
 **Далі в [README](../instances/mplfinance/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
+сервер; Архівний режим: сервер без корпусу.
+
+### plotly
+
+**Коли піднімати.** Малюєте інтерактивні графіки в Python через plotly: go.Candlestick і go.Ohlc, rangebreaks без вихідних і ночей, повзунок діапазону, make_subplots з обсягами під ціною і secondary_y, add_hline і add_vrect, hovertemplate, шаблони й теми, write_html і write_image через Kaleido, Plotly Express.
+
+**Порт** 8984, сервер `plotly-docs`. Підняти: `./df plotly serve`. Адреса: `http://127.0.0.1:8984/mcp`.
+
+**Обсяг.** Документів: 2 303, фрагментів: 12 428.
+
+**Опис.**
+
+Цей примірник зібрав документацію plotly.py і віддає її через сервер MCP, щоб модель відповідала з текстів бібліотеки,
+а не з пам'яті. plotly.py — це бібліотека Python, яка малює інтерактивні графіки. Такий графік відкривається в
+браузері чи в зошиті Jupyter, і його можна наближати мишею, рухати й читати значення, наводячи курсор на точку. Графік
+будують двома способами. Plotly Express (`plotly.express`, зазвичай `px`) малює готовий графік однією функцією з
+таблиці pandas. graph_objects (`plotly.graph_objects`, зазвичай `go`) складає фігуру з окремих рядів даних і дає
+керувати кожною властивістю. Для торгового бота тут найважливіші такі речі: - свічкові графіки й графіки OHLC: класи
+`go.Candlestick` і `go.Ohlc`, кольори свічок, що ростуть і падають, і повзунок діапазону під графіком, який вимикає
+`xaxis_rangeslider_visible=False`; - вісь часу без проміжків: `rangebreaks` ховає вихідні, свята й нічні години, коли
+ринок закритий, і свічки стоять щільно; - кілька панелей: `make_subplots` ставить обсяги чи індикатор під ціною
+(`shared_xaxes`, `row_heights`), а `secondary_y` дає другу вісь значень на тому самому графіку; - лінії й позначки:
+`add_hline` і `add_vrect` малюють рівень ціни чи смугу часу, `add_trace` додає ковзні середні й точки угод,
+`hovertemplate` задає текст підказки під курсором; - збереження: `write_html` записує інтерактивну сторінку, а
+`write_image` — картинку PNG чи SVG через пакет Kaleido.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of plotly.py: the guide pages of plotly.com/python at the last patch of every minor line 4.4-7.1, the API
+reference of plotly.com/python-api-reference for 7.1, the change log, the GitHub release notes and the PyPI records.
+Dash, plotly.js for JavaScript, Plotly for R and Julia, matplotlib and mplfinance are not here.
+
+**Далі в [README](../instances/plotly/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
 сервер; Архівний режим: сервер без корпусу.
 
 ### pyarrow

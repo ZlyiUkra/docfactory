@@ -4766,6 +4766,21 @@ how-to (фікстури, параметризація, `pytest.raises`, `monkey
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/mplfinance/README.md](instances/mplfinance/README.md).
 
+### plotly
+
+Бібліотека Python для інтерактивних графіків: посібник сайту plotly.com/python з теки `doc/python` репозиторію на останньому
+патчі кожної мінорної лінії 4.4–7.1 (свічкові графіки й OHLC, часові ряди з `rangebreaks` і повзунком діапазону, підграфіки й
+друга вісь, лінії й прямокутники, підказки, шаблони, збереження в HTML і картинку, Plotly Express), довідник API
+plotly.com/python-api-reference 7.1 зі сторінкою кожної функції Plotly Express і кожного класу graph_objects, журнал змін,
+нотатки релізів GitHub і записи PyPI. Усього 2303 документи і 12 428 фрагментів.
+
+- порт `8984`; запис у Claude Code — `plotly-docs`, адреса `http://127.0.0.1:8984/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія (`plotly-7.1`, `plotly-5.24`…); довідник API — лише 7.1;
+- не входять: посібник до 4.4 (теки `doc/` тоді не було, є журнал змін і PyPI), Dash, plotly.js, Plotly для R і Julia;
+- приклад питання агентові: `./df plotly ask "How do I hide weekends on a candlestick chart in plotly?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/plotly/README.md](instances/plotly/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
