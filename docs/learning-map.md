@@ -4,7 +4,7 @@
 однієї бібліотеки чи інструмента (тека `instances/<ім'я>`). Файл оновлюється після кожного нового примірника, разом
 із підрозділами «Документація у фабриці» самих планів.
 
-Стан на 13.11.2026. Примірники: agent-harness-course, algorithms, alpine, amqp-connection-manager, amqplib, angular,
+Стан на 14.11.2026. Примірники: agent-harness-course, algorithms, alpine, amqp-connection-manager, amqplib, angular,
 anthropic-api, argocd, argon2, aspnetcore, astro, astro-markdown-pipeline, auth, backtesting, bcrypt, binance-spot,
 biome, bullmq, bun, cares, casl, certbot, chrome-extensions, civicrm, class-transformer, class-validator, claude-code,
 clerk, cloudflare, coder-websocket, confluent-kafka-javascript, contentful, csharp, csrf-csrf, cupy, d3, d3rlpy,
@@ -13,8 +13,8 @@ dukascopy-node, ecmascript, electron, emberjs, entityframework, eslint, expo, ex
 ffmpeg, flux, foundry, frontend-architecture, github-actions, go, golang-jwt, golang-migrate, golang-x, golangci-lint,
 golevelup-nestjs-rabbitmq, goose, grafana, gvisor, gymnasium, helmet, htdp, i18next, icu, ioredis, iron-session, jose,
 jsonschema, kafka, kafkajs, kraken-spot, kubernetes, learning-go, libreoffice, libuv, lightgbm, lightweight-charts,
-linux, llhttp, loki, mariadb, mdn, mikro-orm, mongodb, mongoose, motion, mql5, msw, mysql, nats, nats-js, nestjs,
-nestjs-cls, nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, node-mongodb,
+linux, llhttp, loki, mariadb, mdn, mikro-orm, mongodb, mongoose, motion, mql4, mql5, msw, mysql, nats, nats-js,
+nestjs, nestjs-cls, nestjs-pino, next-intl, next-safe-action, next-themes, nextjs, nghttp2, nginx, node-mongodb,
 node-postgres, node-redis, nodejs, nodemailer, nuget, numpy, nuqs, nvidia-container-toolkit, oapi-codegen,
 observable-plot, ollama, onnx, openapi-typescript, openssl, opentelemetry, optuna, oracle-cloud, orval, owasp,
 partysocket, passport, patterns, payload, payments-pt, pgx, php, pine-script, platformatic-kafka, playwright,
