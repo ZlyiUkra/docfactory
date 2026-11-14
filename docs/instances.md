@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 226. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 228. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8986, вільний усередині: 8769. Наступний новий: 8987.
+Зайняті порти: 8760–8988, вільний усередині: 8769. Наступний новий: 8989.
 
 ## Як обирати
 
@@ -253,6 +253,8 @@
 | [`mplfinance`](#mplfinance) | 8983 | Малюєте свічкові графіки котирувань у Python через mplfinance: mpf.plot з type, volume і mav, make_addplot для індикаторів, позначок угод і окремих панелей (panel, panel_ratios), hlines і tlines, make_marketcolors і make_mpf_style, savefig і returnfig, зовнішні осі, анімація. |
 | [`plotly`](#plotly) | 8984 | Малюєте інтерактивні графіки в Python через plotly: go.Candlestick і go.Ohlc, rangebreaks без вихідних і ночей, повзунок діапазону, make_subplots з обсягами під ціною і secondary_y, add_hline і add_vrect, hovertemplate, шаблони й теми, write_html і write_image через Kaleido, Plotly Express. |
 | [`seaborn`](#seaborn) | 8982 | Малюєте статистичні графіки в Python через seaborn: розподіл прибутковості (histplot, kdeplot, displot), матриця кореляцій (heatmap з annot, clustermap), порівняння груп (boxplot, violinplot), сітки графіків (FacetGrid, relplot, pairplot), регресія, set_theme і палітри, інтерфейс seaborn.objects. |
+| [`scipy`](#scipy) | 8987 | Рахуєте статистику й оптимізуєте в Python через SciPy: розподіли scipy.stats з fit (t, norm), skew і kurtosis, тести нормальності (jarque_bera, shapiro, kstest), кореляції pearsonr і spearmanr, ttest_ind, minimize з обмеженнями, differential_evolution, curve_fit, brentq, фільтри scipy.signal (savgol_filter, butter, filtfilt, find_peaks). |
+| [`arch`](#arch) | 8988 | Моделюєте волатильність у Python через arch: arch_model з GARCH, EGARCH, GJR, FIGARCH і розподілами t та skewt, fit і forecast (аналітично, симуляцією, бутстрепом), ковзні прогнози, Value-at-Risk, бутстреп часових рядів, тести SPA, StepM і MCS для порівняння стратегій, тести одиничного кореня (ADF, KPSS) і коінтеграції. |
 | [`pyarrow`](#pyarrow) | 8986 | Зберігаєте й читаєте таблиці через PyArrow: файли Parquet (write_table, read_table з columns і filters, стиснення), набори даних по теках (pyarrow.dataset, partitioning), обмін з pandas і NumPy без копіювання, pyarrow.compute, позначки часу й часові пояси, Feather і потік IPC. |
 | [`shap`](#shap) | 8966 | Пояснюєте прогнози моделі через SHAP: TreeExplainer для XGBoost і LightGBM, значення SHAP окремого прогнозу, графіки waterfall, beeswarm, bar і scatter, взаємодії ознак. |
 | [`optuna`](#optuna) | 8967 | Підбираєте параметри моделі автоматично через Optuna: create_study і optimize, suggest_float і suggest_int, семплери й прунери, колбеки обрізання XGBoost і LightGBM, LightGBMTuner, збереження Study в базу, панель optuna-dashboard. |
@@ -6223,6 +6225,73 @@ guide, tutorial, API reference, example gallery, what's new), the GitHub release
 matplotlib itself, pandas, plotly and mplfinance are not here.
 
 **Далі в [README](../instances/seaborn/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
+сервер; Архівний режим: сервер без корпусу.
+
+### scipy
+
+**Коли піднімати.** Рахуєте статистику й оптимізуєте в Python через SciPy: розподіли scipy.stats з fit (t, norm), skew і kurtosis, тести нормальності (jarque_bera, shapiro, kstest), кореляції pearsonr і spearmanr, ttest_ind, minimize з обмеженнями, differential_evolution, curve_fit, brentq, фільтри scipy.signal (savgol_filter, butter, filtfilt, find_peaks).
+
+**Порт** 8987, сервер `scipy-docs`. Підняти: `./df scipy serve`. Адреса: `http://127.0.0.1:8987/mcp`.
+
+**Обсяг.** Документів: 48 946, фрагментів: 71 285.
+
+**Опис.**
+
+Цей примірник зібрав документацію SciPy і віддає її через сервер MCP, щоб модель відповідала з текстів бібліотеки, а
+не з пам'яті. SciPy — це бібліотека Python для наукових обчислень поверх NumPy. NumPy дає масиви й прості операції з
+ними, а SciPy додає готові методи: статистичні розподіли й тести, пошук мінімуму функції, фільтри сигналів,
+інтерполяцію, інтегрування. Для торгового бота тут найважливіші такі речі: - статистика прибутковості (`scipy.stats`).
+Функції `skew`, `kurtosis` і `describe` описують розподіл прибутків числами. Тести `jarque_bera`, `shapiro`,
+`normaltest` і `kstest` перевіряють, чи схожий розподіл на нормальний; на ринку він зазвичай має «важкі хвости», тобто
+великі рухи трапляються частіше, ніж обіцяє нормальний розподіл. Розподіл Стьюдента `t` з методом `fit` описує такі
+хвости; - кореляції й порівняння: `pearsonr`, `spearmanr` і `kendalltau` міряють зв'язок двох рядів, `ttest_ind`
+порівнює середні двох вибірок; - оптимізація параметрів (`scipy.optimize`). `minimize` шукає мінімум функції з
+обмеженнями (наприклад, ваги портфеля, що в сумі дають одиницю), `differential_evolution` шукає глобальний мінімум без
+похідних, `curve_fit` і `least_squares` підганяють криву під точки, `brentq` знаходить корінь рівняння; - обробка
+сигналів (`scipy.signal`): `savgol_filter` згладжує ряд поліномом, `butter` і `filtfilt` фільтрують без зсуву в часі,
+`find_peaks` знаходить локальні вершини.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of SciPy: the whole docs.scipy.org site of the last patch of every minor line 0.7-1.18 (user guide, API
+reference, release notes), the GitHub release notes and the PyPI records. NumPy, statsmodels, scikit-learn and pandas
+are not here.
+
+**Далі в [README](../instances/scipy/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
+сервер; Архівний режим: сервер без корпусу.
+
+### arch
+
+**Коли піднімати.** Моделюєте волатильність у Python через arch: arch_model з GARCH, EGARCH, GJR, FIGARCH і розподілами t та skewt, fit і forecast (аналітично, симуляцією, бутстрепом), ковзні прогнози, Value-at-Risk, бутстреп часових рядів, тести SPA, StepM і MCS для порівняння стратегій, тести одиничного кореня (ADF, KPSS) і коінтеграції.
+
+**Порт** 8988, сервер `arch-docs`. Підняти: `./df arch serve`. Адреса: `http://127.0.0.1:8988/mcp`.
+
+**Обсяг.** Документів: 1 318, фрагментів: 4 702.
+
+**Опис.**
+
+Цей примірник зібрав документацію arch і віддає її через сервер MCP, щоб модель відповідала з текстів бібліотеки, а не
+з пам'яті. arch — це бібліотека Python Кевіна Шеппарда для моделей волатильності й фінансової економетрики.
+Волатильність — це міра того, наскільки сильно коливається ціна. Вона не стала: після різкого руху ринок зазвичай
+лишається неспокійним ще якийсь час. Моделі родини GARCH описують саме це і дають прогноз волатильності на наступні
+дні. Для торгового бота тут найважливіші такі речі: - модель волатильності: функція `arch_model` збирає модель із
+трьох частин — середнього (`Constant`, `AR`, `HAR`), волатильності (`GARCH`, `EGARCH`, `GJR`, `FIGARCH`) і розподілу
+похибок (`normal`, `t`, `skewt`, `ged`); метод `fit` оцінює її; - прогноз: `forecast` з `horizon` дає прогноз
+дисперсії на кілька кроків уперед аналітично, симуляцією чи бутстрепом; посібник показує ковзні прогнози (`last_obs`,
+`first_obs`) і розрахунок Value-at-Risk, тобто збитку, який за день перевищується лише з малою ймовірністю; - бутстреп
+часових рядів (`StationaryBootstrap`, `CircularBlockBootstrap`): перевибірка блоками, що зберігає залежність між
+сусідніми днями; - перевірка стратегій без самообману: тести `SPA`, `StepM` і `MCS` кажуть, чи краща стратегія справді
+краща за еталон, а не виграла випадково серед багатьох спроб; - тести одиничного кореня (`ADF`, `DFGLS`,
+`PhillipsPerron`, `KPSS`) і коінтеграції (`engle_granger`, `phillips_ouliaris`): чи стаціонарний ряд і чи рухаються
+дві валютні пари разом у довгому періоді.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of arch: the bashtage.github.io/arch site of version 9.0 (user guide, example notebooks, API reference,
+changes of every version), the library code at the last tag of every major line 4-9 split into classes and functions,
+the GitHub release notes and the PyPI records. statsmodels, SciPy and pandas are not here.
+
+**Далі в [README](../instances/arch/README.md):** Скільки цього; Що в цій теці; Звідки документація; Як підняти
 сервер; Архівний режим: сервер без корпусу.
 
 ### pyarrow
