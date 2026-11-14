@@ -18,22 +18,6 @@ PyPI. Теги вже вийшлих версій не змінюються, а 
 # Ctrl+C у терміналі з serve, і знову: ./df ta-indicators serve
 ```
 
-## Дозбирати записи PyPI
-
-13.11.2026 записи PyPI не склалися: pypi.org з WSL відповідав лише на половину з'єднань, а читач `pypi-versions` звертається до
-реєстру по разу на кожну версію, тож один збій зупиняв увесь перелік. Коли мережа відновиться (перевірка: кілька разів поспіль
-`curl -s -o /dev/null -w "%{http_code}\n" https://pypi.org/pypi/ta/json` дають `200` без затримки), поверніть тексти й виконайте:
-
-```
-./df ta-indicators refresh talib-python-pypi pandas-ta-classic-pypi pandas-ta-pypi ta-pypi
-./df ta-indicators manifest
-./df ta-indicators vectors
-./df ta-indicators smoke    # нове число фрагментів записати в checks.json
-./df ta-indicators quality
-```
-
-Після цього зробіть новий архів за README і приберіть рядок «Чого ще немає» з README.
-
 ## Що міняти, коли вийшла нова лінія
 
 - **Сайт ta-lib.org:** замінити тег у полі `tags` джерела `talib-site` на новий. Сайт не тримає старих ліній, тому лишається один тег.

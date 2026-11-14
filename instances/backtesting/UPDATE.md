@@ -18,21 +18,6 @@
 # Ctrl+C у терміналі з serve, і знову: ./df backtesting serve
 ```
 
-## Дозбирати записи PyPI
-
-13.11.2026 записи PyPI не склалися: pypi.org з WSL відповідав лише на половину з'єднань. Коли мережа відновиться, поверніть тексти й
-виконайте:
-
-```
-./df backtesting refresh btpy-pypi vbt-pypi
-./df backtesting manifest
-./df backtesting vectors
-./df backtesting smoke    # нове число фрагментів записати в checks.json
-./df backtesting quality
-```
-
-Після цього зробіть новий архів за README і приберіть абзац «Чого ще немає» з README.
-
 ## Що міняти, коли вийшла нова лінія
 
 - **Backtesting.py:** дописати новий тег у поле `tags` джерел `btpy-code` і `btpy-docs`, найновіший першим; у `btpy-changelog`

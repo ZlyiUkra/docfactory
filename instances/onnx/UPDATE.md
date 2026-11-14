@@ -18,21 +18,6 @@
 # Ctrl+C у терміналі з serve, і знову: ./df onnx serve
 ```
 
-## Дозбирати записи PyPI
-
-13.11.2026 записи PyPI не склалися: pypi.org з WSL відповідав лише на половину з'єднань, а читач `pypi-versions` звертається до
-реєстру по разу на кожну версію, тож один збій зупиняв увесь перелік. Коли мережа відновиться, поверніть тексти й виконайте:
-
-```
-./df onnx refresh onnx-pypi ort-pypi skl2onnx-pypi onnxmltools-pypi
-./df onnx manifest
-./df onnx vectors
-./df onnx smoke    # нове число фрагментів записати в checks.json
-./df onnx quality
-```
-
-Після цього зробіть новий архів за README і приберіть абзац «Чого ще немає» з README.
-
 ## Що міняти, коли вийшла нова версія
 
 - **Сайти onnx.ai/onnx, onnx.ai/sklearn-onnx, довідник API ONNX Runtime:** у полі `version_labels` джерела записати новий номер
