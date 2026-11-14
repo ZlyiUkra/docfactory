@@ -4725,6 +4725,19 @@ README, сторінка про інші бібліотеки, журнал зм
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/matplotlib/README.md](instances/matplotlib/README.md).
 
+### pytest
+
+Інструмент тестів для Python: сайт docs.pytest.org кожної лінії, яку публікує Read the Docs (4.6, 6.2, 7.0–9.2), — посібники
+how-to (фікстури, параметризація, `pytest.raises`, `monkeypatch`, `tmp_path`, маркери, конфігурація), довідник API, журнал змін, —
+тека `doc/en` репозиторію для ліній 2.8–6.1 і 9.1, нотатки релізів GitHub і записи PyPI. Усього 1621 документ і 10 145 фрагментів.
+
+- порт `8985`; запис у Claude Code — `pytest-docs`, адреса `http://127.0.0.1:8985/mcp`; інструменти `search_docs` і `read_section`;
+- версія — мінорна лінія (`pytest-9.2`, `pytest-7.4`…);
+- не входять: лінії 2.0–2.7 (документація у форматі `.txt`), плагіни pytest-asyncio, pytest-mock, pytest-cov, `unittest.mock`;
+- приклад питання агентові: `./df pytest ask "How do I check the exception message with pytest.raises?"`;
+- корпус — в архіві від самого початку;
+- докладніше — у [instances/pytest/README.md](instances/pytest/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
