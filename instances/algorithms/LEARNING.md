@@ -68,7 +68,10 @@ Kleinberg, Tardos, Algorithm Design; Morin, Open Data Structures; Lehman, Leight
 Internals; Kleppmann, Riccomini, Designing Data-Intensive Applications (далі DDIA); Medjedovic та ін., Algorithms and Data
 Structures for Massive Datasets; Okasaki, Purely Functional Data Structures. До співбесіди готує McDowell, Mroczka, Lerner,
 Mamano, Beyond Cracking the Coding Interview (далі BCtCI). Ще є конспекти, завдання й іспити курсів MIT 6.006 і 6.046J,
-статті сайту cp-algorithms і вісім класичних статей. Повний перелік із видавцями й умовами — у [README](README.md).
+статті сайту cp-algorithms, репозиторій javascript-algorithms і вісім класичних статей. Повний перелік із видавцями й умовами —
+у [README](README.md). У javascript-algorithms лежить не лише пояснення кожного алгоритму, а й його готовий код на JavaScript.
+Відкривайте цей код лише тоді, коли ваша власна реалізація вже проходить тести: інакше ви перепишете чужий розв'язок замість
+того, щоб написати свій.
 
 ## Як користуватися планом
 
