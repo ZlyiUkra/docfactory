@@ -4539,8 +4539,8 @@ optuna-dashboard 0.21, нотатки релізів GitHub і записи PyPI
 Tardos, Knuth томи 1–3, Okasaki, Medjedovic, Petrov, Kleppmann і Riccomini 2-ге вид., Bhargava 2-ге вид., Bae, Beyond Cracking the
 Coding Interview, розпізнана зі скану), безкоштовні Erickson із конспектами поза книжкою, Morin, Mathematics for Computer Science і
 Laaksonen, курси MIT 6.006 (2020) і 6.046J (2015) з лекціями, завданнями й іспитами, усі статті cp-algorithms, Algorithms for Modern
-Hardware і вісім класичних статей (LLRB, diff Myers, skip list, Bloom, консистентне хешування, HyperLogLog, LSM-дерево, Raft).
-Усього 2215 документів і 24 453 фрагменти; новий читач `ocr-pages`.
+Hardware, пояснення й код JavaScript репозиторію javascript-algorithms і вісім класичних статей (LLRB, diff Myers, skip list,
+Bloom, консистентне хешування, HyperLogLog, LSM-дерево, Raft). Усього 2518 документів і 25 141 фрагмент; новий читач `ocr-pages`.
 
 - порт `8968`; запис у Claude Code — `algorithms-docs`, адреса `http://127.0.0.1:8968/mcp`; інструменти `search_docs` і `read_section`;
 - версій немає: кожна книжка — одне видання;

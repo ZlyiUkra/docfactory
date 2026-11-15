@@ -8645,7 +8645,7 @@ Labs 5-6 (Ansible), Lab 7 (Grafana Alloy), Lab 11 (OpenBao, External Secrets Ope
 
 **Порт** 8968, сервер `algorithms-docs`. Підняти: `./df algorithms serve`. Адреса: `http://127.0.0.1:8968/mcp`.
 
-**Обсяг.** Документів: 2 215, фрагментів: 24 453.
+**Обсяг.** Документів: 2 518, фрагментів: 25 141.
 
 **Опис.**
 
@@ -8665,9 +8665,9 @@ Labs 5-6 (Ansible), Lab 7 (Grafana Alloy), Lab 11 (OpenBao, External Secrets Ope
 **Склад (так його описано моделі, англійською).**
 
 Documents : chapters of algorithm textbooks, Knuth's The Art of Computer Programming volumes 1-3, lecture notes and
-problem sets of MIT 6.006 and 6.046J, cp-algorithms, Algorithms for Modern Hardware, classic papers, and Beyond
-Cracking the Coding Interview. Language and library references (JavaScript, Python, Go) are not here: other servers
-hold them.
+problem sets of MIT 6.006 and 6.046J, cp-algorithms, Algorithms for Modern Hardware, the explanations and JavaScript
+code of javascript-algorithms, classic papers, and Beyond Cracking the Coding Interview. Language and library
+references (JavaScript, Python, Go) are not here: other servers hold them.
 
 **Далі в [README](../instances/algorithms/README.md):** Що всередині; Обмеження текстів; Як читаються файли; Корпус
 лише локально; Як запустити.
