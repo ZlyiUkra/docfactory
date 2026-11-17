@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 228. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 229. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8988, вільний усередині: 8769. Наступний новий: 8989.
+Зайняті порти: 8760–8989, вільний усередині: 8769. Наступний новий: 8990.
 
 ## Як обирати
 
@@ -111,6 +111,7 @@
 | [`lightweight-charts`](#lightweight-charts) | 8826 | Малюєте фінансові графіки через Lightweight Charts. |
 | [`threejs`](#threejs) | 8935 | Робите 3D у браузері через three.js. |
 | [`react-three-fiber`](#react-three-fiber) | 8936 | Робите 3D у React через React Three Fiber і drei. |
+| [`konva`](#konva) | 8989 | Малюєте на HTML5 canvas об'єктами через Konva або react-konva: фігури, події, перетягування, Transformer, вивантаження в картинку. |
 
 ### Збирання, перевірка коду, тести
 
@@ -2456,6 +2457,47 @@ belongs to the other member, name its server.
 **Далі в [README](../instances/react-three-fiber/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки
 цього; Що в цій теці; Звідки документація; Межі, про які треба пам'ятати; Родина three.js: піднімати разом; Архівний
 режим: сервер без корпусу; Установка venv; Збирання корпусу; Сервер під Claude Code.
+
+### konva
+
+**Коли піднімати.** Малюєте на HTML5 canvas об'єктами через Konva або react-konva: фігури, події, перетягування, Transformer, вивантаження в картинку.
+
+**Порт** 8989, сервер `konva-docs`. Підняти: `./df konva serve`. Адреса: `http://127.0.0.1:8989/mcp`.
+
+**Обсяг.** Документів: 804, фрагментів: 2 870.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про Konva — бібліотеку, яка малює на HTML5 canvas об'єктами (`Stage`,
+`Layer`, фігури, події, перетягування, `Transformer`, фільтри, анімації) — і про react-konva, її обгортку для React.
+Документація — сайт konvajs.org станом на 16.11.2026 (Konva 10.9.1), README кожної стабільної версії трьох пакетів,
+журнал змін і релізи GitHub; лише англійською. Код спільний і лежить у `../../engine/`, `../../server/` та
+`../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../README.md).
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the Konva documentation -- the site konvajs.org as of 16 November 2026 (tutorials, the React, Vue, Svelte
+and Angular sections, sandbox demos, articles and the API reference of Konva 10.9.1), the code of the svelte-konva
+demos and of four react-konva demo applications, the README of every stable version and the npm registry history of
+konva, react-konva and react-konva-utils, the Konva changelog 0.8 to 10.9, the react-konva release notes and React
+compatibility table, and the GitHub release notes of konva and react-konva. Prereleases, the Chinese translation of
+the site, the packages vue-konva, svelte-konva and ng2-konva, and other canvas libraries are not here.
+
+**Межі.**
+
+- Посібник, приклади й довідник API є лише для Konva 10.9.1. Про старіші версії відомо з README, журналу змін і
+  релізів.
+- README немає в п'яти версій, для яких реєстр не записав ні коміту, ні тегу: react-konva 0.4.0, 0.4.1, 0.4.2 і
+  19.2.7, react-konva-utils 0.1.0.
+- Релізи konva на GitHub починаються з 9.2.1; раніші версії описує журнал змін.
+- Пакети `vue-konva`, `svelte-konva` і `ng2-konva` (README, реєстр, релізи) не входять: є лише сторінки сайту про
+  них і код прикладів Svelte. Китайський переклад сайту не береться, передрелізи теж.
+- Сам Canvas API браузера і SVG — у примірнику `mdn`; сам React — у примірнику `react`. Інші бібліотеки для полотна
+  (Fabric.js, PixiJS, Paper.js) не входять.
+
+**Далі в [README](../instances/konva/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в цій
+теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
+корпусу; Сервер під Claude Code.
 
 <!-- тема: Збирання, перевірка коду, тести -->
 

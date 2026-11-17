@@ -4823,6 +4823,28 @@ plotly.com/python-api-reference 7.1 зі сторінкою кожної фун�
 - корпус — в архіві від самого початку;
 - докладніше — у [instances/arch/README.md](instances/arch/README.md).
 
+### konva
+
+Документація Konva англійською — бібліотеки, що малює на HTML5 canvas об'єктами (`Stage`, `Layer`, фігури, події,
+перетягування, `Transformer`, фільтри, анімації), — і react-konva, її обгортки для React. Сайт konvajs.org станом на
+16.11.2026 (Konva 10.9.1): посібник за темами, розділи React, Vue, Svelte й Angular, 69 прикладів sandbox із кодом,
+статті й довідник API кожного класу; код прикладів svelte-konva і чотирьох застосунків react-konva; README кожної
+стабільної версії й реєстр npm пакетів `konva`, `react-konva` і `react-konva-utils`; журнал змін Konva 0.8–10.9, нотатки
+випусків react-konva, релізи GitHub обох. 804 документи, 2 870 фрагментів.
+
+- порт `8989`; запис у Claude Code — `konva-docs`, адреса `http://127.0.0.1:8989/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-konva`, модель векторів — `bge-small`;
+- версія — лінія Konva (`version: "10"`, `"10.9"`, `"9"`); сайт цілком несе 10.9.1; react-konva і react-konva-utils —
+  з префіксом (`"react-konva-19"`, `"react-konva-18"`, `"react-konva-utils-2"`); без названої версії — Konva 10.9 і
+  react-konva 19.3 (Konva 10 — 64 % завантажень за тиждень до 17.11.2026, react-konva 19 — 61 %);
+- на сторінках посібника той самий приклад стоїть під підписами «Vanilla:», «React:» і «Vue:»;
+- не входять: передрелізи, китайський переклад сайту, пакети `vue-konva`, `svelte-konva` і `ng2-konva`, сам Canvas API
+  браузера (примірник `mdn`), сам React (примірник `react`), інші бібліотеки для полотна;
+- приклад питання агентові: `./df konva ask "How do I resize and rotate a shape with Transformer in react-konva?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/konva/README.md](instances/konva/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
