@@ -16,6 +16,9 @@
 - `exercises` — назва розділу вправ (`Exercises`): кожен пункт «N.» у ньому стає підрозділом
   «Exercise N», щоб вправу знаходило питання «вправа 2 глави 5»;
 - `name_prefix` — початок імені кожного документа книжки (друга книжка в тому самому примірнику);
+- `book` — назва книжки, що стоїть перед назвою кожного документа («Contieri, Clean Code Cookbook
+  (O'Reilly, 2023): Chapter 5. Mutability»): у примірнику, де книжка лежить поруч із сайтами й іншими
+  книжками, назва «Chapter 5. Mutability» не каже, звідки вона. Без поля назва документа — сама глава;
 - для набору іншого видавця: `headings` і `labels` з виразом шрифту після кегля («10.5/DemiIt» —
   лише шрифт, чия назва містить DemiIt: у Manning назва врізки й підрозділ мають один кегль),
   `code_char_width` — ширина знака моноширинного шрифту в кеглях (Courier — 0.6), `furniture_above` —
@@ -209,7 +212,14 @@ class _Book:
                 continue  # назва глави на її першій сторінці: назву документа дають закладки
             heading = None if mono else self._match(row, self.headings)
             if heading:
-                blocks.append(("h", heading[2], " ".join(raw.split())))
+                text = " ".join(raw.split())
+                # Довга назва розділу займає два рядки («14.14 Converting Nonpolymorphic Functions» і
+                # «to Polymorphic»): рядок заголовка того самого рівня одразу під заголовком — його
+                # продовження, а не новий розділ.
+                if blocks and blocks[-1][0] == "h" and blocks[-1][1] == heading[2]:
+                    blocks[-1] = ("h", heading[2], f"{blocks[-1][2]} {text}")
+                else:
+                    blocks.append(("h", heading[2], text))
                 continue
             if not mono and self._match(row, self.labels):
                 blocks.append(("label", " ".join(raw.split())))
@@ -337,7 +347,7 @@ def pdf_book(source: dict, ctx) -> list[Item]:
     for title, text in texts:
         name = lead + _markup.slug(title)
 
-        def make(title=title, text=text):
+        def make(title=f"{source['book']}: {title}" if source.get("book") else title, text=text):
             body = _repair(text, vocab)
             _markup.require(title, body, source["url"])
             return _markup.document(title, source["url"], ctx.stamp, body, source.get("version", ""))

@@ -4,7 +4,15 @@
                назвою кожного документа; `page` — людська адреса книжки для шапки (сторінка видавця).
                Необов'язкові: `skip` — вираз назв глав, що не беруться (зміст, покажчик); `name_prefix`
                — початок імені кожного документа; `version` — мітка версії; `min_chars` — найкоротше
-               тіло.
+               тіло. `classes` — об'єкт «клас абзацу → тег, яким цей абзац є насправді»: у книжці
+               Yaroshenko «Design Patterns in .NET» (BPB) заголовки розділів і код набрано звичайними
+               абзацами — `<p class="head1">`, `<p class="head2">`, а кожен рядок коду — окремий
+               `<p class="noindent1_code">`. Без поля глава лягає одним розділом без підзаголовків, а
+               код розсипається на абзаци по рядку. Тег `pre` збирає абзаци, що йдуть підряд, в один
+               блок коду; `code_lang` — мова, якою такий блок підписується (```` ```csharp ````).
+               `titles` — об'єкт «назва глави, як її видобуто → назва документа»: у тій самій книжці
+               перший заголовок глави читається як «CHAPTER 2Creational Design Patterns…». Без цих
+               трьох полів усе, як і було.
 
 Навіщо. Друге видання «Machine Learning for Algorithmic Trading» Стефана Янсена є в користувача лише
 EPUB-ом. EPUB — це ZIP: файл `META-INF/container.xml` називає опис книжки (OPF), а той перелічує
@@ -29,6 +37,23 @@ _HEADING = re.compile(r"<h[1-3][^>]*>(.*?)</h[1-3]>", re.S | re.I)
 _BODY = re.compile(r"<body\b[^>]*>(.*)</body>", re.S | re.I)
 
 
+def _reclass(html: str, classes: dict, code_lang: str) -> str:
+    """Абзаци з названими класами — справжніми тегами: заголовок стає `<h2>`/`<h3>`, а рядки коду,
+    що йдуть підряд, — одним `<pre>`, щоб `html_body` побачив і розділи, і блок коду."""
+    for cls, tag in classes.items():
+        one = rf'<p\b[^>]*\bclass="{re.escape(cls)}"[^>]*>(.*?)</p>'
+        if tag == "pre":
+            opening = f'<pre class="language-{code_lang}">' if code_lang else "<pre>"
+
+            def block(m, one=one, opening=opening):
+                return opening + "\n".join(re.findall(one, m.group(0), re.S)) + "</pre>\n"
+
+            html = re.sub(rf"(?:{one}\s*)+", block, html, flags=re.S)
+        else:
+            html = re.sub(one, rf"<{tag}>\1</{tag}>", html, flags=re.S)
+    return html
+
+
 @register("epub-local")
 def epub_local(source: dict, ctx) -> list[Item]:
     path = source.get("file")
@@ -39,6 +64,8 @@ def epub_local(source: dict, ctx) -> list[Item]:
     lead = f"{_markup.slug(source.get('name_prefix') or source['id'])}-"
     min_chars = int(source.get("min_chars", 200))
     page_url = source.get("page", "")
+    classes = source.get("classes") or {}
+    titles = source.get("titles") or {}
     try:
         book = zipfile.ZipFile(path)
     except (OSError, zipfile.BadZipFile) as exc:
@@ -61,8 +88,11 @@ def epub_local(source: dict, ctx) -> list[Item]:
             if not member or not member.endswith((".xhtml", ".html", ".htm")):
                 continue
             html = book.read(member).decode("utf-8", "replace")
+            if classes:
+                html = _reclass(html, classes, source.get("code_lang", ""))
             head = _HEADING.search(html)
             title = _markup.html_body(head.group(1)).strip() if head else ""
+            title = titles.get(" ".join(title.split()), title)
             # Packt ставить номер глави окремим заголовком («<h1>11</h1>»), а назву — наступним.
             if head and re.fullmatch(r"\d+", title):
                 second = _HEADING.search(html, head.end())
