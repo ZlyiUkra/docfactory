@@ -36,6 +36,8 @@
 - **Статті Мартіна, Liskov & Wing** — знімки, що не змінюються.
 - **Глави книг** (`corpus/book-*.txt`, README, «Книги») — не джерела `sources.json`: `refresh` їх не тягне й не
   чіпає, `manifest` і `vectors` беруть їх разом з усім корпусом. Видобуває їх `books.py` примірника.
+- **Дві книги цілком** (`yaroshenko-dotnet`, `contieri-clean-code-cookbook`) — заморожені джерела з файлів у
+  `raw/local/`: `refresh` без імен їх оминає. Перечитати книгу з файла — `./df patterns refresh <id>`.
 
 Internet Archive часом відповідає «Temporarily Offline»: `refresh` тоді повторює запит, а якщо не вийшло — документ
 лишається як був. Повторити пізніше: `./df patterns refresh --missing`.
