@@ -357,7 +357,7 @@
 
 | Примірник | Порт | Коли піднімати |
 |---|---:|---|
-| [`patterns`](#patterns) | 8777 | Обираєте шаблон проєктування або рефакторинг за refactoring.guru. |
+| [`patterns`](#patterns) | 8777 | Обираєте шаблон проєктування або рефакторинг за refactoring.guru; шукаєте патерн із кодом на C# за книжкою Design Patterns in .NET або рецепт проти запаху коду за Clean Code Cookbook. |
 | [`frontend-architecture`](#frontend-architecture) | 8790 | Обираєте будову фронтенду: Feature-Sliced Design та інші підходи. |
 | [`htdp`](#htdp) | 8912 | Читаєте книжку How to Design Programs або виконуєте її вправи в Racket. |
 | [`agent-harness-course`](#agent-harness-course) | 8942 | Вчитеся будувати оболонку для агентів за курсом Agent Harness Course. |
@@ -8475,20 +8475,21 @@ Bailey and López de Prado). Platform and library documentation is not here.
 
 ### patterns
 
-**Коли піднімати.** Обираєте шаблон проєктування або рефакторинг за refactoring.guru.
+**Коли піднімати.** Обираєте шаблон проєктування або рефакторинг за refactoring.guru; шукаєте патерн із кодом на C# за книжкою Design Patterns in .NET або рецепт проти запаху коду за Clean Code Cookbook.
 
 **Порт** 8777, сервер `patterns-docs`. Підняти: `./df patterns serve`. Адреса: `http://127.0.0.1:8777/mcp`.
 
-**Обсяг.** Документів: 463, фрагментів: 3 931.
+**Обсяг.** Документів: 502, фрагментів: 5 480.
 
 **Опис.**
 
 Сімнадцятий примірник фабрики: захищений MCP-сервер, що відповідає на питання про патерни проєктування, рефакторинг і
 принципи SOLID та GRASP: сайт [refactoring.guru](https://refactoring.guru/) (англійська версія),
 [patterns.dev](https://www.patterns.dev/) (патерни JavaScript, React і Vue), оригінальні статті й блог Роберта
-Мартіна, стаття Лісков і Вінг, статті Вікіпедії і глави чотирьох книг про GRASP і SOLID (див. «Книги»). Код спільний і
-лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій
-фабрики — у [../../README.md](../README.md).
+Мартіна, стаття Лісков і Вінг, статті Вікіпедії, глави трьох книг про GRASP і SOLID і дві книги цілком: «Design
+Patterns in .NET» Тимура Ярошенка з кодом на C# і «Clean Code Cookbook» Максиміліано Контьєрі з рецептами проти
+запахів коду (див. «Книги»). Код спільний і лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека
+тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../README.md).
 
 **Склад (так його описано моделі, англійською).**
 
@@ -8501,15 +8502,19 @@ Ruby, Rust and Swift. Next to it: patterns.dev (JavaScript, performance, renderi
 from Robert C. Martin's original articles and blog, Liskov and Wing's 1994 paper and Wikipedia; GRASP and coupling,
 cohesion, the Law of Demeter and composition over inheritance from Wikipedia; and the GRASP and SOLID chapters of
 Larman's "Applying UML and Patterns" (2004), Martin and Martin's "Agile Principles, Patterns, and Practices in C#"
-(2006) and Martin's "Clean Architecture" (2017). Architecture patterns, other frameworks' patterns and the rest of
-those books are not here.
+(2006) and Martin's "Clean Architecture" (2017); and two books in full -- Yaroshenko's "Design Patterns in .NET"
+(2024: OOP in .NET, the 22 patterns with C# code, SOLID, dependency injection in .NET Core) and Contieri's "Clean Code
+Cookbook" (2023: 25 chapters of recipes against code smells, with code in several languages, and a glossary).
+Architecture patterns, other frameworks' patterns and the rest of Larman's and Martin's books are not here.
 
 **Межі.**
 
 Тут 22 класичні патерни (GoF), запахи коду й техніки за Фаулером, патерни JS/React/Vue з patterns.dev, SOLID і
-GRASP, з главами книг Ларманa й Мартіна. Немає архітектурних патернів (MVC, мікросервіси, CQRS), патернів інших
-фреймворків (NestJS, Angular, Redux), книг Gang of Four і Фаулера, а з книг Ларманa й Мартіна — решти глав (зокрема
-архітектурних частин «Clean Architecture»).
+GRASP, з главами книг Ларманa й Мартіна, і дві книги цілком: «Design Patterns in .NET» Ярошенка (патерни, SOLID і
+впровадження залежностей з кодом на C#) і «Clean Code Cookbook» Контьєрі (рецепти проти запахів коду). Немає
+архітектурних патернів (MVC, мікросервіси, CQRS), патернів інших фреймворків (NestJS, Angular, Redux), книг Gang of
+Four і Фаулера, а з книг Ларманa й Мартіна — решти глав (зокрема архітектурних частин «Clean Architecture»). Код
+рецептів «Clean Code Cookbook» написано різними мовами, і мову блоку там не підписано.
 
 **Далі в [README](../instances/patterns/README.md):** Навіщо; Корпус лише локально; Скільки цього; Книги; Що в цій
 теці; Звідки документація; Межі, про які треба пам'ятати; Установка venv; Збирання корпусу; Сервер під Claude Code; На
