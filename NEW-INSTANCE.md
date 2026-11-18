@@ -202,6 +202,10 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   by guides and reference can feed two sources. Old lines of the same reference (HTML, one template) go as one
   family with a `slug_rewrite` that removes the version from the page key: identical text of neighbouring lines is
   indexed once.
+  A member stays when its parent has no page in the corpus: TypeDoc names such a parent in plain text (`PixiMixins`)
+  or links to a page that `llms.txt` does not list (`AccessibleOptions`). The first build dropped these too and lost
+  638 descriptions (`accessible`, `cullArea`); after any build with `skip_inherited`, compare the origins of the
+  dropped members with the list of pages.
 - **A TypeDoc reference built inside a Starlight site, HTML only** (fabricjs.com/api, plugin starlight-typedoc: no
   markdown pages in the repository or on the site) — reader `sitemap-starlight-typedoc`, the same two fields as
   `llms-typedoc` applied to HTML. A member is dropped only when its «Inherited from» line links to the parent: a
@@ -1366,6 +1370,10 @@ and what a taken port and a failed connection look like. A domain list in the ro
   на посібник і довідник, може живити два джерела. Старі лінії того самого довідника (HTML, один шаблон) ідуть однією
   родиною зі `slug_rewrite`, що знімає версію з ключа сторінки: однаковий текст сусідніх ліній лягає в індекс один
   раз.
+  Член лишається, коли його предок не має сторінки в корпусі: TypeDoc називає такого предка простим текстом
+  (`PixiMixins`) або посиланням на сторінку, якої `llms.txt` не перелічує (`AccessibleOptions`). Перше збирання
+  прибирало й ці члени і втратило 638 описів (`accessible`, `cullArea`); після будь-якого збирання зі
+  `skip_inherited` звірте походження прибраних членів із переліком сторінок.
 - **Довідник TypeDoc усередині сайту Starlight, лише HTML** (fabricjs.com/api, плагін starlight-typedoc: markdown-
   сторінок немає ні в репозиторії, ні на сайті) — читач `sitemap-starlight-typedoc`, ті самі два поля, що в
   `llms-typedoc`, але над HTML. Член викидається лише тоді, коли в рядку «Inherited from» предок названий
@@ -2508,6 +2516,10 @@ errada.
   um `llms.txt` comum ao guia e à referência pode alimentar duas fontes. As linhas antigas da mesma referência (HTML, um
   só modelo) entram como uma família com um `slug_rewrite` que tira a versão da chave da página: o texto idêntico de
   linhas vizinhas é indexado uma vez.
+  Um membro fica quando a classe-mãe não tem página no corpus: o TypeDoc escreve essa origem em texto simples
+  (`PixiMixins`) ou liga a uma página que o `llms.txt` não lista (`AccessibleOptions`). A primeira construção retirava
+  também estes membros e perdeu 638 descrições (`accessible`, `cullArea`); depois de qualquer construção com
+  `skip_inherited`, compare as origens dos membros retirados com a lista de páginas.
 - **Uma referência TypeDoc gerada dentro de um site Starlight, só em HTML** (fabricjs.com/api, plugin
   starlight-typedoc: não há páginas markdown nem no repositório nem no site) — leitor `sitemap-starlight-typedoc`,
   os mesmos dois campos de `llms-typedoc` aplicados ao HTML. Um membro só é retirado quando a linha «Inherited from»

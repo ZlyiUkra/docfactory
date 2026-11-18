@@ -4,8 +4,9 @@
                  `heading_floor` — найглибший рівень заголовка, що ще ділить документ на розділи:
                  глибші стають рядками жирним (поза блоками коду), як у `sitemap-md-suffix`;
                  `skip_inherited: true` — розділ члена класу, що несе підзаголовок «Inherited from»,
-                 у текст не йде; наприкінці документа лишається розділ «Inherited members» з
-                 переліком імен і тим, звідки кожен успадковано;
+                 у текст не йде, якщо предок названий посиланням на сторінку цього ж джерела;
+                 наприкінці документа лишається розділ «Inherited members» з переліком імен і
+                 тим, звідки кожен успадковано;
                  `drop` — перелік виразів (рядкових, `re.M`), збіги яких прибираються до розбору;
                  `min_chars` — найкоротше тіло сторінки без заголовків, що ще вважається
                  документом (типово спільна межа `_markup.MIN_BODY`).
@@ -26,6 +27,14 @@ markdown-двійники сторінок перелічує llms.txt сайт�
 `skip_inherited` опис члена лишається один раз, на сторінці класу, що його оголосив, а
 нащадок каже, що член у нього є і чий він.
 
+Не кожен предок має сторінку в корпусі. TypeDoc пише походження двома способами: посиланням
+(«[`Container`](scene.Container.html.md).[`alpha`](…)») і простим текстом
+(«`PixiMixins.Container.cursor`»), коли предка в довіднику немає. А посилання буває на
+сторінку, якої llms.txt не перелічує: `AccessibleOptions`, `ViewContainerOptions`,
+`CullingMixinConstructor`. В обох випадках член більше ніде не описано, тому він лишається
+на сторінці нащадка. Перша редакція читача цього не розрізняла, і довідник PixiJS 8 з PixiJS 3D
+втратив описи 638 членів (`accessible`, `cullArea`, `eventMode` у 3D та інші).
+
 Чому окремий модуль, а не поля в `llms`: примірники з тим читачем зібрані й звірені, а правка
 спільного читача — ризик зсуву в готовій роботі. Перелік сторінок складається так само, як у
 `llms`, поділ заголовків — тим самим `_floor`, що в `sitemap-md-suffix`.
@@ -44,11 +53,19 @@ _MEMBER = re.compile(r"^###[ \t]+(.+?)[ \t#]*$")
 _SECTION = re.compile(r"^#{1,2}[ \t]+\S")
 _INHERITED = re.compile(r"^####[ \t]+Inherited from[ \t]*$")
 _RULE = re.compile(r"^\*{3,}[ \t]*$")
+_ORIGIN = re.compile(r"\[[^\]]*\]\(([^)#\s]+)")
 
 
-def _skip_inherited(text: str) -> str:
-    """Розділи третього рівня з підзаголовком «Inherited from» — геть; їхні імена й походження
-    складаються в розділ «Inherited members» наприкінці. Рядки в огорожах коду не розбираються."""
+def _page_key(address: str) -> str:
+    """Ім'я сторінки без шляху й без «.md» — ним звіряється посилання на предка з переліком."""
+    name = address.rsplit("/", 1)[-1].lower()
+    return name[:-3] if name.endswith(".md") else name
+
+
+def _skip_inherited(text: str, known: set) -> str:
+    """Розділи третього рівня з підзаголовком «Inherited from», чий предок має сторінку з
+    `known`, — геть; їхні імена й походження складаються в розділ «Inherited members»
+    наприкінці. Рядки в огорожах коду не розбираються."""
     blocks: list[list[str]] = [[]]
     fence = ""
     for line in text.split("\n"):
@@ -69,6 +86,12 @@ def _skip_inherited(text: str) -> str:
             out.extend(block)
             continue
         origin = next((line.strip() for line in block[at + 1:] if line.strip()), "")
+        # Предок без посилання або з посиланням на сторінку поза переліком: опис члена стоїть
+        # лише тут, і викинути його означало б втратити зовсім.
+        parent = _ORIGIN.search(origin)
+        if not parent or _page_key(parent.group(1)) not in known:
+            out.extend(block)
+            continue
         origin = origin.replace("`", "")
         inherited.append(f"- `{head.group(1).strip()}`" + (f" — from {origin}" if origin else ""))
         # Лінія-роздільник перед наступним членом належала викинутому: без нього вона зайва.
@@ -98,6 +121,7 @@ def llms_typedoc(source: dict, ctx) -> list[Item]:
     if not links:
         raise SystemExit(f"У переліку {source['url']} не знайдено жодної дозволеної "
                          f"сторінки .md — розмітка змінилася або `within` не той.")
+    known = {_page_key(urlsplit(url).path) for url in links}
     items = []
     for url in links:
         page = url[:-3]
@@ -109,7 +133,7 @@ def llms_typedoc(source: dict, ctx) -> list[Item]:
             for pattern in drop:
                 text = pattern.sub("", text)
             if source.get("skip_inherited") is True:
-                text = _skip_inherited(text)
+                text = _skip_inherited(text, known)
             if floor:
                 text = _floor(text, floor)
             _, rest = _markup.front_matter(text)
