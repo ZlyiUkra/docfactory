@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 229. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 230. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8989, вільний усередині: 8769. Наступний новий: 8990.
+Зайняті порти: 8760–8990, вільний усередині: 8769. Наступний новий: 8991.
 
 ## Як обирати
 
@@ -112,6 +112,7 @@
 | [`threejs`](#threejs) | 8935 | Робите 3D у браузері через three.js. |
 | [`react-three-fiber`](#react-three-fiber) | 8936 | Робите 3D у React через React Three Fiber і drei. |
 | [`konva`](#konva) | 8989 | Малюєте на HTML5 canvas об'єктами через Konva або react-konva: фігури, події, перетягування, Transformer, вивантаження в картинку. |
+| [`pixijs`](#pixijs) | 8990 | Робите швидку 2D-графіку чи гру через PixiJS або @pixi/react: спрайти, текстури, Assets, Graphics, фільтри, події, Ticker; довідник API ліній 4–8, PixiJS 3D і додатки (ui, sound, layout, viewport). |
 
 ### Збирання, перевірка коду, тести
 
@@ -2496,6 +2497,52 @@ the site, the packages vue-konva, svelte-konva and ng2-konva, and other canvas l
   (Fabric.js, PixiJS, Paper.js) не входять.
 
 **Далі в [README](../instances/konva/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в цій
+теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
+корпусу; Сервер під Claude Code.
+
+### pixijs
+
+**Коли піднімати.** Робите швидку 2D-графіку чи гру через PixiJS або @pixi/react: спрайти, текстури, Assets, Graphics, фільтри, події, Ticker; довідник API ліній 4–8, PixiJS 3D і додатки (ui, sound, layout, viewport).
+
+**Порт** 8990, сервер `pixijs-docs`. Підняти: `./df pixijs serve`. Адреса: `http://127.0.0.1:8990/mcp`.
+
+**Обсяг.** Документів: 2 791, фрагментів: 21 282.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про PixiJS — бібліотеку швидкої двовимірної графіки в браузері, — про
+Pixi React (пакет `@pixi/react`), про PixiJS 3D і про вісім пакетів-додатків. Документація — посібник PixiJS 8 з
+останнього тегу кожної мінорної 8.10–8.23, довідник API 8.23.0 і останньої версії ліній 7, 6, 5 і 4, код офіційних
+прикладів і підручників, README кожної стабільної версії, реєстр npm і релізи GitHub; лише англійською. Код спільний і
+лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій
+фабрики — у [../../README.md](../README.md).
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the PixiJS documentation -- the PixiJS 8 guides at the last release of every minor 8.10 to 8.23, the API
+reference of 8.23.0 and of the last release of the lines 7, 6, 5 and 4, the code of the official examples and
+tutorials, the PixiJS 7 guides, the blog, the official skills for AI assistants, Pixi React (@pixi/react 8 and 7),
+PixiJS 3D 0.1.0, the add-ons @pixi/ui, @pixi/sound, @pixi/layout, @pixi/devtools, @pixi/tilemap,
+@pixi/particle-emitter, @pixi/gif and pixi-viewport, the README of every stable version and the npm registry history
+of all these packages, and their GitHub release notes. Prereleases, third-party plugins and other libraries are not
+here.
+
+**Межі.**
+
+- Редакції посібника є з 8.10. До того посібник жив у репозиторії сайту без тегів, і його текстів для 8.0–8.9 не
+  збереглося; про ці версії відомо з README і релізів.
+- Довідник API є для 8.23.0 і для останньої версії кожної з ліній 7, 6, 5 і 4, а не для кожної мінорної. Для ліній
+  1–3 довідника немає: лише README і реєстр.
+- Опис успадкованого члена треба шукати на сторінці класу-предка (`Container`, `ViewContainer`).
+- Приклади PixiJS 8 є з 8.17, коли тека `examples/` з'явилася в основному репозиторії.
+- README немає у версії `@pixi/tilemap` 2.2.0 і в 112 старих версій `pixi-viewport`: реєстр не записав для них ні
+  коміту, ні тегу.
+- Довідники API додатків (сайти TypeDoc `@pixi/sound`, `@pixi/tilemap`, `@pixi/gif`, `@pixi/particle-emitter`,
+  Storybook `@pixi/ui`) не входять: додатки описані README, релізами й, де є, текою документації.
+- Не входять: передрелізи, сторонні плагіни (Spine та інші), сам Canvas API, WebGL і WebGPU (примірник `mdn`), сам
+  React (примірник `react`), three.js (примірник `threejs`), Konva (примірник `konva`).
+
+**Далі в [README](../instances/pixijs/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в цій
 теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
 корпусу; Сервер під Claude Code.
 
