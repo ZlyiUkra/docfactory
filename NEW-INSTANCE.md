@@ -202,6 +202,16 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   by guides and reference can feed two sources. Old lines of the same reference (HTML, one template) go as one
   family with a `slug_rewrite` that removes the version from the page key: identical text of neighbouring lines is
   indexed once.
+- **A TypeDoc reference built inside a Starlight site, HTML only** (fabricjs.com/api, plugin starlight-typedoc: no
+  markdown pages in the repository or on the site) — reader `sitemap-starlight-typedoc`, the same two fields as
+  `llms-typedoc` applied to HTML. A member is dropped only when its «Inherited from» line links to the parent: a
+  parent named in plain text has no page of its own (`SelectableCanvas` for `Canvas`, 146 members), and the member
+  is described nowhere else, so it stays. Check this before trusting `skip_inherited` on a new site: count the
+  origins without a page.
+- **Release tags without dots** (fabricjs/fabric.js: `v740` is 7.4.0) — reader `ghreleases-tag-version` with
+  `tag_version: [pattern, replacement]`. The common reader reads «740» as the version, and the filter by line «7»
+  misses the notes. `smoke` shows the symptom as «not every document carries a version» when one tag has a letter
+  (`v542b`); look at the version lines of the releases even when it passes.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1356,6 +1366,16 @@ and what a taken port and a failed connection look like. A domain list in the ro
   на посібник і довідник, може живити два джерела. Старі лінії того самого довідника (HTML, один шаблон) ідуть однією
   родиною зі `slug_rewrite`, що знімає версію з ключа сторінки: однаковий текст сусідніх ліній лягає в індекс один
   раз.
+- **Довідник TypeDoc усередині сайту Starlight, лише HTML** (fabricjs.com/api, плагін starlight-typedoc: markdown-
+  сторінок немає ні в репозиторії, ні на сайті) — читач `sitemap-starlight-typedoc`, ті самі два поля, що в
+  `llms-typedoc`, але над HTML. Член викидається лише тоді, коли в рядку «Inherited from» предок названий
+  посиланням: предок, названий простим текстом, власної сторінки не має (`SelectableCanvas` для `Canvas`, 146
+  членів), і більше цей член ніде не описано, тому він лишається. Перш ніж довіритися `skip_inherited` на новому
+  сайті, порахуйте предків без сторінки.
+- **Теги релізів без крапок** (fabricjs/fabric.js: `v740` — це 7.4.0) — читач `ghreleases-tag-version` з полем
+  `tag_version: [вираз, заміна]`. Спільний читач читає версію як «740», і фільтр за лінією «7» нотаток не знаходить.
+  `smoke` показує це як «не всі документи несуть версію», коли в якомусь тезі є літера (`v542b`); на рядки версії
+  релізів треба глянути, навіть коли перевірка пройшла.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2488,6 +2508,16 @@ errada.
   um `llms.txt` comum ao guia e à referência pode alimentar duas fontes. As linhas antigas da mesma referência (HTML, um
   só modelo) entram como uma família com um `slug_rewrite` que tira a versão da chave da página: o texto idêntico de
   linhas vizinhas é indexado uma vez.
+- **Uma referência TypeDoc gerada dentro de um site Starlight, só em HTML** (fabricjs.com/api, plugin
+  starlight-typedoc: não há páginas markdown nem no repositório nem no site) — leitor `sitemap-starlight-typedoc`,
+  os mesmos dois campos de `llms-typedoc` aplicados ao HTML. Um membro só é retirado quando a linha «Inherited from»
+  liga à classe-mãe: uma classe-mãe escrita em texto simples não tem página própria (`SelectableCanvas` para
+  `Canvas`, 146 membros), e o membro não está descrito em mais lado nenhum, por isso fica. Antes de confiar em
+  `skip_inherited` num site novo, conte as origens sem página.
+- **Tags de release sem pontos** (fabricjs/fabric.js: `v740` é 7.4.0) — leitor `ghreleases-tag-version` com
+  `tag_version: [expressão, substituição]`. O leitor comum lê «740» como versão, e o filtro pela linha «7» não
+  encontra as notas. O `smoke` mostra o sintoma como «nem todos os documentos têm versão» quando uma tag tem uma
+  letra (`v542b`); veja as linhas de versão das releases mesmo quando a verificação passa.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
