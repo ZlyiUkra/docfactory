@@ -4868,6 +4868,29 @@ PixiJS 3D 0.1.0; документація `@pixi/layout` і PixiJS Devtools; REA
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/pixijs/README.md](instances/pixijs/README.md).
 
+### fabricjs
+
+Документація Fabric.js англійською — бібліотеки, що перетворює HTML5 canvas на полотно з об'єктами, які користувач
+виділяє, тягає, масштабує й обертає, — і fabricjs-react, обгортки спільноти для React. Сайт fabricjs.com знімком
+17.11.2026: посібник зі статтями «Old docs», код прикладів і демонстрацій, довідник API Fabric.js 7.4.0; старий сайт
+fabric5.fabricjs.com з довідником API і демонстраціями Fabric.js 5; README пакетів репозиторію; README стабільних
+версій і реєстр npm `fabric`, `fabricjs-react`, `fabric-with-gestures`, `fabric-pure-browser` і `@types/fabric`;
+журнал змін і релізи GitHub. 1 001 документ, 8 171 фрагмент.
+
+- порт `8991`; запис у Claude Code — `fabricjs-docs`, адреса `http://127.0.0.1:8991/mcp`; інструменти `search_docs`
+  і `read_section`;
+- колекція у Qdrant — `docs-fabricjs`, модель векторів — `bge-small`;
+- версія — лінія Fabric.js (`version: "7"`, `"7.4"`, `"6"`, `"5"`); усе інше — з префіксом (`"fabricjs-react-2"`,
+  `"fabric-with-gestures-4"`, `"fabric-pure-browser-5"`, `"types-fabric-5"`); без названої версії — Fabric.js 7.4
+  (Fabric.js 7 — 61 % завантажень за тиждень до 18.11.2026, Fabric.js 6 — 18 %, Fabric.js 5 — 14 %);
+- член класу, успадкований від предка з власною сторінкою, у довіднику API 7 не повторюється: його описано на
+  сторінці предка;
+- не входять: передрелізи, окремий довідник API лінії 6 і ліній 1–4, 25 демонстрацій старого сайту без тексту, сам
+  Canvas API і SVG (примірник `mdn`), сам React (примірник `react`);
+- приклад питання агентові: `./df fabricjs ask "How do I add a rectangle to a canvas in Fabric.js 7?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/fabricjs/README.md](instances/fabricjs/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 230. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 231. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8990, вільний усередині: 8769. Наступний новий: 8991.
+Зайняті порти: 8760–8991, вільний усередині: 8769. Наступний новий: 8992.
 
 ## Як обирати
 
@@ -113,6 +113,7 @@
 | [`react-three-fiber`](#react-three-fiber) | 8936 | Робите 3D у React через React Three Fiber і drei. |
 | [`konva`](#konva) | 8989 | Малюєте на HTML5 canvas об'єктами через Konva або react-konva: фігури, події, перетягування, Transformer, вивантаження в картинку. |
 | [`pixijs`](#pixijs) | 8990 | Робите швидку 2D-графіку чи гру через PixiJS або @pixi/react: спрайти, текстури, Assets, Graphics, фільтри, події, Ticker; довідник API ліній 4–8, PixiJS 3D і додатки (ui, sound, layout, viewport). |
+| [`fabricjs`](#fabricjs) | 8991 | Робите редактор на HTML5 canvas через Fabric.js або fabricjs-react: об'єкти з рамкою й маркерами, виділення, текст, фільтри зображень, clipPath, збереження в JSON і SVG; довідник API Fabric.js 7 і 5, перехід з 5 на 6. |
 
 ### Збирання, перевірка коду, тести
 
@@ -2545,6 +2546,55 @@ here.
 **Далі в [README](../instances/pixijs/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в цій
 теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
 корпусу; Сервер під Claude Code.
+
+### fabricjs
+
+**Коли піднімати.** Робите редактор на HTML5 canvas через Fabric.js або fabricjs-react: об'єкти з рамкою й маркерами, виділення, текст, фільтри зображень, clipPath, збереження в JSON і SVG; довідник API Fabric.js 7 і 5, перехід з 5 на 6.
+
+**Порт** 8991, сервер `fabricjs-docs`. Підняти: `./df fabricjs serve`. Адреса: `http://127.0.0.1:8991/mcp`.
+
+**Обсяг.** Документів: 1 001, фрагментів: 8 171.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про Fabric.js — бібліотеку, яка перетворює HTML5 canvas на полотно з
+об'єктами, що їх користувач виділяє, тягає, масштабує й обертає мишею (`Canvas`, `Rect`, `Textbox`, `FabricImage`,
+маркери керування, фільтри, збереження в JSON і SVG), — і про fabricjs-react, обгортку спільноти для React.
+Документація — сайт fabricjs.com станом на 17.11.2026 (Fabric.js 7.4.0) з довідником API, старий сайт
+fabric5.fabricjs.com (Fabric.js 5), README і реєстр npm п'яти пакетів, журнал змін і релізи GitHub; лише англійською.
+Код спільний і лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену.
+Загальний устрій фабрики — у [../../README.md](../README.md).
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the Fabric.js documentation -- the site fabricjs.com as of 17 November 2026 (guides, the "Old docs"
+articles, demos with code and the API reference of Fabric.js 7.4.0), the old site fabric5.fabricjs.com (the API
+reference and demos of Fabric.js 5), the README of the stable versions from 1.4.4 on and the npm registry history of
+fabric, the changelog, the GitHub release notes, the README of the repository packages and extensions, and
+fabricjs-react, the community React wrapper. Prereleases (except their changelog entries), a separate API reference of
+Fabric.js 6 and other canvas libraries are not here.
+
+**Межі.**
+
+- Посібник і довідник API нового сайту є лише для Fabric.js 7.4.0. Окремого довідника для лінії 6 немає: про неї
+  відомо зі сторінки «Upgrading to Fabric 6.0», з README, журналу змін і релізів. API ліній 6 і 7 близькі, а що
+  саме змінилося, каже сторінка «Upgrading to Fabric 7.0».
+- Успадкованого члена класу в довіднику API 7 описано один раз, на сторінці предка: `Rect` → `FabricObject` →
+  `InteractiveFabricObject` → `BaseFabricObject`. Якщо на сторінці класу члена немає, його ім'я і предок стоять у
+  розділі «Inherited members» наприкінці цієї сторінки.
+- З 44 демонстрацій старого сайту в корпусі 19: у решти 25 сторінка — це лише полотно, а код лежить у вбудованому
+  скрипті, якого читач не бере. З 19 код у тексті мають дев'ять.
+- Довідник API ліній 1–4 не входить: сайт для них не зберігся, є лише README, журнал змін і релізи.
+- README немає в 97 версій fabric — це 1.4.3 і частина старіших: реєстр не записав для них ні коміту, ні тегу.
+  Порожні в журналі змін розділи 6.0.0 і 1.0.0 документами не стали.
+- fabricjs-react — пакет спільноти з README на одну сторінку; іншої документації в нього немає. Передрелізи README і
+  релізів не беруться.
+- Сам Canvas API браузера і SVG — у примірнику `mdn`; сам React — у примірнику `react`. Інші бібліотеки для полотна
+  мають власні примірники: `konva`, `pixijs`.
+
+**Далі в [README](../instances/fabricjs/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в
+цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv;
+Збирання корпусу; Сервер під Claude Code.
 
 <!-- тема: Збирання, перевірка коду, тести -->
 
