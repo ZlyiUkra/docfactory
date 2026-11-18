@@ -194,6 +194,14 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   with `md_suffix: "/index.html.md"`, `drop` for the «Defined in: src/…» lines and `heading_floor: 3`, so a fragment
   holds a whole property and not its «Returns». If the site pages for plain words (`Reference`, `Array`) still drown
   under the reference, raise `fusion_depth` by measurement (20 gave «as a model» 7 → 10 of 10).
+- **A TypeDoc reference whose markdown pages are listed in `llms.txt`** (PixiJS 8, PixiJS 3D: pixijs.download/v8.23.0/docs)
+  — reader `llms-typedoc`: `heading_floor: 3` keeps a whole class member as one fragment (268 pages carried 28 850
+  «Parameters», «Returns», «Default» subheadings), and `skip_inherited: true` drops the members TypeDoc copies from
+  parent classes onto every page (4 765 of 6 865) and leaves a list «Inherited members» with their origin. The
+  constructor always stays. The reader takes only links inside the source's own `within`, so one `llms.txt` shared
+  by guides and reference can feed two sources. Old lines of the same reference (HTML, one template) go as one
+  family with a `slug_rewrite` that removes the version from the page key: identical text of neighbouring lines is
+  indexed once.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1340,6 +1348,14 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `sitemap-md-suffix` з `md_suffix: "/index.html.md"`, `drop` для рядків «Defined in: src/…» і `heading_floor: 3`, щоб
   фрагмент тримав цілу властивість, а не її «Returns». Якщо сторінки сайту на прості слова (`Reference`, `Array`) усе
   одно тонуть під довідником — підняти `fusion_depth` за заміром (20 дало «як модель» 7 → 10 із 10).
+- **Довідник TypeDoc, чиї markdown-сторінки перелічує `llms.txt`** (PixiJS 8, PixiJS 3D: pixijs.download/v8.23.0/docs)
+  — читач `llms-typedoc`: `heading_floor: 3` лишає фрагментом цілий член класу (268 сторінок несли 28 850
+  підзаголовків «Parameters», «Returns», «Default»), а `skip_inherited: true` прибирає члени, які TypeDoc копіює з
+  класів-предків на кожну сторінку (4 765 із 6 865), і лишає перелік «Inherited members» з їхнім походженням.
+  Конструктор лишається завжди. Читач бере лише посилання з власного `within` джерела, тож один `llms.txt`, спільний
+  на посібник і довідник, може живити два джерела. Старі лінії того самого довідника (HTML, один шаблон) ідуть однією
+  родиною зі `slug_rewrite`, що знімає версію з ключа сторінки: однаковий текст сусідніх ліній лягає в індекс один
+  раз.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2464,6 +2480,14 @@ errada.
   para que um fragmento guarde uma propriedade inteira e não o seu «Returns». Se as páginas do site para palavras simples
   (`Reference`, `Array`) ainda se afogam sob a referência, subir `fusion_depth` por medição (20 deu «como modelo» 7 → 10
   de 10).
+- **Uma referência TypeDoc cujas páginas markdown estão listadas no `llms.txt`** (PixiJS 8, PixiJS 3D:
+  pixijs.download/v8.23.0/docs) — leitor `llms-typedoc`: `heading_floor: 3` mantém um membro de classe inteiro como um
+  trecho (268 páginas traziam 28 850 subtítulos «Parameters», «Returns», «Default»), e `skip_inherited: true` retira os
+  membros que o TypeDoc copia das classes-mãe para cada página (4 765 de 6 865) e deixa uma lista «Inherited members»
+  com a origem de cada um. O construtor fica sempre. O leitor só aceita links dentro do `within` da própria fonte, então
+  um `llms.txt` comum ao guia e à referência pode alimentar duas fontes. As linhas antigas da mesma referência (HTML, um
+  só modelo) entram como uma família com um `slug_rewrite` que tira a versão da chave da página: o texto idêntico de
+  linhas vizinhas é indexado uma vez.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
