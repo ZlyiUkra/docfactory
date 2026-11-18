@@ -2507,7 +2507,7 @@ the site, the packages vue-konva, svelte-konva and ng2-konva, and other canvas l
 
 **Порт** 8990, сервер `pixijs-docs`. Підняти: `./df pixijs serve`. Адреса: `http://127.0.0.1:8990/mcp`.
 
-**Обсяг.** Документів: 2 791, фрагментів: 21 282.
+**Обсяг.** Документів: 2 791, фрагментів: 21 908.
 
 **Опис.**
 
