@@ -236,6 +236,12 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   and `skip_inherited`. Hash the converted text, not the HTML: the pages of neighbouring versions differ in markup
   around the same text (349 pages, 153 different texts). Example pages that are HTML with an embedded script go
   through `ghcode-history` with `html_pages: true`.
+- **A dr.js reference: one HTML page for the whole API** (Snap.svg `doc/reference.html`: a menu of six hundred links
+  and two hundred `<article id="Element.attr">` blocks) — reader `ghdocs-history-drjs`: a section per article, inner
+  headings as bold lines. The heading level of a method differs between versions (`<h4>`, `<h3>`, `<h2>`), so a
+  generic HTML reader splits each version its own way. When nearly the whole corpus is one document, write the
+  `quality` targets as sections (`api-reference#paper-circle-x-y-r`): a bare document target counts any of its
+  sections as a hit, and the first measurement here showed 10 of 10 that meant nothing.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1424,6 +1430,12 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `skip_inherited`. Хеш рахують від перетвореного тексту, а не від HTML: сторінки сусідніх версій різняться
   розміткою довкола того самого тексту (349 сторінок, 153 різні тексти). Приклади, що є сторінками HTML з
   вбудованим скриптом, бере `ghcode-history` з `html_pages: true`.
+- **Довідник dr.js: одна сторінка HTML на весь API** (Snap.svg `doc/reference.html`: меню на шістсот посилань і
+  двісті блоків `<article id="Element.attr">`) — читач `ghdocs-history-drjs`: розділ на блок, внутрішні заголовки —
+  рядками жирним. Рівень заголовка методу між версіями різний (`<h4>`, `<h3>`, `<h2>`), тож спільний читач HTML ділив
+  би кожну версію по-своєму. Коли майже весь корпус — один документ, цілі `quality` пишуть розділами
+  (`api-reference#paper-circle-x-y-r`): ціль-документ зараховує будь-який його розділ, і перший замір тут показав
+  10 із 10, які нічого не означали.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2590,6 +2602,12 @@ errada.
   `skip_inherited`. Calcule o hash do texto convertido, não do HTML: as páginas de versões vizinhas diferem na
   marcação em volta do mesmo texto (349 páginas, 153 textos diferentes). Exemplos que são páginas HTML com um script
   embutido passam por `ghcode-history` com `html_pages: true`.
+- **Uma referência dr.js: uma só página HTML para toda a API** (Snap.svg `doc/reference.html`: um menu de seiscentas
+  ligações e duzentos blocos `<article id="Element.attr">`) — leitor `ghdocs-history-drjs`: uma secção por bloco, os
+  títulos internos em linhas a negrito. O nível do título de um método muda entre versões (`<h4>`, `<h3>`, `<h2>`), e
+  um leitor HTML genérico dividiria cada versão à sua maneira. Quando quase todo o corpus é um só documento, escreva
+  os alvos de `quality` como secções (`api-reference#paper-circle-x-y-r`): um alvo-documento conta qualquer secção
+  sua como acerto, e a primeira medição aqui deu 10 de 10 que não queriam dizer nada.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
