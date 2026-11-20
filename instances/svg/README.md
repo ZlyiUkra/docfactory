@@ -2,7 +2,7 @@
 
 Захищений MCP-сервер, що відповідає на питання про сам формат SVG (Scalable Vector Graphics) за текстами його
 специфікацій. Тут лежать SVG 2 у двох виданнях, SVG 1.1, модулі, куди SVG 2 виніс фільтри, маски, накладання,
-перетворення й анімацію, чернетки робочої групи SVG і дві специфікації доступності. Усе лише англійською. Код спільний
+перетворення й анімацію, чернетки робочої групи SVG і три специфікації доступності. Усе лише англійською. Код спільний
 і лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій
 фабрики — у [../../README.md](../../README.md).
 
@@ -53,6 +53,7 @@ Recommendation) — текст, який робоча група вважає г
 | CSS Fill and Stroke Module Level 3 | First Public Working Draft, 13.04.2017, не бралася | 04.03.2026 |
 | SVG Accessibility API Mappings 1.0 | Working Draft, 21.10.2026 | — |
 | WAI-ARIA Graphics Module 1.0 | Recommendation, 02.10.2018 | — |
+| Graphics Accessibility API Mappings 1.0 | Recommendation, 02.10.2018 | — |
 
 Усі сторінки чернеток на `w3c.github.io/svgwg` у день збирання мали на титулі одну дату, 20.11.2026. Найімовірніше, це
 дата збирання сайту, а не останньої правки тексту. Тому «зібрана 20.11.2026» не означає, що текст змінився того дня.
@@ -73,9 +74,9 @@ SVG Strokes, SVG Markers, SVG Paths, SVG Integration і CSS Fill and Stroke ма
 | П'ять модулів, чернетка редакторів | 68 | `2.draft` | drafts.csswg.org |
 | SVG Animations Level 2 | 6 | `2.draft` | w3c.github.io/svgwg/specs/animations |
 | Чернетки робочої групи: Strokes, Markers, Paths, Integration, Native, Fill and Stroke | 48 | `2.draft` | w3c.github.io/svgwg/specs, drafts.csswg.org |
-| Доступність: SVG-AAM 1.0, WAI-ARIA Graphics Module 1.0 | 18 | `2` | www.w3.org/TR |
+| Доступність: SVG-AAM 1.0, WAI-ARIA Graphics Module 1.0, Graphics-AAM 1.0 | 26 | `2` | www.w3.org/TR |
 
-Разом 287 файлів, фрагментів в індексі — 3 315 (`expected_passages` у `checks.json`). Документ — це один розділ
+Разом 295 файлів, фрагментів в індексі — 3 333 (`expected_passages` у `checks.json`). Документ — це один розділ
 верхнього рівня однієї специфікації в одному виданні. Фрагменти — це шматки документа між заголовками, по яких іде
 пошук.
 
@@ -85,7 +86,7 @@ SVG Strokes, SVG Markers, SVG Paths, SVG Integration і CSS Fill and Stroke ма
 | Перелік видань фрагмента | Фрагментів | Що це означає |
 |--------------------------|-----------:|----------------|
 | `2` і `2.draft` | 1 086 | текст публікації і чернетки однаковий |
-| лише `2` | 410 | чернетка цей текст змінила або прибрала; сюди ж входять специфікації доступності, у яких чернетки немає |
+| лише `2` | 428 | чернетка цей текст змінила або прибрала; сюди ж входять специфікації доступності, у яких чернетки немає |
 | лише `2.draft` | 571 | текст, який чернетка змінила чи додала, і специфікації, що існують лише чернеткою |
 | лише `1.1` | 1 234 | текст SVG 1.1 |
 | усі три мітки | 14 | фрагменти, які SVG 2 зберіг із SVG 1.1 дослівно |
@@ -99,7 +100,7 @@ SVG Strokes, SVG Markers, SVG Paths, SVG Integration і CSS Fill and Stroke ма
 
 | Шлях | Що це |
 |------|-------|
-| `sources.json` | 22 джерела — білий список усього, що завантажується |
+| `sources.json` | 23 джерела — білий список усього, що завантажується |
 | `config.json` | порт 8996, колекція `docs-svg`, шість родин джерел |
 | `prompts/` | описи інструментів для моделі |
 | `checks.json` | перевірки `smoke` і замір `quality` |
@@ -115,8 +116,8 @@ SVG Strokes, SVG Markers, SVG Paths, SVG Integration і CSS Fill and Stroke ма
   («Paths»), і не записав би видання в шапку.
 - **Специфікації однією сторінкою читає `spec-html-edition`.** Це той самий розбір, що й у `spec-html` примірника
   `webstandards`, з міткою видання в шапці документа. Він розуміє три способи верстки: Bikeshed (модулі CSS, SVG
-  Native), ReSpec (SVG Strokes, SVG-AAM, Graphics Module) і власний інструмент робочої групи SVG (Animations, Markers,
-  Paths, Integration).
+  Native), ReSpec (SVG Strokes, SVG-AAM, Graphics Module, Graphics-AAM) і власний інструмент робочої групи SVG
+  (Animations, Markers, Paths, Integration).
 - **Номери розділів лишилися тільки в назві документа.** Документ зветься «SVG 2: 9 Paths», а заголовки всередині
   нього номерів не мають: «Path data», а не «9.3 Path data». Причина в тому, що нумерація у виданнях різна. «Paths» —
   розділ 8 у SVG 1.1 і розділ 9 у SVG 2. У CSS Transforms властивість `transform` описує розділ 4 публікації і розділ
@@ -153,7 +154,7 @@ SVG Strokes, SVG Markers, SVG Paths, SVG Integration і CSS Fill and Stroke ма
   формулі кута дуги.
 - SVG Tiny 1.2, SVG 1.0, перше видання SVG 1.1 і старіші знімки SVG 2 не беруться.
 - З модулів CSS узято п'ять, прямо пов'язаних із SVG. CSS Color, CSS Images, CSS Shapes, Web Animations і Geometry
-  Interfaces сюди не входять. Graphics Accessibility API Mappings, на яку посилається SVG-AAM, теж не входить.
+  Interfaces сюди не входять.
 - Бібліотеки, що малюють SVG, мають власні примірники: `svgjs`, `snapsvg`, `paperjs`, `d3`. Зменшення файлів SVG —
   `svgo`. HTML, DOM і WAI-ARIA — `webstandards`.
 
@@ -163,9 +164,10 @@ SVG Strokes, SVG Markers, SVG Paths, SVG Integration і CSS Fill and Stroke ма
 кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/svg-corpus-2026-11-20.tar.gz` (тексти, паспорт і сховище сирого `raw/`;
-перед видаленням текстів розпакований окремо й звірений із диском), копія — `C:\Distr\svg-corpus-2026-11-20.tar.gz`
-(`/mnt/c/Distr/…` з WSL), SHA-256 обох звірено. В історії git текстів немає ніде.
+**Де тексти.** В архіві `~/archives/docfactory/svg-corpus-2026-11-20-graphics-aam.tar.gz` (тексти, паспорт і сховище
+сирого `raw/`; перед видаленням текстів розпакований окремо й звірений із диском), копія —
+`C:\Distr\svg-corpus-2026-11-20-graphics-aam.tar.gz` (`/mnt/c/Distr/…` з WSL), SHA-256 обох звірено. В історії git
+текстів немає ніде.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
@@ -184,7 +186,7 @@ gzip -9 -c instances/svg/index/passages.json > instances/svg/index/passages.json
 **Як повернути тексти** — перед будь-яким оновленням корпусу; разом із ними повертається й сховище `raw/`:
 
 ```
-tar -xzf ~/archives/docfactory/svg-corpus-2026-11-20.tar.gz -C instances/svg
+tar -xzf ~/archives/docfactory/svg-corpus-2026-11-20-graphics-aam.tar.gz -C instances/svg
 ./df svg smoke
 ```
 

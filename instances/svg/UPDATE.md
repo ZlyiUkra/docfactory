@@ -12,7 +12,8 @@
   (`https://www.w3.org/TR/SVG2/`). Коли W3C публікує новий знімок, та сама адреса віддає вже його. Тоді дату знімка
   виправляють у `prompts/search.txt`, `prompts/loaded.txt`, `prompts/agent.txt` і в таблиці «Видання і статуси»
   README.
-- **SVG 1.1** (`svg11`) і **WAI-ARIA Graphics Module** (`graphics-aria`) — завершені рекомендації, їх не міняють.
+- **SVG 1.1** (`svg11`), **WAI-ARIA Graphics Module** (`graphics-aria`) і **Graphics Accessibility API Mappings**
+  (`graphics-aam`) — завершені рекомендації, їх не міняють.
 
 Руками оголошено:
 
@@ -32,7 +33,7 @@
 ## Оновити тексти
 
 ```
-./df svg refresh        # усі 22 джерела, кілька хвилин
+./df svg refresh        # усі 23 джерела, кілька хвилин
 ./df svg manifest
 ./df svg vectors
 ./df svg smoke
