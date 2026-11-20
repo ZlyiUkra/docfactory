@@ -268,6 +268,24 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Find the address of the current editor's draft on the title page of the publication** («Latest editor's draft»),
   not by habit: svgwg.org served a copy of the SVG 2 draft a year older than the published snapshot, while the live
   draft is on w3c.github.io.
+- **One instance for a task, many libraries** (`pdf-js`: 23 npm packages for PDF in JavaScript) — when the question
+  starts from a task and no single library covers it. Every package gets its own `version_prefix` («pdf-lib-1»,
+  «pdfjs-dist-6»): without it the line «4» means a dozen packages at once. `ghdocs-history` has no such field, so the
+  prefix goes straight into the labels of `tags` («v0.21.0» → «pdfkit-0.21.0»). The map «task → library» is written
+  into `prompts/search.txt`, and the prompt tells the model to search without `version` when the user names a task.
+  Own-words results are lower than usual (5 of 10): several libraries answer one task and share the result slots.
+- **A README from the package costs the whole package in the raw store.** `npm-tarball-files` downloads every tarball,
+  and the raw store keeps it: 30 versions of `mupdf` and five of `pdfjs-dist` made the archive 264 MB. Sum
+  `dist.unpackedSize` over the versions before choosing it; prefer `npm-readme` (the file from the repository at the
+  commit of the version) and keep tarballs for small packages, for versions without a commit, and for files that exist
+  only in the package (a `.d.ts` with JSDoc as an API reference — then limit the versions with a `skip_versions`
+  expression that skips everything except the listed ones).
+- **`folders: []` does not mean «no folders»**: `ghdocs-history` then reads the default `docs` folder, and a source
+  declared for seven files of Puppeteer brought the whole top level of `docs/` with it. With an explicit `files` list
+  add `exclude` for the rest of that folder and check the list of document keys after the first run.
+- **API written as Sphinx directives, not headings** (the MuPDF JavaScript reference: `.. method::
+  PDFPage.prototype.applyRedactions(...)`) — reader `ghdocs-history-jsdomain` turns each directive into a heading;
+  with `sphinx: true` alone a page of 134 methods had five sections and no excerpt named its method.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1488,6 +1506,24 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Адресу чинної чернетки редакторів беруть з титульної сторінки публікації** («Latest editor's draft»), а не за
   звичкою: svgwg.org віддавав копію чернетки SVG 2 на рік старішу за опублікований знімок, а жива чернетка лежить на
   w3c.github.io.
+- **Один примірник на задачу, багато бібліотек** (`pdf-js`: 23 пакети npm для PDF у JavaScript) — коли питання
+  починається із задачі і жодна бібліотека не закриває її сама. Кожен пакет дістає власний `version_prefix`
+  («pdf-lib-1», «pdfjs-dist-6»): без нього лінія «4» означає з десяток пакетів одразу. У `ghdocs-history` такого поля
+  немає, тому префікс пишуть просто в мітки `tags` («v0.21.0» → «pdfkit-0.21.0»). Карту «задача → бібліотека»
+  записують у `prompts/search.txt`, і промпт велить моделі шукати без `version`, коли користувач називає задачу.
+  Результат своїми словами нижчий за звичний (5 із 10): на одну задачу відповідають кілька бібліотек і ділять місця
+  видачі.
+- **README з пакета коштує цілого пакета у сховищі сирого.** `npm-tarball-files` завантажує тарбол кожної версії, і
+  сховище сирого його зберігає: 30 версій `mupdf` і п'ять `pdfjs-dist` дали архів на 264 МБ. Перш ніж брати цей читач,
+  підсумовують `dist.unpackedSize` версій; перевага — `npm-readme` (файл із репозиторію на коміті версії), а тарболи
+  лишають для малих пакетів, для версій без коміту і для файлів, яких немає ніде, крім пакета (`.d.ts` з JSDoc як
+  довідник API — тоді версії обмежують виразом `skip_versions`, що пропускає все, крім названих).
+- **`folders: []` не означає «без тек»**: `ghdocs-history` тоді читає типову теку `docs`, і джерело, оголошене для
+  семи файлів Puppeteer, принесло з собою весь верхній рівень `docs/`. До явного переліку `files` додають `exclude` на
+  решту цієї теки, а після першого прогону дивляться перелік ключів документів.
+- **API, записаний директивами Sphinx, а не заголовками** (довідник JavaScript MuPDF: `.. method::
+  PDFPage.prototype.applyRedactions(...)`) — читач `ghdocs-history-jsdomain` робить з кожної директиви заголовок; із
+  самим `sphinx: true` сторінка на 134 методи мала п'ять розділів, і жоден фрагмент не називав свого методу.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2686,6 +2722,25 @@ errada.
 - **Procure o endereço do rascunho atual dos editores na página de rosto da publicação** («Latest editor's draft»),
   não por hábito: svgwg.org servia uma cópia do rascunho do SVG 2 um ano mais antiga do que o instantâneo publicado,
   enquanto o rascunho vivo está em w3c.github.io.
+- **Uma instância por tarefa, muitas bibliotecas** (`pdf-js`: 23 pacotes npm para PDF em JavaScript) — quando a
+  pergunta parte de uma tarefa e nenhuma biblioteca a cobre sozinha. Cada pacote recebe o seu `version_prefix`
+  («pdf-lib-1», «pdfjs-dist-6»): sem ele a linha «4» significa uma dúzia de pacotes ao mesmo tempo. `ghdocs-history`
+  não tem esse campo, por isso o prefixo vai diretamente nas etiquetas de `tags` («v0.21.0» → «pdfkit-0.21.0»). O mapa
+  «tarefa → biblioteca» fica escrito em `prompts/search.txt`, e o prompt manda o modelo pesquisar sem `version` quando
+  o utilizador nomeia uma tarefa. O resultado por palavras próprias é mais baixo do que o habitual (5 de 10): várias
+  bibliotecas respondem à mesma tarefa e repartem os lugares.
+- **Um README tirado do pacote custa o pacote inteiro no armazém bruto.** `npm-tarball-files` descarrega o tarball de
+  cada versão, e o armazém bruto guarda-o: 30 versões de `mupdf` e cinco de `pdfjs-dist` deram um arquivo de 264 MB.
+  Some `dist.unpackedSize` das versões antes de o escolher; prefira `npm-readme` (o ficheiro do repositório no commit
+  da versão) e deixe os tarballs para pacotes pequenos, para versões sem commit e para ficheiros que só existem no
+  pacote (um `.d.ts` com JSDoc como referência de API — nesse caso limite as versões com uma expressão `skip_versions`
+  que salta tudo menos as indicadas).
+- **`folders: []` não significa «sem pastas»**: `ghdocs-history` lê então a pasta `docs` por omissão, e uma fonte
+  declarada para sete ficheiros do Puppeteer trouxe todo o nível superior de `docs/`. Com uma lista `files` explícita,
+  junte `exclude` para o resto dessa pasta e veja a lista de chaves de documentos depois da primeira execução.
+- **API escrita em diretivas Sphinx, não em títulos** (a referência JavaScript do MuPDF: `.. method::
+  PDFPage.prototype.applyRedactions(...)`) — o leitor `ghdocs-history-jsdomain` transforma cada diretiva num título;
+  só com `sphinx: true` uma página de 134 métodos tinha cinco secções e nenhum trecho nomeava o seu método.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,

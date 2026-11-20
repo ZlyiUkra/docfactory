@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 236. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 237. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8996, вільний усередині: 8769. Наступний новий: 8997.
+Зайняті порти: 8760–8997, вільний усередині: 8769. Наступний новий: 8998.
 
 ## Як обирати
 
@@ -345,6 +345,7 @@
 | [`tesseract`](#tesseract) | 8858 | Розпізнаєте текст на зображеннях через Tesseract. |
 | [`libreoffice`](#libreoffice) | 8856 | Перетворюєте документи через LibreOffice без вікна або працюєте з UNO API. |
 | [`doc-tools`](#doc-tools) | 8857 | Обробляєте файли через poppler та інші інструменти для PDF і документів. |
+| [`pdf-js`](#pdf-js) | 8997 | Працюєте з PDF у JavaScript чи TypeScript і шукаєте, якою бібліотекою це зробити: показати файл (PDF.js, react-pdf), змінити наявний — сторінки, злиття, форми (pdf-lib, @cantoo/pdf-lib), створити з коду (jsPDF, PDFKit, pdfmake, @react-pdf/renderer, pdfme), надрукувати HTML у PDF (Puppeteer Page.pdf, html2pdf.js), витягти текст (pdf-parse, unpdf, pdf2json), затерти чи анотувати (MuPDF.js), зробити зображення сторінки (pdf-to-img, pdf2pic, node-poppler), підписати (@signpdf/signpdf). |
 
 ### Блокчейн і біржі
 
@@ -8522,6 +8523,54 @@ something about these tools is not found in these documents, it is unlikely to b
 **Далі в [README](../instances/doc-tools/README.md):** Навіщо окремий примірник; Скільки цього; Що в цій теці; Звідки
 документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання корпусу;
 Сервер під Claude Code.
+
+### pdf-js
+
+**Коли піднімати.** Працюєте з PDF у JavaScript чи TypeScript і шукаєте, якою бібліотекою це зробити: показати файл (PDF.js, react-pdf), змінити наявний — сторінки, злиття, форми (pdf-lib, @cantoo/pdf-lib), створити з коду (jsPDF, PDFKit, pdfmake, @react-pdf/renderer, pdfme), надрукувати HTML у PDF (Puppeteer Page.pdf, html2pdf.js), витягти текст (pdf-parse, unpdf, pdf2json), затерти чи анотувати (MuPDF.js), зробити зображення сторінки (pdf-to-img, pdf2pic, node-poppler), підписати (@signpdf/signpdf).
+
+**Порт** 8997, сервер `pdf-js-docs`. Підняти: `./df pdf-js serve`. Адреса: `http://127.0.0.1:8997/mcp`.
+
+**Обсяг.** Документів: 2 251, фрагментів: 10 321.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про роботу з PDF у JavaScript і TypeScript. В одному місці лежить
+документація 23 пакетів npm і сторінки Puppeteer про PDF: посібники, довідники API, приклади коду, README стабільних
+версій, журнали змін, релізи й історія версій із реєстру npm. Усе лише англійською. Код спільний і лежить у
+`../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
+[../../README.md](../README.md).
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the JavaScript PDF libraries -- PDF.js (pdfjs-dist), pdf-lib, @cantoo/pdf-lib, @pdf-lib/fontkit, jsPDF,
+jspdf-autotable, PDFKit, pdfmake, @react-pdf/renderer, react-pdf, pdf-parse, unpdf, MuPDF.js (mupdf), html2pdf.js,
+pdfme, @signpdf/signpdf, pdf-to-img, pdf2pic, pdf2json, pdf-merger-js, pdf.js-extract, node-poppler,
+@react-pdf-viewer/core, and the PDF pages of Puppeteer: guides, API references, examples, README of the stable
+versions, changelogs, release notes and registry histories. Prereleases, the PDF specification, PyMuPDF and the rest
+of the Puppeteer documentation are not here.
+
+**Межі.**
+
+- Довідник API PDF.js узято лише з останньої версії кожної мажорної лінії, а не кожної мінорної: пакет однієї версії
+  важить близько 10 МБ. Що змінилося між мінорними версіями, кажуть релізи.
+- Довідник API pdf-lib один, для версії 1.17.1. Окремого довідника `@cantoo/pdf-lib` немає: є його README і журнал
+  змін.
+- У `@react-pdf-viewer/core` відкритої документації в репозиторії немає: сайт react-pdf-viewer.dev збирається не з
+  нього. Є лише журнали змін із прикладами коду.
+- У `@pdfme/generator` README порожній, тому взято README і документацію всього проєкту pdfme.
+- З Puppeteer узято лише сторінки про PDF. Решти його документації тут немає; Playwright має власний примірник
+  `playwright`.
+- Старий посібник PDFKit ліній до 0.10 (файли `.coffee.md`) не береться.
+- Файли прикладів pdfmake з вбудованими зображеннями (понад 40 000 байтів) не беруться.
+- П'ять сторінок вікі pdfmake не взято: у них лише рядок «сторінку перенесено в документацію».
+- У документації pdfmake лишилися службові позначки шаблону сайту виду `{{% alert %}}` навколо приміток.
+- Передрелізи не беруться.
+- Самого формату PDF (специфікація ISO 32000) тут немає. Утиліти poppler і Ghostscript — у примірнику `doc-tools`.
+  PyMuPDF і бібліотеки MuPDF мовою C немає ніде.
+
+**Далі в [README](../instances/pdf-js/README.md):** Навіщо один примірник на багато бібліотек; Пакети; Скільки цього;
+Що в цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv;
+Збирання корпусу; Сервер під Claude Code.
 
 <!-- тема: Блокчейн і біржі -->
 

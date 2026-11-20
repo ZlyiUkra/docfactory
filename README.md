@@ -5009,6 +5009,30 @@ SVG-AAM 1.0, WAI-ARIA Graphics Module 1.0 і Graphics-AAM 1.0. 295 докуме�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/svg/README.md](instances/svg/README.md).
 
+### pdf-js
+
+Документація бібліотек JavaScript для роботи з PDF англійською — 23 пакети npm в одному примірнику, щоб за задачею
+знайти бібліотеку, яка її виконує. Читання й показ: PDF.js (`pdfjs-dist`), `react-pdf`, `@react-pdf-viewer/core`.
+Зміна наявного PDF: `pdf-lib`, `@cantoo/pdf-lib`, `@pdf-lib/fontkit`, `pdf-merger-js`. Створення з коду: jsPDF з
+`jspdf-autotable`, PDFKit, pdfmake, `@react-pdf/renderer`, pdfme. HTML у PDF: сторінки Puppeteer про `Page.pdf()` і
+`html2pdf.js`. Витяг тексту: `pdf-parse`, `unpdf`, `pdf2json`, `pdf.js-extract`. Показ, анотації й затирання: MuPDF.js
+(`mupdf`). Сторінки в зображення: `pdf-to-img`, `pdf2pic`, `node-poppler`. Підпис: `@signpdf/signpdf`. Посібники,
+довідники API, приклади, README стабільних версій, журнали змін, релізи й реєстр npm. 2 251 документ, 10 321 фрагмент.
+
+- порт `8997`; запис у Claude Code — `pdf-js-docs`, адреса `http://127.0.0.1:8997/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-pdf-js`, модель векторів — `bge-small`;
+- версія — лінія одного пакета з його префіксом (`version: "pdf-lib-1"`, `"pdfjs-dist-6"`, `"jspdf-4"`, `"pdfkit-0"`,
+  `"pdfmake-0"`, `"react-pdf-renderer-4"`, `"react-pdf-11"`, `"mupdf-1"`, `"puppeteer-25"`); без версії пошук іде по
+  всіх пакетах одразу — так шукають, коли названо задачу, а не бібліотеку;
+- карта «задача → бібліотека» записана в описі інструмента пошуку;
+- довідник JavaScript API MuPDF розбирає читач `ghdocs-history-jsdomain`: кожен метод — окремий розділ;
+- не входять: передрелізи, сам формат PDF, решта документації Puppeteer, PyMuPDF і MuPDF мовою C, утиліти poppler і
+  Ghostscript (примірник `doc-tools`), Playwright (примірник `playwright`);
+- приклад питання агентові: `./df pdf-js ask "How do I merge two PDF files in Node.js?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/pdf-js/README.md](instances/pdf-js/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений
