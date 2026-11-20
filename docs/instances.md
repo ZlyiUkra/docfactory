@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 232. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 233. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8992, вільний усередині: 8769. Наступний новий: 8993.
+Зайняті порти: 8760–8993, вільний усередині: 8769. Наступний новий: 8994.
 
 ## Як обирати
 
@@ -115,6 +115,7 @@
 | [`pixijs`](#pixijs) | 8990 | Робите швидку 2D-графіку чи гру через PixiJS або @pixi/react: спрайти, текстури, Assets, Graphics, фільтри, події, Ticker; довідник API ліній 4–8, PixiJS 3D і додатки (ui, sound, layout, viewport). |
 | [`fabricjs`](#fabricjs) | 8991 | Робите редактор на HTML5 canvas через Fabric.js або fabricjs-react: об'єкти з рамкою й маркерами, виділення, текст, фільтри зображень, clipPath, збереження в JSON і SVG; довідник API Fabric.js 7 і 5, перехід з 5 на 6. |
 | [`svgjs`](#svgjs) | 8992 | Малюєте й анімуєте SVG через SVG.js: фігури, текст, градієнти, маски, трансформації, animate() з Runner і Timeline, події, імпорт і експорт розмітки, SVG.js у Node.js через svgdom; лінії 3.x і 2.7, офіційні додатки (draggable, draw, filter, panzoom, select, resize, pathmorphing, topath, topoly, easing). |
+| [`paperjs`](#paperjs) | 8993 | Працюєте з векторною графікою на canvas через Paper.js: контури, сегменти й криві Безьє, геометрія Point і Rectangle, булеві операції над контурами, hitTest, інструменти миші, анімація onFrame, імпорт і експорт SVG та JSON, PaperScript; довідник API ліній 0.10–0.17 і 0.12.18. |
 
 ### Збирання, перевірка коду, тести
 
@@ -2639,6 +2640,52 @@ changelog entries) and third-party SVG libraries are not here.
 **Далі в [README](../instances/svgjs/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в цій
 теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
 корпусу; Сервер під Claude Code.
+
+### paperjs
+
+**Коли піднімати.** Працюєте з векторною графікою на canvas через Paper.js: контури, сегменти й криві Безьє, геометрія Point і Rectangle, булеві операції над контурами, hitTest, інструменти миші, анімація onFrame, імпорт і експорт SVG та JSON, PaperScript; довідник API ліній 0.10–0.17 і 0.12.18.
+
+**Порт** 8993, сервер `paperjs-docs`. Підняти: `./df paperjs serve`. Адреса: `http://127.0.0.1:8993/mcp`.
+
+**Обсяг.** Документів: 437, фрагментів: 2 199.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про Paper.js — бібліотеку векторної графіки поверх HTML5 canvas:
+контури з сегментів і кривих Безьє (`Path`, `Segment`, `Curve`), геометрія (`Point`, `Size`, `Rectangle`), проєкт із
+шарів і груп, булеві операції над контурами, інструменти миші, анімація, імпорт та експорт SVG і JSON, мова
+PaperScript. Документація — сайт paperjs.org на релізах 0.12.18–0.17.0, довідник API з пакета npm для останньої версії
+кожної лінії 0.10–0.17 і для 0.12.18, приклади репозиторію, README і реєстр npm, журнал змін і релізи GitHub; лише
+англійською. Код спільний і лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані
+домену. Загальний устрій фабрики — у [../../README.md](../README.md).
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the Paper.js documentation -- the site paperjs.org at its releases 0.12.18 to 0.17.0 (tutorials,
+features, FAQ, roadmap, examples), the API reference shipped in the npm package for the last version of every line
+0.10 to 0.17 and for 0.12.18, the examples of the repository at 0.17.0 and 0.12.18, the README of every stable version
+and the npm registry history of paper, the registry history of paper-jsdom, paper-jsdom-canvas and @types/paper, the
+changelog and the GitHub release notes. Prereleases, the API reference of 0.8 and 0.9 and other drawing libraries are
+not here.
+
+**Межі.**
+
+- Довідника API ліній 0.8 і 0.9 немає: у їхніх пакетах npm він відсутній. Про ці лінії відомо лише з README.
+- Довідник узято з останньої версії кожної лінії і з 0.12.18, а не з кожної версії: що змінилося між 0.12.0 і
+  0.12.18, кажуть журнал змін і релізи.
+- Успадкованого члена класу описано один раз, на сторінці предка: `position`, `fillColor` чи `rotate()` для `Path`
+  треба шукати на сторінці `Item`, а `unite()` чи `simplify()` — на сторінці `PathItem`.
+- Дев'ять прикладів репозиторію не взято, бо файл більший за 40 000 байтів: це приклади з вбудованими даними
+  картинки чи великого SVG (`Tiger.html`, `Raster.html`, `BlendModes.html`, `BooleanOperations.html`).
+- Уроки сайту написано переважно на PaperScript; як те саме пишеться звичайним JavaScript, пояснює урок «Using
+  JavaScript Directly».
+- Редактор sketch.paperjs.org, сторінка завантажень і вітрина сайту не входять.
+- Сам Canvas API браузера і SVG — у примірнику `mdn`. Інші бібліотеки для малювання мають власні примірники:
+  `konva`, `pixijs`, `fabricjs`, `svgjs`, `d3`.
+
+**Далі в [README](../instances/paperjs/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в
+цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv;
+Збирання корпусу; Сервер під Claude Code.
 
 <!-- тема: Збирання, перевірка коду, тести -->
 

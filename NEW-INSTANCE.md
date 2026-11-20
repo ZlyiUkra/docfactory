@@ -225,6 +225,17 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Plugins whose major is not the core's** (svg.panzoom.js 2.x works with SVG.js 3, svg.draggable.js 3.0.0 under the
   old name already does) — a `version_prefix` per plugin (`panzoom-`) and, in the prompts and the README, which plugin
   line goes with which core, taken from the dependencies in the npm registry, not from the version numbers.
+- **A site in its own tag markup, kept in the repository** (paperjs.org, the woods system: `<title>`,
+  `<api Path.Circle(center,radius) />`, `<paperscript>`, `<note>`, `<page "/…/" />`) — reader `ghdocs-woods`, the same
+  fields as `ghdocs-history`; the page title comes from its folder (`path_title`), the address from an explicit `site`
+  map checked against the site. The repository has no tags but a commit per release («Release version …»): take the
+  site at those commits with the package version as the label, otherwise a search in the most downloaded line (0.12)
+  finds no tutorials, because one snapshot carries only the newest label.
+- **An API reference shipped inside the npm package** (paper: `dist/docs/classes/*.html`, the project's own JSDoc
+  template; the site shows only the newest version) — reader `npm-tarball-classdocs` with `versions`, `match`, `cite`
+  and `skip_inherited`. Hash the converted text, not the HTML: the pages of neighbouring versions differ in markup
+  around the same text (349 pages, 153 different texts). Example pages that are HTML with an embedded script go
+  through `ghcode-history` with `html_pages: true`.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1402,6 +1413,17 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Додатки, чий мажор не збігається з мажором ядра** (svg.panzoom.js 2.x працює з SVG.js 3, а svg.draggable.js 3.0.0
   під старою назвою — уже теж) — `version_prefix` на кожен додаток (`panzoom-`), а в промптах і README — яка лінія
   додатка до якого ядра, за залежностями в реєстрі npm, а не за номерами версій.
+- **Сайт у власній розмітці тегами, що лежить у репозиторії** (paperjs.org, система woods: `<title>`,
+  `<api Path.Circle(center,radius) />`, `<paperscript>`, `<note>`, `<page "/…/" />`) — читач `ghdocs-woods`, ті самі
+  поля, що в `ghdocs-history`; назву сторінки дає її тека (`path_title`), адресу — явний перелік `site`, звірений із
+  сайтом. Тегів у репозиторії немає, але кожен реліз має коміт («Release version …»): сайт беруть на цих комітах з
+  версією пакета як міткою, інакше пошук у найпоширенішій лінії (0.12) не знаходить уроків, бо один знімок несе
+  лише найновішу мітку.
+- **Довідник API всередині пакета npm** (paper: `dist/docs/classes/*.html`, власний шаблон JSDoc проєкту; сайт
+  показує лише найновішу версію) — читач `npm-tarball-classdocs` з полями `versions`, `match`, `cite` і
+  `skip_inherited`. Хеш рахують від перетвореного тексту, а не від HTML: сторінки сусідніх версій різняться
+  розміткою довкола того самого тексту (349 сторінок, 153 різні тексти). Приклади, що є сторінками HTML з
+  вбудованим скриптом, бере `ghcode-history` з `html_pages: true`.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2557,6 +2579,17 @@ errada.
 - **Plugins cujo major não é o do núcleo** (svg.panzoom.js 2.x funciona com SVG.js 3, e svg.draggable.js 3.0.0 com o
   nome antigo também) — um `version_prefix` por plugin (`panzoom-`) e, nos prompts e no README, que linha do plugin
   corresponde a que núcleo, segundo as dependências no registo npm, não segundo os números de versão.
+- **Um site com marcação própria por tags, guardado no repositório** (paperjs.org, o sistema woods: `<title>`,
+  `<api Path.Circle(center,radius) />`, `<paperscript>`, `<note>`, `<page "/…/" />`) — leitor `ghdocs-woods`, os mesmos
+  campos de `ghdocs-history`; o título da página vem da sua pasta (`path_title`), o endereço de um mapa `site`
+  explícito, verificado no site. O repositório não tem tags, mas tem um commit por release («Release version …»):
+  leia o site nesses commits com a versão do pacote como etiqueta, senão a pesquisa na linha mais descarregada (0.12)
+  não encontra os tutoriais, porque um único instantâneo só leva a etiqueta mais recente.
+- **Uma referência de API dentro do pacote npm** (paper: `dist/docs/classes/*.html`, o modelo JSDoc do próprio
+  projeto; o site só mostra a versão mais recente) — leitor `npm-tarball-classdocs` com `versions`, `match`, `cite` e
+  `skip_inherited`. Calcule o hash do texto convertido, não do HTML: as páginas de versões vizinhas diferem na
+  marcação em volta do mesmo texto (349 páginas, 153 textos diferentes). Exemplos que são páginas HTML com um script
+  embutido passam por `ghcode-history` com `html_pages: true`.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
