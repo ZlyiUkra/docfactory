@@ -1145,6 +1145,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   «повернути» вже пущений потік, і без них жадібний вибір шляхів застрягає. Теорема про максимальний потік і мінімальний
   розріз каже, що найбільший потік дорівнює найменшій сумарній здатності ребер, які треба перерізати, щоб відділити стік від
   джерела. Якщо шляхи шукати пошуком у ширину (Едмондс–Карп), алгоритм коштує `O(V · E²)`.
+- **Лекція:** [Лекція. Фаза 3, день 10. Потоки й парування](lectures/f3-d10-flows-matching.md).
+- **Розбір читання:** [Розбір читання. Фаза 3, день 10](reading/f3-d10-reading.md).
 - **Читати:** Erickson — `Maximum Flows & Minimum Cuts`, `The Maxflow-Mincut Theorem`, `Bipartite Matching`; CLRS — `24.1 Flow
   networks`, `24.2 The Ford-Fulkerson method`, `24.3 Maximum bipartite matching`; MIT 6.046J — `Lecture 13 Notes`;
   cp-algorithms — `Maximum flow - Ford-Fulkerson and Edmonds-Karp`.
