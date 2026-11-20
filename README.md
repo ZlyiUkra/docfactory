@@ -4892,6 +4892,28 @@ fabric5.fabricjs.com з довідником API і демонстраціями
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/fabricjs/README.md](instances/fabricjs/README.md).
 
+### svgjs
+
+Документація SVG.js англійською — легкої бібліотеки, що створює, змінює й анімує малюнки SVG з JavaScript, — її
+офіційних додатків і svgdom. Сайт svgjs.dev у лініях 3.2, 3.1, 3.0 і 2.7 знімком 20.11.2026; README кожної стабільної
+версії й реєстр npm пакетів ядра `@svgdotjs/svg.js` і `svg.js`, додатків draggable, draw, filter, panzoom, select,
+resize, pathmorphing, topath, topoly і easing (для кожного ядра своя назва пакета) і svgdom; журнали змін SVG.js і
+svgdom; релізи GitHub. 402 документи, 2 083 фрагменти.
+
+- порт `8992`; запис у Claude Code — `svgjs-docs`, адреса `http://127.0.0.1:8992/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-svgjs`, модель векторів — `bge-small`;
+- версія — лінія SVG.js (`version: "3"`, `"3.2"`, `"2"`); додатки й svgdom — з префіксом (`"draggable-3"`,
+  `"panzoom-2"`, `"select-4"`, `"svgdom-0"`), і мажор додатка не збігається з мажором ядра; без названої версії —
+  SVG.js 3.2, а де код відрізняється, і 2.7 (`@svgdotjs/svg.js` і `svg.js` — близько 1,1 млн завантажень за тиждень
+  до 18.11.2026 кожен);
+- службові поля сторінок Kirby (`Title:`, `Text:`, `----`) знімає читач `ghdocs-kirby`;
+- не входять: передрелізи, лінії сайту 1.x і 2.0–2.6, README сторонніх додатків, сам формат SVG і DOM браузера
+  (примірник `mdn`), сам React (примірник `react`);
+- приклад питання агентові: `./df svgjs ask "How do I animate a rectangle along the x axis with SVG.js 3?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/svgjs/README.md](instances/svgjs/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

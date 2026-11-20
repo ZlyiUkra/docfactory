@@ -216,6 +216,15 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   `tag_version: [pattern, replacement]`. The common reader reads «740» as the version, and the filter by line «7»
   misses the notes. `smoke` shows the symptom as «not every document carries a version» when one tag has a letter
   (`v542b`); look at the version lines of the releases even when it passes.
+- **A Kirby CMS site kept in the repository** (svgjs.dev: one branch per documentation line, `source-3.2` …
+  `source-2.7`; a page is a folder with `default.txt` holding the fields `Title:` and `Text:` separated by `----`) —
+  reader `ghdocs-kirby`, the same fields as `ghdocs-history` with `extensions: ["default.txt"]` and one SHA per branch
+  in `tags`. Without it the `----` under `Title:` reads as a setext underline and every page is titled «Title: …»;
+  the reader also turns Kirby links `(link: … text: …)` into markdown. `site` with `{version}` gives the address of
+  every line; `slug_rewrite` drops the numeric folder prefixes (`14-plugins` and `15-plugins` are the same page).
+- **Plugins whose major is not the core's** (svg.panzoom.js 2.x works with SVG.js 3, svg.draggable.js 3.0.0 under the
+  old name already does) — a `version_prefix` per plugin (`panzoom-`) and, in the prompts and the README, which plugin
+  line goes with which core, taken from the dependencies in the npm registry, not from the version numbers.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1384,6 +1393,15 @@ and what a taken port and a failed connection look like. A domain list in the ro
   `tag_version: [вираз, заміна]`. Спільний читач читає версію як «740», і фільтр за лінією «7» нотаток не знаходить.
   `smoke` показує це як «не всі документи несуть версію», коли в якомусь тезі є літера (`v542b`); на рядки версії
   релізів треба глянути, навіть коли перевірка пройшла.
+- **Сайт на Kirby CMS у репозиторії** (svgjs.dev: по гілці на лінію документації, `source-3.2` … `source-2.7`;
+  сторінка — тека з `default.txt`, де поля `Title:` і `Text:` розділено рядком `----`) — читач `ghdocs-kirby`, ті самі
+  поля, що в `ghdocs-history`, з `extensions: ["default.txt"]` і SHA кожної гілки в `tags`. Без нього `----` під
+  `Title:` читається як підкреслення заголовка, і кожна сторінка зветься «Title: …»; ще читач перетворює посилання
+  Kirby `(link: … text: …)` на markdown. `site` з `{version}` дає адресу кожної лінії; `slug_rewrite` знімає числові
+  префікси тек (`14-plugins` і `15-plugins` — та сама сторінка).
+- **Додатки, чий мажор не збігається з мажором ядра** (svg.panzoom.js 2.x працює з SVG.js 3, а svg.draggable.js 3.0.0
+  під старою назвою — уже теж) — `version_prefix` на кожен додаток (`panzoom-`), а в промптах і README — яка лінія
+  додатка до якого ядра, за залежностями в реєстрі npm, а не за номерами версій.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2530,6 +2548,15 @@ errada.
   `tag_version: [expressão, substituição]`. O leitor comum lê «740» como versão, e o filtro pela linha «7» não
   encontra as notas. O `smoke` mostra o sintoma como «nem todos os documentos têm versão» quando uma tag tem uma
   letra (`v542b`); veja as linhas de versão das releases mesmo quando a verificação passa.
+- **Um site Kirby CMS guardado no repositório** (svgjs.dev: um ramo por linha da documentação, `source-3.2` …
+  `source-2.7`; uma página é uma pasta com `default.txt`, onde os campos `Title:` e `Text:` são separados por `----`)
+  — leitor `ghdocs-kirby`, os mesmos campos de `ghdocs-history` com `extensions: ["default.txt"]` e o SHA de cada ramo
+  em `tags`. Sem ele, o `----` debaixo de `Title:` lê-se como sublinhado de título e cada página chama-se «Title: …»;
+  o leitor também converte as ligações Kirby `(link: … text: …)` em markdown. `site` com `{version}` dá o endereço de
+  cada linha; `slug_rewrite` retira os prefixos numéricos das pastas (`14-plugins` e `15-plugins` são a mesma página).
+- **Plugins cujo major não é o do núcleo** (svg.panzoom.js 2.x funciona com SVG.js 3, e svg.draggable.js 3.0.0 com o
+  nome antigo também) — um `version_prefix` por plugin (`panzoom-`) e, nos prompts e no README, que linha do plugin
+  corresponde a que núcleo, segundo as dependências no registo npm, não segundo os números de versão.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
