@@ -4673,10 +4673,12 @@ ONNX і ONNX Runtime, журнали змін. Усього 617 документ
 
 ### quant-trading
 
-Книжки й статті про системну торгівлю: десять книжок із файлів користувача (Tharp 2-ге вид. з EPUB, Carver Leveraged Trading, Aronson,
-Pardo 2-ге вид., Chan Algorithmic Trading і Quantitative Trading 2-ге вид., Hilpisch Python for Algorithmic Trading і AI in Finance,
-Vishwas і Patel, Sperandeo зі скану DjVu) і чотири статті Bailey та López de Prado про перепідгонку під історію. Усього 908 документів і
-4642 фрагменти; новий читач `epub-toc`, читач `pdf-outline` отримав поле `titles`.
+Книжки й статті про системну торгівлю і метод Вайкоффа. З файлів користувача — Tharp 2-ге вид. з EPUB, Carver Leveraged Trading,
+Aronson, Pardo 2-ге вид., Chan Algorithmic Trading і Quantitative Trading 2-ге вид., Hilpisch Python for Algorithmic Trading і AI in
+Finance, Vishwas і Patel, дві книжки Sperandeo, книжка й два посібники про ICT і Smart Money, Elliott Wave Principle, а про метод
+Вайкоффа — Villahermosa, Weis, підручник Wyckoff Analytics і серія статей Hutson у російському перекладі. Дві книжки самого Вайкоффа
+(1910 і 1926) узято з Internet Archive, а чотири статті Bailey та López de Prado про перепідгонку під історію — з сайту Bailey. Усього
+1111 документів і 7016 фрагментів; новий читач `epub-toc`, читач `pdf-outline` отримав поля `titles` і `page_titles`.
 
 - порт `8978`; запис у Claude Code — `quant-trading-docs`, адреса `http://127.0.0.1:8978/mcp`; інструменти `search_docs` і `read_section`;
 - версій немає: кожна книжка — одне видання;
