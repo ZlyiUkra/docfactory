@@ -4908,8 +4908,8 @@ svgdom; релізи GitHub. 402 документи, 2 083 фрагменти.
   SVG.js 3.2, а де код відрізняється, і 2.7 (`@svgdotjs/svg.js` і `svg.js` — близько 1,1 млн завантажень за тиждень
   до 18.11.2026 кожен);
 - службові поля сторінок Kirby (`Title:`, `Text:`, `----`) знімає читач `ghdocs-kirby`;
-- не входять: передрелізи, лінії сайту 1.x і 2.0–2.6, README сторонніх додатків, сам формат SVG і DOM браузера
-  (примірник `mdn`), сам React (примірник `react`);
+- не входять: передрелізи, лінії сайту 1.x і 2.0–2.6, README сторонніх додатків, сам формат SVG (примірники `svg` і
+  `mdn`) і DOM браузера (примірник `mdn`), сам React (примірник `react`);
 - приклад питання агентові: `./df svgjs ask "How do I animate a rectangle along the x axis with SVG.js 3?"`;
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/svgjs/README.md](instances/svgjs/README.md).
@@ -4933,8 +4933,8 @@ JSON, мова PaperScript. Сайт paperjs.org на релізах 0.12.18, 0.
   `Item`, а `unite()` і `simplify()` — на сторінці `PathItem`;
 - розмітку сайту (теги `<title>`, `<api>`, `<paperscript>`) перетворює читач `ghdocs-woods`, довідник із пакета
   бере читач `npm-tarball-classdocs`;
-- не входять: передрелізи, довідник API ліній 0.8 і 0.9, дев'ять прикладів з вбудованими даними понад 40 000
-  байтів, редактор sketch.paperjs.org, сам Canvas API і SVG (примірник `mdn`);
+- не входять: передрелізи, довідник API ліній 0.8 і 0.9, дев'ять прикладів з вбудованими даними понад 40 000 байтів,
+  редактор sketch.paperjs.org, сам Canvas API і SVG (примірник `mdn`), специфікації SVG (примірник `svg`);
 - приклад питання агентові: `./df paperjs ask "How do I unite two paths in Paper.js 0.12?"`;
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/paperjs/README.md](instances/paperjs/README.md).
@@ -4955,7 +4955,8 @@ README на кожному тегу; журнал змін; README і реєст
   тиждень до 18.11.2026);
 - остання версія 0.5.1 вийшла в лютому 2017 року, нових релізів відтоді немає;
 - сторінку довідника (dr.js) розбирає читач `ghdocs-history-drjs`: фрагмент пошуку — цілий метод;
-- не входять: сторонні плагіни, чужі бібліотеки з тек демонстрацій, сам формат SVG і DOM браузера (примірник `mdn`);
+- не входять: сторонні плагіни, чужі бібліотеки з тек демонстрацій, сам формат SVG (примірники `svg` і `mdn`) і DOM
+  браузера (примірник `mdn`);
 - приклад питання агентові: `./df snapsvg ask "How do I load an SVG file and animate one of its paths?"`;
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/snapsvg/README.md](instances/snapsvg/README.md).
@@ -4979,7 +4980,7 @@ README на кожному тегу; журнал змін; README і реєст
 - параметри плагіна лежать у шапці YAML його сторінки: читач `ghdocs-history-svgo` переносить їх у текст розділом
   «Parameters»;
 - не входять: передрелізи, сторінки плагінів ліній 1 і 2 (є лише README з таблицею плагінів), код плагінів,
-  документація самих webpack, PostCSS, SVGR, gulp і Vite, сам формат SVG (примірник `mdn`);
+  документація самих webpack, PostCSS, SVGR, gulp і Vite, сам формат SVG (примірники `svg` і `mdn`);
 - приклад питання агентові: `./df svgo ask "How do I keep the viewBox when optimizing with SVGO 3?"`;
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/svgo/README.md](instances/svgo/README.md).
@@ -4988,10 +4989,10 @@ README на кожному тегу; журнал змін; README і реєст
 
 Специфікації формату SVG англійською — першоджерело того, що означає кожен елемент, атрибут і властивість. SVG 2 у
 двох виданнях (знімок кандидата в рекомендації W3C від 06.10.2026 і чернетка редакторів), SVG 1.1 (друге видання,
-рекомендація W3C 2011 року), модулі, куди SVG 2 виніс частину розділів, — Filter Effects 1, CSS Masking 1,
-Compositing and Blending 1, CSS Transforms 1, Motion Path 1 (публікація W3C і чернетка редакторів) та SVG
-Animations, — чернетки робочої групи SVG Strokes, Markers, Paths, Integration, SVG Native і CSS Fill and Stroke 3,
-специфікації доступності SVG-AAM 1.0 і WAI-ARIA Graphics Module 1.0. 287 документів, 3 315 фрагментів.
+рекомендація W3C 2011 року), модулі, куди SVG 2 виніс частину розділів, — Filter Effects 1, CSS Masking 1, Compositing
+and Blending 1, CSS Transforms 1, Motion Path 1 (публікація W3C і чернетка редакторів) та SVG Animations, — чернетки
+робочої групи SVG Strokes, Markers, Paths, Integration, SVG Native і CSS Fill and Stroke 3, специфікації доступності
+SVG-AAM 1.0, WAI-ARIA Graphics Module 1.0 і Graphics-AAM 1.0. 295 документів, 3 333 фрагменти.
 
 - порт `8996`; запис у Claude Code — `svg-docs`, адреса `http://127.0.0.1:8996/mcp`; інструменти `search_docs` і
   `read_section`;

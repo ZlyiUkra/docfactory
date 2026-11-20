@@ -939,13 +939,13 @@ and ERC-4361. Browser support tables, tutorials, HTTP/2, HTTP/3, TLS, CSS and EC
 
 **Порт** 8996, сервер `svg-docs`. Підняти: `./df svg serve`. Адреса: `http://127.0.0.1:8996/mcp`.
 
-**Обсяг.** Документів: 287, фрагментів: 3 315.
+**Обсяг.** Документів: 295, фрагментів: 3 333.
 
 **Опис.**
 
 Захищений MCP-сервер, що відповідає на питання про сам формат SVG (Scalable Vector Graphics) за текстами його
 специфікацій. Тут лежать SVG 2 у двох виданнях, SVG 1.1, модулі, куди SVG 2 виніс фільтри, маски, накладання,
-перетворення й анімацію, чернетки робочої групи SVG і дві специфікації доступності. Усе лише англійською. Код спільний
+перетворення й анімацію, чернетки робочої групи SVG і три специфікації доступності. Усе лише англійською. Код спільний
 і лежить у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій
 фабрики — у [../../README.md](../README.md).
 
@@ -955,8 +955,8 @@ Documents of the SVG specifications -- SVG 2 (the W3C Candidate Recommendation S
 editor's draft), SVG 1.1 (Second Edition), Filter Effects Module Level 1, CSS Masking Module Level 1, Compositing and
 Blending Level 1, CSS Transforms Module Level 1 and Motion Path Module Level 1 (each as the latest W3C publication and
 as the editor's draft), SVG Animations Level 2, the drafts SVG Strokes, SVG Markers, SVG Paths, SVG Integration, SVG
-Native and CSS Fill and Stroke Module Level 3, SVG Accessibility API Mappings 1.0 and the WAI-ARIA Graphics Module
-1.0. Browser support data, tutorials, SVG Tiny 1.2 and SVG 1.0 are not here.
+Native and CSS Fill and Stroke Module Level 3, SVG Accessibility API Mappings 1.0, the WAI-ARIA Graphics Module 1.0
+and Graphics Accessibility API Mappings 1.0. Browser support data, tutorials, SVG Tiny 1.2 and SVG 1.0 are not here.
 
 **Межі.**
 
@@ -972,7 +972,7 @@ Native and CSS Fill and Stroke Module Level 3, SVG Accessibility API Mappings 1.
   формулі кута дуги.
 - SVG Tiny 1.2, SVG 1.0, перше видання SVG 1.1 і старіші знімки SVG 2 не беруться.
 - З модулів CSS узято п'ять, прямо пов'язаних із SVG. CSS Color, CSS Images, CSS Shapes, Web Animations і Geometry
-  Interfaces сюди не входять. Graphics Accessibility API Mappings, на яку посилається SVG-AAM, теж не входить.
+  Interfaces сюди не входять.
 - Бібліотеки, що малюють SVG, мають власні примірники: `svgjs`, `snapsvg`, `paperjs`, `d3`. Зменшення файлів SVG —
   `svgo`. HTML, DOM і WAI-ARIA — `webstandards`.
 
@@ -2684,8 +2684,9 @@ changelog entries) and third-party SVG libraries are not here.
   інші): для них у корпусі є лише сторінка-посилання на сайті, а README цих пакетів не входить.
 - Фільтр версії додатка йде за номером додатка, а не ядра: `pathmorphing-0` бере обидві лінії, бо стара назва має
   0.1.x, а нова — 0.2.0.
-- Сам формат SVG і DOM браузера — у примірнику `mdn`; сам React — у примірнику `react`. Бібліотеки для полотна
-  мають власні примірники: `konva`, `pixijs`, `fabricjs`; D3 — `d3`.
+- Сам формат SVG — у примірниках `svg` (специфікації) і `mdn` (посібники й підтримка в браузерах); DOM браузера — у
+  примірнику `mdn`; сам React — у примірнику `react`. Бібліотеки для полотна мають власні примірники: `konva`,
+  `pixijs`, `fabricjs`; D3 — `d3`.
 
 **Далі в [README](../instances/svgjs/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в цій
 теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
@@ -2730,8 +2731,8 @@ not here.
 - Уроки сайту написано переважно на PaperScript; як те саме пишеться звичайним JavaScript, пояснює урок «Using
   JavaScript Directly».
 - Редактор sketch.paperjs.org, сторінка завантажень і вітрина сайту не входять.
-- Сам Canvas API браузера і SVG — у примірнику `mdn`. Інші бібліотеки для малювання мають власні примірники:
-  `konva`, `pixijs`, `fabricjs`, `svgjs`, `d3`.
+- Сам Canvas API браузера і SVG — у примірнику `mdn`; специфікації SVG — у примірнику `svg`. Інші бібліотеки для
+  малювання мають власні примірники: `konva`, `pixijs`, `fabricjs`, `svgjs`, `d3`.
 
 **Далі в [README](../instances/paperjs/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в
 цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv;
@@ -2772,8 +2773,9 @@ plugins and other SVG libraries are not here.
 - Демонстрація «animated-game» представлена трьома своїми скриптами: її сторінка більша за 40 000 байтів і не
   береться.
 - Сторонні плагіни Snap.svg не входять.
-- Сам формат SVG і DOM браузера — у примірнику `mdn`. Інші бібліотеки для малювання мають власні примірники:
-  `svgjs`, `paperjs`, `konva`, `pixijs`, `fabricjs`, `d3`.
+- Сам формат SVG — у примірниках `svg` (специфікації) і `mdn` (посібники й підтримка в браузерах); DOM браузера — у
+  примірнику `mdn`. Інші бібліотеки для малювання мають власні примірники: `svgjs`, `paperjs`, `konva`, `pixijs`,
+  `fabricjs`, `d3`.
 
 **Далі в [README](../instances/snapsvg/README.md):** Навіщо окремий примірник; Історія версій; Скільки цього; Що в цій
 теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
@@ -2818,8 +2820,8 @@ PostCSS, SVGR, gulp and Vite themselves are not here.
 - Корейський і російський переклади посібника «how it works» не беруться. У кількох старих README і в одному
   записі журналу змін є слова кирилицею (посилання на російський переклад); пошук їх не індексує.
 - Код плагінів не входить: є лише їхні сторінки документації.
-- Сам формат SVG — у примірнику `mdn`. Бібліотеки, що малюють SVG, мають власні примірники: `svgjs`, `snapsvg`,
-  `paperjs`, `d3`.
+- Сам формат SVG — у примірниках `svg` (специфікації) і `mdn` (посібники й підтримка в браузерах). Бібліотеки, що
+  малюють SVG, мають власні примірники: `svgjs`, `snapsvg`, `paperjs`, `d3`.
 
 **Далі в [README](../instances/svgo/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в цій
 теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
