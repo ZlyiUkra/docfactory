@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 234. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 235. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8994, вільний усередині: 8769. Наступний новий: 8995.
+Зайняті порти: 8760–8995, вільний усередині: 8769. Наступний новий: 8996.
 
 ## Як обирати
 
@@ -117,6 +117,7 @@
 | [`svgjs`](#svgjs) | 8992 | Малюєте й анімуєте SVG через SVG.js: фігури, текст, градієнти, маски, трансформації, animate() з Runner і Timeline, події, імпорт і експорт розмітки, SVG.js у Node.js через svgdom; лінії 3.x і 2.7, офіційні додатки (draggable, draw, filter, panzoom, select, resize, pathmorphing, topath, topoly, easing). |
 | [`paperjs`](#paperjs) | 8993 | Працюєте з векторною графікою на canvas через Paper.js: контури, сегменти й криві Безьє, геометрія Point і Rectangle, булеві операції над контурами, hitTest, інструменти миші, анімація onFrame, імпорт і експорт SVG та JSON, PaperScript; довідник API ліній 0.10–0.17 і 0.12.18. |
 | [`snapsvg`](#snapsvg) | 8994 | Супроводжуєте чи пишете код на Snap.svg: фігури й контури, attr, animate з функціями плавності mina, події й перетягування, фільтри, маски, градієнти, завантаження готового SVG через Snap.load і вибір елементів селекторами; довідник API версій 0.1.0–0.5.1, збірка snapsvg-cjs для webpack. Бібліотека без релізів з 2017 року. |
+| [`svgo`](#svgo) | 8995 | Оптимізуєте SVG через SVGO або через обгортку (svgo-loader, postcss-svgo, @svgr/plugin-svgo, imagemin-svgo, gulp-svgmin, vite-plugin-svgo): svgo.config.js, preset-default і overrides, сторінка на кожен плагін з параметрами, чому зник viewBox чи зламались id, власний плагін, перехід між лініями 1–4. |
 
 ### Збирання, перевірка коду, тести
 
@@ -2727,6 +2728,52 @@ plugins and other SVG libraries are not here.
   `svgjs`, `paperjs`, `konva`, `pixijs`, `fabricjs`, `d3`.
 
 **Далі в [README](../instances/snapsvg/README.md):** Навіщо окремий примірник; Історія версій; Скільки цього; Що в цій
+теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
+корпусу; Сервер під Claude Code.
+
+### svgo
+
+**Коли піднімати.** Оптимізуєте SVG через SVGO або через обгортку (svgo-loader, postcss-svgo, @svgr/plugin-svgo, imagemin-svgo, gulp-svgmin, vite-plugin-svgo): svgo.config.js, preset-default і overrides, сторінка на кожен плагін з параметрами, чому зник viewBox чи зламались id, власний плагін, перехід між лініями 1–4.
+
+**Порт** 8995, сервер `svgo-docs`. Підняти: `./df svgo serve`. Адреса: `http://127.0.0.1:8995/mcp`.
+
+**Обсяг.** Документів: 540, фрагментів: 1 129.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про SVGO (SVG Optimizer) — бібліотеку Node.js і команду `svgo`, що
+зменшує файли SVG без видимої зміни малюнка, — і про пакети, якими SVGO запускають з інших інструментів:
+`svgo-loader`, `postcss-svgo`, `@svgr/plugin-svgo`, `imagemin-svgo`, `gulp-svgmin`, `vite-plugin-svgo`. Документація —
+сайт svgo.dev з останнього тегу кожної лінії 3.0–4.1, README кожної стабільної версії 0.0.1–4.1.0, журнал змін, релізи
+GitHub і README з реєстром npm шести обгорток; лише англійською. Код спільний і лежить у `../../engine/`,
+`../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
+[../../README.md](../README.md).
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the SVGO documentation -- svgo.dev at the last tag of every line 3.0 to 4.1 (introduction, usage,
+preset-default, a page per plugin with its parameters, the plugins API, the migration guides), the "how it works"
+guide of the lines 1.0 to 2.8, the README of every stable version and the npm registry history of svgo, the changelog
+up to 1.3.2, the GitHub release notes, and the README and registry history of svgo-loader, postcss-svgo,
+@svgr/plugin-svgo, imagemin-svgo, gulp-svgmin and vite-plugin-svgo. Prereleases and the documentation of webpack,
+PostCSS, SVGR, gulp and Vite themselves are not here.
+
+**Межі.**
+
+- Сторінок плагінів для ліній 1 і 2 немає: про плагіни цих ліній кажуть таблиця в README, журнал змін і релізи.
+- Речення «плагін увімкнено типово» є на сторінках плагінів ліній 3.0–4.0: у 4.1 позначку з шапки файла прибрали.
+  Для будь-якої версії перелік типових плагінів дає сторінка «Preset Default».
+- Документацію взято з останнього тегу кожної лінії, а не з кожної версії: що змінилося між 3.3.0 і 3.3.5, кажуть
+  релізи.
+- Обгортки представлено лише їхнім README і реєстром. Документації самих webpack, PostCSS, cssnano, SVGR,
+  imagemin, gulp і Vite тут немає.
+- Корейський і російський переклади посібника «how it works» не беруться. У кількох старих README і в одному
+  записі журналу змін є слова кирилицею (посилання на російський переклад); пошук їх не індексує.
+- Код плагінів не входить: є лише їхні сторінки документації.
+- Сам формат SVG — у примірнику `mdn`. Бібліотеки, що малюють SVG, мають власні примірники: `svgjs`, `snapsvg`,
+  `paperjs`, `d3`.
+
+**Далі в [README](../instances/svgo/README.md):** Навіщо окремий примірник; Історія пакетів; Скільки цього; Що в цій
 теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv; Збирання
 корпусу; Сервер під Claude Code.
 

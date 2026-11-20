@@ -242,6 +242,14 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   generic HTML reader splits each version its own way. When nearly the whole corpus is one document, write the
   `quality` targets as sections (`api-reference#paper-circle-x-y-r`): a bare document target counts any of its
   sections as a hit, and the first measurement here showed 10 of 10 that meant nothing.
+- **Content that lives in the YAML front matter, not in the page text** (svgo.dev: the parameters of a plugin with
+  descriptions and defaults sit in the `svgo:` block of the `.mdx` file, and the site draws a table from it) — reader
+  `ghdocs-history-svgo` moves the block into the text as a «Parameters» section. `ghdocs-history` keeps only `title`
+  from the front matter, so before trusting a Docusaurus source, open one page on the site next to its file: what the
+  site shows and the file body lacks comes from the front matter or a component. The reader stops on a line of the
+  block it does not understand instead of skipping a parameter.
+- **A check query must be what its name says.** `ua_query` has to be Cyrillic only: one latin identifier in it
+  («viewBox») gives a token, and three `smoke` checks fail in a way that looks like Cyrillic text in the corpus.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1436,6 +1444,14 @@ and what a taken port and a failed connection look like. A domain list in the ro
   би кожну версію по-своєму. Коли майже весь корпус — один документ, цілі `quality` пишуть розділами
   (`api-reference#paper-circle-x-y-r`): ціль-документ зараховує будь-який його розділ, і перший замір тут показав
   10 із 10, які нічого не означали.
+- **Зміст у шапці YAML, а не в тексті сторінки** (svgo.dev: параметри плагіна з описами й типовими значеннями
+  лежать у блоці `svgo:` файла `.mdx`, і сайт малює з нього таблицю) — читач `ghdocs-history-svgo` переносить блок
+  у текст розділом «Parameters». `ghdocs-history` бере з шапки лише `title`, тому перш ніж довіритися джерелу на
+  Docusaurus, одну сторінку відкривають на сайті поруч із її файлом: те, що сайт показує, а в тілі файла немає,
+  береться із шапки чи з компонента. На рядку блоку, якого читач не розуміє, він зупиняється, а не пропускає
+  параметр.
+- **Перевірковий запит має бути тим, чим названий.** `ua_query` — лише кирилиця: один латинський ідентифікатор у
+  ньому («viewBox») дає токен, і три перевірки `smoke` падають так, ніби в корпусі є кириличний текст.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2608,6 +2624,14 @@ errada.
   um leitor HTML genérico dividiria cada versão à sua maneira. Quando quase todo o corpus é um só documento, escreva
   os alvos de `quality` como secções (`api-reference#paper-circle-x-y-r`): um alvo-documento conta qualquer secção
   sua como acerto, e a primeira medição aqui deu 10 de 10 que não queriam dizer nada.
+- **Conteúdo que está no cabeçalho YAML e não no texto da página** (svgo.dev: os parâmetros de um plugin, com
+  descrições e valores por omissão, ficam no bloco `svgo:` do ficheiro `.mdx`, e o site desenha uma tabela a partir
+  dele) — o leitor `ghdocs-history-svgo` passa o bloco para o texto como secção «Parameters». `ghdocs-history` só
+  aproveita `title` do cabeçalho; por isso, antes de confiar numa fonte Docusaurus, abra uma página no site ao lado
+  do seu ficheiro: o que o site mostra e o corpo do ficheiro não tem vem do cabeçalho ou de um componente. O leitor
+  pára numa linha do bloco que não entende, em vez de saltar um parâmetro.
+- **Uma consulta de verificação tem de ser o que o nome diz.** `ua_query` só pode ter cirílico: um identificador
+  latino («viewBox») dá um token, e três verificações do `smoke` falham como se houvesse texto cirílico no corpus.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
