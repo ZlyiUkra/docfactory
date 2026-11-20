@@ -250,6 +250,24 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
   block it does not understand instead of skipping a parameter.
 - **A check query must be what its name says.** `ua_query` has to be Cyrillic only: one latin identifier in it
   («viewBox») gives a token, and three `smoke` checks fail in a way that looks like Cyrillic text in the corpus.
+- **A specification in several editions** (`svg`: SVG 1.1, the SVG 2 snapshot and the SVG 2 editor's draft; a CSS
+  module as its W3C publication and as its editor's draft) — one source per edition with its `version`, all of them in
+  one `families` entry, and section numbers kept only in the document title. Numbering differs between editions
+  («Paths» is chapter 8 of SVG 1.1 and chapter 9 of SVG 2), and with the number in a heading the same section of three
+  editions takes three result slots of three. Readers: `svg-chapters` for a multi-page edition whose chapter title
+  stands in `<h1>`, `spec-html-edition` for a single page (`spec-html` plus `version` and `prefix`).
+- **Editions built by different tools differ in typography, not in text** (the SVG 2 draft is built by Bikeshed and
+  puts element names in `<code>` and a typographic apostrophe where the snapshot has neither) — before counting on
+  merged excerpts, `diff` one unchanged chapter of two editions. Once the reader dropped inline code marks and
+  straightened the apostrophe, 1 086 excerpts merged, and the `versions` list of an excerpt now shows where the draft
+  departs from the publication.
+- **Formulas in MathML vanish silently**: the shared HTML parsers skip the `<math>` subtree, and a section about
+  converting arc parameters is left with words and no formula. Count `<math` in the pages before choosing a reader;
+  `svg-chapters` and `spec-html-edition` write a formula as a line of text (`x_1`, `(a) / (b)`, `sqrt(...)`, a matrix
+  as rows separated by «;»).
+- **Find the address of the current editor's draft on the title page of the publication** («Latest editor's draft»),
+  not by habit: svgwg.org served a copy of the SVG 2 draft a year older than the published snapshot, while the live
+  draft is on w3c.github.io.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1452,6 +1470,24 @@ and what a taken port and a failed connection look like. A domain list in the ro
   параметр.
 - **Перевірковий запит має бути тим, чим названий.** `ua_query` — лише кирилиця: один латинський ідентифікатор у
   ньому («viewBox») дає токен, і три перевірки `smoke` падають так, ніби в корпусі є кириличний текст.
+- **Специфікація в кількох виданнях** (`svg`: SVG 1.1, знімок SVG 2 і чернетка редакторів SVG 2; модуль CSS як
+  публікація W3C і як чернетка редакторів) — по джерелу на видання з його `version`, усі в одному записі `families`, а
+  номери розділів лишаються тільки в назві документа. Нумерація у виданнях різна («Paths» — розділ 8 у SVG 1.1 і
+  розділ 9 у SVG 2), і з номером у заголовку той самий розділ трьох видань займає три місця видачі з трьох. Читачі:
+  `svg-chapters` для багатосторінкового видання, де назва розділу стоїть у `<h1>`, і `spec-html-edition` для однієї
+  сторінки (`spec-html` з полями `version` і `prefix`).
+- **Видання, зібрані різними інструментами, різняться друкарськими знаками, а не текстом** (чернетку SVG 2 збирає
+  Bikeshed: назви елементів у `<code>` і друкарський апостроф там, де у знімку немає ні того, ні того) — перш ніж
+  розраховувати на злиття фрагментів, незмінений розділ двох видань порівнюють через `diff`. Коли читач зняв позначки
+  коду в рядку й випрямив апостроф, злилися 1 086 фрагментів, і перелік `versions` уривка тепер показує, де чернетка
+  відійшла від публікації.
+- **Формули MathML зникають мовчки**: спільні розбори HTML пропускають піддерево `<math>`, і від розділу про
+  перерахунок параметрів дуги лишаються слова без формул. Перед вибором читача рахують `<math` на сторінках;
+  `svg-chapters` і `spec-html-edition` записують формулу рядком тексту (`x_1`, `(a) / (b)`, `sqrt(...)`, матриця —
+  рядки через «;»).
+- **Адресу чинної чернетки редакторів беруть з титульної сторінки публікації** («Latest editor's draft»), а не за
+  звичкою: svgwg.org віддавав копію чернетки SVG 2 на рік старішу за опублікований знімок, а жива чернетка лежить на
+  w3c.github.io.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2632,6 +2668,24 @@ errada.
   pára numa linha do bloco que não entende, em vez de saltar um parâmetro.
 - **Uma consulta de verificação tem de ser o que o nome diz.** `ua_query` só pode ter cirílico: um identificador
   latino («viewBox») dá um token, e três verificações do `smoke` falham como se houvesse texto cirílico no corpus.
+- **Uma especificação em várias edições** (`svg`: SVG 1.1, o instantâneo do SVG 2 e o rascunho dos editores do SVG 2;
+  um módulo CSS como publicação do W3C e como rascunho dos editores) — uma fonte por edição com a sua `version`, todas
+  na mesma entrada de `families`, e os números das secções ficam só no título do documento. A numeração difere entre
+  edições («Paths» é o capítulo 8 do SVG 1.1 e o capítulo 9 do SVG 2), e com o número no título a mesma secção de três
+  edições ocupa três lugares em três. Leitores: `svg-chapters` para uma edição em várias páginas cujo título de
+  capítulo está em `<h1>`, `spec-html-edition` para uma página única (`spec-html` com `version` e `prefix`).
+- **Edições geradas por ferramentas diferentes diferem na tipografia, não no texto** (o rascunho do SVG 2 é gerado
+  pelo Bikeshed e põe os nomes dos elementos em `<code>` e um apóstrofo tipográfico onde o instantâneo não tem nem uma
+  coisa nem outra) — antes de contar com trechos fundidos, faça `diff` de um capítulo inalterado de duas edições.
+  Depois de o leitor retirar as marcas de código em linha e endireitar o apóstrofo, fundiram-se 1 086 trechos, e a
+  lista `versions` de um trecho mostra agora onde o rascunho se afasta da publicação.
+- **As fórmulas em MathML desaparecem sem aviso**: os analisadores de HTML partilhados saltam a subárvore `<math>`, e
+  uma secção sobre a conversão dos parâmetros de um arco fica com palavras e sem fórmulas. Conte `<math` nas páginas
+  antes de escolher um leitor; `svg-chapters` e `spec-html-edition` escrevem a fórmula como uma linha de texto (`x_1`,
+  `(a) / (b)`, `sqrt(...)`, uma matriz como linhas separadas por «;»).
+- **Procure o endereço do rascunho atual dos editores na página de rosto da publicação** («Latest editor's draft»),
+  não por hábito: svgwg.org servia uma cópia do rascunho do SVG 2 um ano mais antiga do que o instantâneo publicado,
+  enquanto o rascunho vivo está em w3c.github.io.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
