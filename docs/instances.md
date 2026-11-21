@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 239. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 240. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8999, вільний усередині: 8769. Наступний новий: 9000.
+Зайняті порти: 8760–9000, вільний усередині: 8769. Наступний новий: 9001.
 
 ## Як обирати
 
@@ -348,6 +348,7 @@
 | [`pdf-js`](#pdf-js) | 8997 | Працюєте з PDF у JavaScript чи TypeScript і шукаєте, якою бібліотекою це зробити: показати файл (PDF.js, react-pdf), змінити наявний — сторінки, злиття, форми (pdf-lib, @cantoo/pdf-lib), створити з коду (jsPDF, PDFKit, pdfmake, @react-pdf/renderer, pdfme), надрукувати HTML у PDF (Puppeteer Page.pdf, html2pdf.js), витягти текст (pdf-parse, unpdf, pdf2json), затерти чи анотувати (MuPDF.js), зробити зображення сторінки (pdf-to-img, pdf2pic, node-poppler), підписати (@signpdf/signpdf). |
 | [`mupdf`](#mupdf) | 8998 | Працюєте з PDF та іншими документами через MuPDF мовою C, утиліту mutool або PyMuPDF у Python: відкрити документ і намалювати сторінку, витягти текст, таблиці й зображення, додати анотації, затерти текст, злити чи стиснути файли, перетворити PDF на Markdown (PyMuPDF4LLM). |
 | [`sharp`](#sharp) | 8999 | Обробляєте зображення в Node.js через sharp, мовою C чи з командного рядка через libvips (vips, vipsthumbnail) або в Python через pyvips: змінити розмір, обрізати, перетворити формат (JPEG, PNG, WebP, AVIF, GIF, TIFF), накласти зображення, прочитати метадані, поставити sharp у Docker чи на AWS Lambda. |
+| [`pandoc`](#pandoc) | 9000 | Перетворюєте документи між форматами через pandoc (Markdown, Word, HTML, LaTeX, EPUB, PDF): шукаєте параметр командного рядка, пишете шаблон, файл типових налаштувань чи фільтр мовою Lua, JavaScript або Python, викликаєте pandoc з Node.js, запускаєте його в браузері (pandoc-wasm) чи в Docker, нумеруєте рисунки через pandoc-crossref. |
 
 ### Блокчейн і біржі
 
@@ -8671,6 +8672,51 @@ tools are not here.
 **Далі в [README](../instances/sharp/README.md):** Навіщо три бібліотеки в одному примірнику; Пакети й версії; Скільки
 цього; Що в цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу;
 Установка venv; Збирання корпусу; Сервер під Claude Code.
+
+### pandoc
+
+**Коли піднімати.** Перетворюєте документи між форматами через pandoc (Markdown, Word, HTML, LaTeX, EPUB, PDF): шукаєте параметр командного рядка, пишете шаблон, файл типових налаштувань чи фільтр мовою Lua, JavaScript або Python, викликаєте pandoc з Node.js, запускаєте його в браузері (pandoc-wasm) чи в Docker, нумеруєте рисунки через pandoc-crossref.
+
+**Порт** 9000, сервер `pandoc-docs`. Підняти: `./df pandoc serve`. Адреса: `http://127.0.0.1:9000/mcp`.
+
+**Обсяг.** Документів: 1 241, фрагментів: 7 763.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про pandoc та інструменти довкола нього за їхньою документацією. pandoc
+— програма командного рядка, яка перетворює документ з одного формату розмітки на інший: Markdown на Word, HTML на
+PDF, LaTeX на EPUB і так далі, усього кілька десятків форматів. Її написав Джон Макфарлейн мовою Haskell.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of pandoc and the tools around it -- the User's Guide of the lines 0.10-3.14 with a section per option, the
+doc folder with the Lua filters reference, the change log, the release notes, the default templates and the
+WebAssembly code of pandoc; the npm packages pandoc-wasm, node-pandoc, pandoc-filter, mermaid-filter, pandiff and four
+smaller wrappers; pandoc-crossref; the Docker images; pypandoc, panflute and pandocfilters. Prereleases, Quarto, the
+Haskell API reference and the specifications of the formats are not here.
+
+**Межі.**
+
+- У посібниках різних ліній той самий параметр може стояти в розділах із різними назвами: змінна `geometry` у лінії
+  2.5 лежить під «Variables for LaTeX», а в лінії 3.14 — під «Variables», «Variables for LaTeX», «Layout». Тоді пошук
+  без `version` показує її двічі.
+- Розділом стає лише той рядок списку означень, що починається іменем у зворотних лапках і стоїть з першої колонки.
+  Значення параметра, перелічені всередині його опису (`auto`, `none`, `preserve` у `--wrap`), лишаються в тексті
+  розділу.
+- pandoc-crossref узято однією версією, 0.3.26; старіші описує лише журнал змін.
+- Сторінки образів Docker не мають версії, тому пошук із параметром `version` їх не бачить.
+- Із пакетів npm узято ті, що викликають pandoc, збирають його для WebAssembly або пишуть для нього фільтри. Пакети,
+  які лише читають чи пишуть розмітку в стилі pandoc без самого pandoc (`remark-deflist`, `markdown-it-attrs`), сюди
+  не входять.
+- Сторінки посібника ведуть на адреси сайту pandoc.org, тобто на найновішу версію сторінки, а не на версію документа.
+- Передрелізи не беруться.
+- Довідника бібліотеки pandoc мовою Haskell (Hackage), Quarto, R Markdown, специфікацій форматів (docx, EPUB, CSL) і
+  самої мови Lua тут немає. LibreOffice — у примірнику `libreoffice`, утиліти poppler, Ghostscript і qpdf — у
+  `doc-tools`.
+
+**Далі в [README](../instances/pandoc/README.md):** Що тут зібрано і навіщо разом; Пакети й версії; Скільки цього; Що
+в цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv;
+Збирання корпусу; Сервер під Claude Code.
 
 <!-- тема: Блокчейн і біржі -->
 

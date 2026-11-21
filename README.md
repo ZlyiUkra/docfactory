@@ -5088,6 +5088,31 @@ MuPDF: документація ліній 1.3–1.28 у всіх трьох м�
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/sharp/README.md](instances/sharp/README.md).
 
+### pandoc
+
+Документація pandoc та інструментів довкола нього англійською. pandoc — програма командного рядка, що перетворює
+документи між форматами розмітки: Markdown, Word, HTML, LaTeX, EPUB, PDF через рушій та десятки інших. Посібник
+користувача кожної лінії 0.10–3.14 з розділом на кожен параметр командного рядка і кожну змінну шаблону; тека `doc`
+ліній 2.0–3.14 з довідником фільтрів Lua, фільтрами JSON, власними читачами й записувачами та pandoc-server; журнал
+змін, релізи GitHub, шаблони за замовчуванням кожного формату виходу, код збірки WebAssembly. Для Node.js і
+JavaScript — README та історія npm дев'яти пакетів: `pandoc-wasm`, `node-pandoc`, `pandoc-filter`, `mermaid-filter`,
+`pandiff`, `pandoc`, `node-pandoc-promise`, `simple-pandoc`, `pandoc-bin`. Також pandoc-crossref, образи Docker
+`pandoc/*`, а для Python — pypandoc, panflute і pandocfilters. 1 241 документ, 7 763 фрагменти.
+
+- порт `9000`; запис у Claude Code — `pandoc-docs`, адреса `http://127.0.0.1:9000/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-pandoc`, модель векторів — `bge-small`;
+- версія — лінія одного продукту з його префіксом (`version: "pandoc-3.14"`, `"pandoc-2.19"`, `"pandoc-wasm-1"`,
+  `"pandoc-crossref-0.3"`, `"pypandoc-1.17"`, `"panflute-3"`); сторінки образів Docker версії не мають, і пошук із
+  `version` їх не бачить;
+- посібник читає `ghdocs-history-deflist`: параметр, записаний у посібнику рядком списку означень, стає окремим
+  розділом з назвою «--toc-depth», а функція довідника Lua дістає в заголовок повне ім'я «pandoc.utils.stringify»;
+- не входять: передрелізи, довідник бібліотеки pandoc мовою Haskell, Quarto, специфікації форматів, сама мова Lua;
+  LibreOffice — примірник `libreoffice`, утиліти poppler, Ghostscript і qpdf — примірник `doc-tools`;
+- приклад питання агентові: `./df pandoc ask "How do I convert Markdown to PDF with a table of contents?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/pandoc/README.md](instances/pandoc/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

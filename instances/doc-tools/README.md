@@ -20,9 +20,9 @@ ImageMagick 6 (`convert`), 26.04 — ImageMagick 7 (`magick`), poppler 22.02, 24
 «not authorized») і `delegates.xml` (через які програми ImageMagick читає PDF і SVG).
 
 **Що свідомо окремо.** LibreOffice (`soffice --convert-to`) — примірник `libreoffice`. MuPDF і PyMuPDF — примірник
-`mupdf`. Бібліотеки PDF для JavaScript (pdf.js, pdf-lib та інші) — примірник `pdf-js`. Tesseract і OCRmyPDF, sharp і
-libvips, pandoc, бібліотеки PDF для Python (pypdf, pdfplumber) — кожна окремим примірником у черзі: кожен із цих
-наборів великий сам по собі.
+`mupdf`. Бібліотеки PDF для JavaScript (pdf.js, pdf-lib та інші) — примірник `pdf-js`. sharp і libvips — примірник
+`sharp`. pandoc — примірник `pandoc`. Tesseract і OCRmyPDF — примірник `tesseract`. Бібліотеки PDF для Python (pypdf, pdfplumber)
+— окремим примірником у черзі: цей набір великий сам по собі.
 
 ## Скільки цього
 

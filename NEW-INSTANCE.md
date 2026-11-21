@@ -315,6 +315,17 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Print full paths when you compare the layout of a folder across tags.** A probe that cut «docs/» out of the paths
   with a plain replace showed `docs/src/content/docs/api-resize.md` of sharp 0.34 as `src/content/api-resize.md`, and
   a source for a layout that never existed failed with «no allowed .md».
+- **A manual that describes its options as a definition list, not as headings** (pandoc: `MANUAL.txt` puts about a
+  hundred options under the one heading «General writer options», each as a term line «`--toc-depth=`*NUMBER*» with
+  the description under it) — reader `ghdocs-history-deflist` turns every such term into a section. The title holds
+  only the names without their values («--toc-depth», «-f, -r, --from, --read»), and the whole term stays as the first
+  line of the text: the notation of the values changes between versions, and in the title it would give one option
+  several keys. The same reader drops pandoc heading attributes («{.options}») and puts the full dotted name from the
+  identifier into the heading («stringify {#pandoc.utils.stringify}» becomes «pandoc.utils.stringify»). `terms: false`
+  keeps the second part only: in the Lua reference the terms are function parameters.
+- **A smoke query in the user's language must hold no latin word.** `ua_query` «Як перетворити Markdown на PDF» failed
+  three checks at once: the word index keeps latin letters, so «Markdown» and «PDF» gave tokens and the search found
+  documents where zero was expected.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1579,6 +1590,17 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Порівнюючи розкладку теки на різних тегах, друкуйте повні шляхи.** Проба, що вирізала «docs/» зі шляхів простою
   заміною, показала `docs/src/content/docs/api-resize.md` лінії sharp 0.34 як `src/content/api-resize.md`, і джерело
   для макета, якого ніколи не було, впало з «жодного дозволеного .md».
+- **Посібник, що описує параметри списком означень, а не заголовками** (pandoc: у `MANUAL.txt` під одним заголовком
+  «General writer options» стоїть близько сотні параметрів, кожен рядком-терміном «`--toc-depth=`*NUMBER*» з описом
+  під ним) — читач `ghdocs-history-deflist` робить із кожного такого терміна розділ. У назві лишаються самі імена без
+  значень («--toc-depth», «-f, -r, --from, --read»), а повний термін стоїть першим рядком тексту: запис значень між
+  версіями міняється, і в назві він дав би одному параметрові кілька ключів. Той самий читач знімає із заголовків
+  атрибути pandoc («{.options}») і ставить у заголовок повне ім'я з крапками з ідентифікатора («stringify
+  {#pandoc.utils.stringify}» стає «pandoc.utils.stringify»). Поле `terms: false` лишає тільки другу частину: у
+  довіднику Lua термінами записано параметри функцій.
+- **Запит `smoke` мовою користувача не має містити жодного латинського слова.** `ua_query` «Як перетворити Markdown на
+  PDF» провалив три перевірки одразу: індекс по словах тримає латинські літери, тож «Markdown» і «PDF» дали токени, і
+  пошук знайшов документи там, де очікувався нуль.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2827,6 +2849,17 @@ errada.
 - **Imprima os caminhos completos ao comparar a disposição de uma pasta entre tags.** Uma sonda que cortava «docs/»
   dos caminhos com uma simples substituição mostrou `docs/src/content/docs/api-resize.md` do sharp 0.34 como
   `src/content/api-resize.md`, e uma fonte para uma disposição que nunca existiu falhou com «nenhum .md permitido».
+- **Um manual que descreve as opções como lista de definições, e não como títulos** (pandoc: o `MANUAL.txt` põe cerca
+  de cem opções sob o único título «General writer options», cada uma como uma linha-termo «`--toc-depth=`*NUMBER*»
+  com a descrição por baixo) — o leitor `ghdocs-history-deflist` transforma cada termo numa secção. O título leva só
+  os nomes sem os valores («--toc-depth», «-f, -r, --from, --read»), e o termo inteiro fica como primeira linha do
+  texto: a notação dos valores muda entre versões e, no título, daria várias chaves à mesma opção. O mesmo leitor
+  retira os atributos de título do pandoc («{.options}») e põe no título o nome completo com pontos tirado do
+  identificador («stringify {#pandoc.utils.stringify}» vira «pandoc.utils.stringify»). `terms: false` mantém só a
+  segunda parte: na referência de Lua os termos são parâmetros de funções.
+- **Uma consulta de `smoke` na língua do utilizador não pode ter nenhuma palavra latina.** O `ua_query` «Як
+  перетворити Markdown на PDF» falhou três verificações de uma vez: o índice de palavras guarda letras latinas, por
+  isso «Markdown» e «PDF» deram tokens e a busca encontrou documentos onde se esperava zero.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,
