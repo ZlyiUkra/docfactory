@@ -286,6 +286,25 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **API written as Sphinx directives, not headings** (the MuPDF JavaScript reference: `.. method::
   PDFPage.prototype.applyRedactions(...)`) — reader `ghdocs-history-jsdomain` turns each directive into a heading;
   with `sphinx: true` alone a page of 134 methods had five sections and no excerpt named its method.
+- **A C API whose reference is the header files** (MuPDF: the documentation pages cover part of the functions, the
+  description of each one stands in a comment above its declaration) — reader `ghcode-history-ch`: a section is a
+  group of declarations separated by a blank line, with its comment as plain text and the declarations as code; the
+  title is what the group declares («fz_open_document()», «fz_document_drop_fn», «struct fz_page»). `ghcode-history`
+  with `outline: true` splits only at Doxygen «/** … */» comments: half of the MuPDF headers and every header before
+  1.17 use plain «/* … */», and such a file of 35 thousand characters stayed one section without a single function
+  name.
+- **Keep the signature out of the heading** (PyMuPDF: `.. method:: get_text(option, *, clip=None, …)` inside `..
+  class:: Page`) — reader `ghdocs-history-pydomain` titles the section «Page.get_text()» and puts the full signature
+  on the first line of the body. A signature changes between versions, and with it in the heading the same method of
+  different versions got different section keys and took several result slots; with the name alone the versions
+  collapse into one.
+- **A site that changed its layout between versions** (MuPDF: `docs/tools/mutool-draw.rst` since 1.26,
+  `docs/src/mutool-draw.rst` in 1.22–1.25, `docs/manual-mutool-draw.html` before) — take every layout as its own
+  source and bring the names of the same page together with `slug_rewrite` in `config.json`; without it one page takes
+  three result slots.
+- **Check the bookmark levels of a PDF book before the first run**: `depth` of `pdf-outline` counts from zero. For
+  «MuPDF Explored» (parts, chapters, sections) `depth: 2` gave 227 documents of a few hundred characters, `depth: 1`
+  gave 49 chapters. `engine: "pdfium"` removed the ligatures («ﬁ», «ﬂ») that pypdf left in every other word.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1524,6 +1543,22 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **API, записаний директивами Sphinx, а не заголовками** (довідник JavaScript MuPDF: `.. method::
   PDFPage.prototype.applyRedactions(...)`) — читач `ghdocs-history-jsdomain` робить з кожної директиви заголовок; із
   самим `sphinx: true` сторінка на 134 методи мала п'ять розділів, і жоден фрагмент не називав свого методу.
+- **C API, довідник якого — заголовкові файли** (MuPDF: сторінки документації описують частину функцій, а опис кожної
+  стоїть коментарем над її оголошенням) — читач `ghcode-history-ch`: розділ — група оголошень, відділена порожнім
+  рядком; її коментар лягає звичайним текстом, оголошення — кодом, а назва — те, що група оголошує
+  («fz_open_document()», «fz_document_drop_fn», «struct fz_page»). `ghcode-history` з `outline: true` ділить лише за
+  коментарями Doxygen «/** … */»: половина заголовків MuPDF і всі заголовки до 1.17 мають звичайні «/* … */», і такий
+  файл на 35 тисяч символів лишався одним розділом без жодної назви функції.
+- **Підпис — не в заголовок** (PyMuPDF: `.. method:: get_text(option, *, clip=None, …)` усередині `.. class:: Page`) —
+  читач `ghdocs-history-pydomain` називає розділ «Page.get_text()», а повний підпис ставить першим рядком тіла. Підпис
+  між версіями міняється, і з ним у заголовку той самий метод різних версій діставав різні ключі розділу й займав у
+  видачі кілька місць; із самим іменем версії зливаються в одне.
+- **Сайт, що змінив макет між версіями** (MuPDF: `docs/tools/mutool-draw.rst` від 1.26, `docs/src/mutool-draw.rst` у
+  1.22–1.25, `docs/manual-mutool-draw.html` раніше) — кожен макет беруть окремим джерелом, а імена тієї самої сторінки
+  зводять до одного полем `slug_rewrite` у `config.json`; без нього одна сторінка займає у видачі три місця.
+- **Рівні закладок PDF-книжки дивляться до першого прогону**: `depth` читача `pdf-outline` рахується від нуля. Для
+  «MuPDF Explored» (частини, глави, розділи) `depth: 2` дав 227 документів по кількасот символів, `depth: 1` — 49
+  глав. `engine: "pdfium"` прибрав лігатури («ﬁ», «ﬂ»), які pypdf лишав у кожному другому слові.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2741,6 +2776,26 @@ errada.
 - **API escrita em diretivas Sphinx, não em títulos** (a referência JavaScript do MuPDF: `.. method::
   PDFPage.prototype.applyRedactions(...)`) — o leitor `ghdocs-history-jsdomain` transforma cada diretiva num título;
   só com `sphinx: true` uma página de 134 métodos tinha cinco secções e nenhum trecho nomeava o seu método.
+- **Uma API em C cuja referência são os ficheiros de cabeçalho** (MuPDF: as páginas da documentação cobrem parte das
+  funções, a descrição de cada uma está num comentário acima da sua declaração) — leitor `ghcode-history-ch`: uma
+  secção é um grupo de declarações separado por uma linha em branco, com o comentário como texto e as declarações como
+  código; o título é o que o grupo declara («fz_open_document()», «fz_document_drop_fn», «struct fz_page»). O
+  `ghcode-history` com `outline: true` só divide nos comentários Doxygen «/** … */»: metade dos cabeçalhos do MuPDF e
+  todos os anteriores à 1.17 usam «/* … */» simples, e um ficheiro desses, de 35 mil caracteres, ficava numa só secção
+  sem um único nome de função.
+- **A assinatura fica fora do título** (PyMuPDF: `.. method:: get_text(option, *, clip=None, …)` dentro de `.. class::
+  Page`) — o leitor `ghdocs-history-pydomain` intitula a secção «Page.get_text()» e põe a assinatura completa na
+  primeira linha do corpo. A assinatura muda entre versões, e com ela no título o mesmo método de versões diferentes
+  recebia chaves de secção diferentes e ocupava vários lugares nos resultados; só com o nome, as versões fundem-se
+  numa.
+- **Um site que mudou de estrutura entre versões** (MuPDF: `docs/tools/mutool-draw.rst` desde a 1.26,
+  `docs/src/mutool-draw.rst` na 1.22–1.25, `docs/manual-mutool-draw.html` antes) — cada estrutura entra como fonte
+  própria, e os nomes da mesma página são reunidos com `slug_rewrite` no `config.json`; sem isso uma página ocupa três
+  lugares nos resultados.
+- **Veja os níveis dos marcadores de um livro em PDF antes da primeira execução**: o `depth` do `pdf-outline` conta a
+  partir de zero. Para o «MuPDF Explored» (partes, capítulos, secções) `depth: 2` deu 227 documentos de poucas
+  centenas de caracteres, `depth: 1` deu 49 capítulos. `engine: "pdfium"` retirou as ligaduras («ﬁ», «ﬂ») que o pypdf
+  deixava em cada segunda palavra.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,

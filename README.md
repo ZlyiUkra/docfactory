@@ -5029,11 +5029,37 @@ SVG-AAM 1.0, WAI-ARIA Graphics Module 1.0 і Graphics-AAM 1.0. 295 докуме�
   всіх пакетах одразу — так шукають, коли названо задачу, а не бібліотеку;
 - карта «задача → бібліотека» записана в описі інструмента пошуку;
 - довідник JavaScript API MuPDF розбирає читач `ghdocs-history-jsdomain`: кожен метод — окремий розділ;
-- не входять: передрелізи, сам формат PDF, решта документації Puppeteer, PyMuPDF і MuPDF мовою C, утиліти poppler і
-  Ghostscript (примірник `doc-tools`), Playwright (примірник `playwright`);
+- не входять: передрелізи, сам формат PDF, решта документації Puppeteer, PyMuPDF і MuPDF мовою C (примірник
+  `mupdf`), утиліти poppler і Ghostscript (примірник `doc-tools`), Playwright (примірник `playwright`);
 - приклад питання агентові: `./df pdf-js ask "How do I merge two PDF files in Node.js?"`;
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/pdf-js/README.md](instances/pdf-js/README.md).
+
+### mupdf
+
+Документація MuPDF і PyMuPDF англійською. MuPDF — бібліотека мовою C від Artifex, що читає, малює, перетворює і
+змінює PDF, XPS, EPUB та інші документи, з утилітою командного рядка `mutool`; PyMuPDF — її прив'язка до Python.
+MuPDF: документація ліній 1.3–1.28 у всіх трьох макетах сайту (посібник, довідник C API, рецепти, сторінка на кожну
+команду `mutool`), заголовкові файли `include/mupdf` кожної лінії 1.3–1.28 з описом кожної функції, приклади мовою C,
+сторінки man, файл `CHANGES` і книжка Robin Watts, MuPDF Explored, Artifex Software, 2023. PyMuPDF: документація
+ліній 1.16–2.1 (сторінка на клас із розділом на кожен метод, рецепти, FAQ, PyMuPDF4LLM, PyMuPDF Pro, PyMuPDF Layout),
+приклади коду, журнали змін, релізи GitHub та історія PyPI п'яти пакетів. 2 550 документів, 12 315 фрагментів.
+
+- порт `8998`; запис у Claude Code — `mupdf-docs`, адреса `http://127.0.0.1:8998/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-mupdf`, модель векторів — `bge-small`;
+- версія — лінія одного продукту з його префіксом, бо номери ліній MuPDF і PyMuPDF збігаються
+  (`version: "mupdf-1.28"`, `"pymupdf-2"`, `"pymupdf-1.27"`, `"pymupdf4llm-2"`, `"pymupdfpro-1"`); книжка версії не
+  має, і пошук із `version` її не бачить;
+- заголовкові файли C ділить читач `ghcode-history-ch`: розділ — група оголошень зі своїм коментарем, назва розділу —
+  імена функцій і типів;
+- довідник класів PyMuPDF розбирає читач `ghdocs-history-pydomain`: кожен метод класу — окремий розділ з назвою
+  «Page.get_text()»;
+- не входять: передрелізи, JavaScript API бібліотеки MuPDF (MuPDF.js і скрипти `mutool run` — примірник `pdf-js`),
+  сам формат PDF, утиліти poppler, Ghostscript і qpdf (примірник `doc-tools`), інші бібліотеки PDF для Python;
+- приклад питання агентові: `./df mupdf ask "How do I extract the words of a page with PyMuPDF?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/mupdf/README.md](instances/mupdf/README.md).
 
 ## Захист
 
