@@ -5,8 +5,12 @@
                    вираз над іменем файла з однією групою — версією («^(\\d+\\.\\d+\\.\\d+)\\.md$»): файл,
                    ім'я якого не збіглося, не береться. Необов'язкові: `skip` — вираз версій, що не беруться
                    (ще не випущені), `name_prefix` — рядок перед іменем документа, `title_prefix` — назва
-                   документа без заголовка у файлі («RabbitMQ release notes » + версія). Файл `.md`
-                   розбирається як markdown, будь-який інший — як простий текст.
+                   документа без заголовка у файлі («RabbitMQ release notes » + версія),
+                   `version_prefix` — рядок перед версією документа («sharp-»): для примірника, де
+                   кілька продуктів мають кожен свою нумерацію. Файл `.md` розбирається як markdown,
+                   будь-який інший — як простий текст. Файл markdown із шапкою YAML («---», `title:
+                   v0.35.0 - 10th June 2026`, «---») читається без неї, а його назвою, коли заголовка
+                   «#» немає, стає `title` із шапки. Без шапки й без поля все як було.
 
 Навіщо. Нотатки релізів RabbitMQ лежать у `release-notes/` репозиторію rabbitmq-server по файлу на версію
 (`4.3.7.md`, а давні — `README-3.4.0.txt`), і версія є лише в імені файла. `ghdocs` дає один `version` на все
@@ -55,15 +59,19 @@ def ghdocs_filever(source: dict, ctx) -> list[Item]:
         def make(raw=raw, blob=blob, version=version, markdown=path.endswith(".md")):
             text = ctx.text(raw).replace("\r\n", "\n")
             _markup.refuse_html(text, raw)
+            meta = {}
+            if markdown and text.startswith("---\n"):
+                meta, text = _markup.front_matter(text)
             head = _H1.search(text) if markdown else None
             title = (_markup._inline(head.group(1)).strip() if head else
+                     str(meta.get("title") or "").strip() or
                      f"{source.get('title_prefix', '')}{version}".strip())
             if markdown:
                 body = _markup.markdown_body(text[head.end():] if head else text)
             else:
                 body = _markup.tidy(text, strip=False).strip()
             _markup.require(title, body, raw, min_chars=1)
-            return _markup.document(title, blob, ctx.stamp, body, version)
+            return _markup.document(title, blob, ctx.stamp, body, source.get("version_prefix", "") + version)
 
         items.append(Item(id=f"{source['id']}/{name}", file=f"{source['id']}--{name}.txt", make=make))
     if not items:
