@@ -305,6 +305,16 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **Check the bookmark levels of a PDF book before the first run**: `depth` of `pdf-outline` counts from zero. For
   «MuPDF Explored» (parts, chapters, sections) `depth: 2` gave 227 documents of a few hundred characters, `depth: 1`
   gave 49 chapters. `engine: "pdfium"` removed the ligatures («ﬁ», «ﬂ») that pypdf left in every other word.
+- **A C API whose reference exists only as gtk-doc comments in the code** (libvips: the site libvips.org/API is built
+  from the comments above the functions and serves only its three newest lines) — reader `ghcode-history-gtkdoc`:
+  every «/** name: … */» comment becomes a section titled with the function («vips_resize()»), with the declaration,
+  the parameters and the description; the gtk-doc and gi-docgen link markup («@scale», «%NULL», «#VipsKernel»,
+  «[method@Image.shrink]») becomes plain names. The reader reads each file while it builds the list, so a file without
+  such comments gives no document, and a document is a unique text of the reference, not a unique file: of 3,517
+  unique source files of 18 lines 1,272 documents remained. The raw store makes the second read free.
+- **Print full paths when you compare the layout of a folder across tags.** A probe that cut «docs/» out of the paths
+  with a plain replace showed `docs/src/content/docs/api-resize.md` of sharp 0.34 as `src/content/api-resize.md`, and
+  a source for a layout that never existed failed with «no allowed .md».
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1559,6 +1569,16 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Рівні закладок PDF-книжки дивляться до першого прогону**: `depth` читача `pdf-outline` рахується від нуля. Для
   «MuPDF Explored» (частини, глави, розділи) `depth: 2` дав 227 документів по кількасот символів, `depth: 1` — 49
   глав. `engine: "pdfium"` прибрав лігатури («ﬁ», «ﬂ»), які pypdf лишав у кожному другому слові.
+- **C API, довідник якого існує лише коментарями gtk-doc у коді** (libvips: сайт libvips.org/API збирається з
+  коментарів над функціями й віддає лише три найновіші лінії) — читач `ghcode-history-gtkdoc`: кожен коментар
+  «/** ім'я: … */» стає розділом з назвою функції («vips_resize()»), оголошенням, параметрами й описом; розмітка
+  посилань gtk-doc і gi-docgen («@scale», «%NULL», «#VipsKernel», «[method@Image.shrink]») стає звичайними іменами.
+  Читач читає кожен файл уже під час складання переліку, тому файл без таких коментарів документа не дає, а
+  документ — це неповторний текст довідника, а не неповторний файл: із 3 517 неповторних файлів коду 18 ліній
+  лишилося 1 272 документи. Друге читання файла бере його зі сховища сирого й мережі не питає.
+- **Порівнюючи розкладку теки на різних тегах, друкуйте повні шляхи.** Проба, що вирізала «docs/» зі шляхів простою
+  заміною, показала `docs/src/content/docs/api-resize.md` лінії sharp 0.34 як `src/content/api-resize.md`, і джерело
+  для макета, якого ніколи не було, впало з «жодного дозволеного .md».
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2796,6 +2816,17 @@ errada.
   partir de zero. Para o «MuPDF Explored» (partes, capítulos, secções) `depth: 2` deu 227 documentos de poucas
   centenas de caracteres, `depth: 1` deu 49 capítulos. `engine: "pdfium"` retirou as ligaduras («ﬁ», «ﬂ») que o pypdf
   deixava em cada segunda palavra.
+- **Uma API em C cuja referência só existe como comentários gtk-doc no código** (libvips: o site libvips.org/API é
+  montado a partir dos comentários acima das funções e só serve as três linhas mais recentes) — leitor
+  `ghcode-history-gtkdoc`: cada comentário «/** nome: … */» vira uma secção com o nome da função («vips_resize()»),
+  a declaração, os parâmetros e a descrição; a marcação de ligações do gtk-doc e do gi-docgen («@scale», «%NULL»,
+  «#VipsKernel», «[method@Image.shrink]») vira nomes simples. O leitor lê cada ficheiro já ao montar a lista, por isso
+  um ficheiro sem esses comentários não dá documento, e um documento é um texto único da referência, não um ficheiro
+  único: de 3 517 ficheiros de código únicos de 18 linhas ficaram 1 272 documentos. A segunda leitura vem do
+  armazém de dados brutos e não consulta a rede.
+- **Imprima os caminhos completos ao comparar a disposição de uma pasta entre tags.** Uma sonda que cortava «docs/»
+  dos caminhos com uma simples substituição mostrou `docs/src/content/docs/api-resize.md` do sharp 0.34 como
+  `src/content/api-resize.md`, e uma fonte para uma disposição que nunca existiu falhou com «nenhum .md permitido».
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,

@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 238. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 239. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–8998, вільний усередині: 8769. Наступний новий: 8999.
+Зайняті порти: 8760–8999, вільний усередині: 8769. Наступний новий: 9000.
 
 ## Як обирати
 
@@ -347,6 +347,7 @@
 | [`doc-tools`](#doc-tools) | 8857 | Обробляєте файли через poppler та інші інструменти для PDF і документів. |
 | [`pdf-js`](#pdf-js) | 8997 | Працюєте з PDF у JavaScript чи TypeScript і шукаєте, якою бібліотекою це зробити: показати файл (PDF.js, react-pdf), змінити наявний — сторінки, злиття, форми (pdf-lib, @cantoo/pdf-lib), створити з коду (jsPDF, PDFKit, pdfmake, @react-pdf/renderer, pdfme), надрукувати HTML у PDF (Puppeteer Page.pdf, html2pdf.js), витягти текст (pdf-parse, unpdf, pdf2json), затерти чи анотувати (MuPDF.js), зробити зображення сторінки (pdf-to-img, pdf2pic, node-poppler), підписати (@signpdf/signpdf). |
 | [`mupdf`](#mupdf) | 8998 | Працюєте з PDF та іншими документами через MuPDF мовою C, утиліту mutool або PyMuPDF у Python: відкрити документ і намалювати сторінку, витягти текст, таблиці й зображення, додати анотації, затерти текст, злити чи стиснути файли, перетворити PDF на Markdown (PyMuPDF4LLM). |
+| [`sharp`](#sharp) | 8999 | Обробляєте зображення в Node.js через sharp, мовою C чи з командного рядка через libvips (vips, vipsthumbnail) або в Python через pyvips: змінити розмір, обрізати, перетворити формат (JPEG, PNG, WebP, AVIF, GIF, TIFF), накласти зображення, прочитати метадані, поставити sharp у Docker чи на AWS Lambda. |
 
 ### Блокчейн і біржі
 
@@ -8620,6 +8621,55 @@ pdf-js-docs), the PDF specification and other Python PDF libraries are not here.
 
 **Далі в [README](../instances/mupdf/README.md):** Навіщо MuPDF і PyMuPDF в одному примірнику; Пакети й версії;
 Скільки цього; Що в цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу;
+Установка venv; Збирання корпусу; Сервер під Claude Code.
+
+### sharp
+
+**Коли піднімати.** Обробляєте зображення в Node.js через sharp, мовою C чи з командного рядка через libvips (vips, vipsthumbnail) або в Python через pyvips: змінити розмір, обрізати, перетворити формат (JPEG, PNG, WebP, AVIF, GIF, TIFF), накласти зображення, прочитати метадані, поставити sharp у Docker чи на AWS Lambda.
+
+**Порт** 8999, сервер `sharp-docs`. Підняти: `./df sharp serve`. Адреса: `http://127.0.0.1:8999/mcp`.
+
+**Обсяг.** Документів: 2 507, фрагментів: 8 899.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про sharp, libvips і pyvips за їхньою документацією. sharp — модуль
+Node.js для обробки зображень: він змінює розмір, перетворює формати й накладає одне зображення на інше. libvips —
+бібліотека мовою C, яка виконує цю роботу всередині sharp. pyvips — прив'язка libvips до Python, тобто пакет, через
+який ту саму бібліотеку викликають із коду Python.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of sharp, libvips and pyvips -- the sharp documentation of the lines 0.11-0.35, its change log, TypeScript
+declarations, READMEs, npm history, release notes and the sharp-libvips releases; the libvips C API reference of the
+lines 8.1-8.18 from the documentation comments in the code, the guide, the man pages, the ChangeLog, the release notes
+and the "What's new" posts; the pyvips documentation of the lines 2.0-3.2, its code docstrings, examples, change log
+and PyPI history. Prereleases, the other language bindings of libvips, the image format specifications and other image
+tools are not here.
+
+**Межі.**
+
+- Довідник libvips узято з коментарів у коді, а не з сайту, тому його сторінки ведуть на файл коду в GitHub, а не на
+  сторінку функції на libvips.org.
+- У довіднику libvips ліній 8.17 і 8.18 текст називає інші функції так, як їх пише gi-docgen: «`Image.shrink()`»
+  замість «vips_shrink()». Назва розділу — завжди ім'я C. У лініях до 8.16 і текст називає функції іменами C.
+- Функція libvips потрапляє в довідник, лише коли над нею стоїть коментар gtk-doc. Параметри операцій, оголошені в
+  коді макросами `VIPS_ARG_*`, сюди не входять: у довіднику вони є тою мірою, якою їх перелічує коментар функції.
+- Записи файла `ChangeLog` до версії 7.9.1 не мають номера версії, тому всі вони лежать в одному документі цієї
+  версії.
+- Дописи «What's new in libvips» і сторінка встановлення libvips не мають версії, тому пошук із параметром `version`
+  їх не бачить.
+- Документації sharp ліній до 0.11 окремими сторінками не було: для них є README з повним описом API.
+- Журнал змін sharp починається з версії 0.10.0.
+- Сторінки документації sharp ведуть на адреси сайту sharp.pixelplumbing.com, тобто на найновішу версію сторінки, а не
+  на версію документа; так само посібник libvips веде на `libvips.org/API/current`.
+- Передрелізи не беруться.
+- Інших прив'язок libvips (ruby-vips, php-vips, NetVips, C++ API окремим довідником) тут немає. Формат SVG — у
+  примірнику `svg`, оптимізація SVG — у `svgo`. Інших інструментів для зображень (ImageMagick, Pillow, OpenCV, jimp)
+  немає ніде.
+
+**Далі в [README](../instances/sharp/README.md):** Навіщо три бібліотеки в одному примірнику; Пакети й версії; Скільки
+цього; Що в цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу;
 Установка venv; Збирання корпусу; Сервер під Claude Code.
 
 <!-- тема: Блокчейн і біржі -->
