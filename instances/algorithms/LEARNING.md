@@ -1442,6 +1442,8 @@ Go, запускаєте ті самі приклади і порівнюєте 
   задачі B — це швидке перетворення будь-якого входу A на вхід B з тією самою відповіддю. Якщо A зводиться до B, то B не
   легша за A. Задача NP-повна, якщо вона лежить у NP і до неї зводиться будь-яка задача з NP. Чи P дорівнює NP, невідомо, але
   майже всі вважають, що ні.
+- **Лекція:** [Лекція. Фаза 5, день 1. P, NP і зведення](lectures/f5-d01-p-np-reductions.md).
+- **Розбір читання:** [Розбір читання. Фаза 5, день 1](reading/f5-d01-reading.md).
 - **Читати:** Grokking — `NP-complete`, `NP-hard`, `Reductions`; Erickson — `P versus NP`, `NP-hard, NP-easy, and NP-complete`,
   `Reductions and Sat`; CLRS — `34.1 Polynomial time`, `34.2 Polynomial-time verification`, `34.3 NP-completeness and
   reducibility`; MIT 6.006 — `Lecture 19: Complexity`.
