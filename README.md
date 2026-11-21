@@ -5113,6 +5113,33 @@ JavaScript — README та історія npm дев'яти пакетів: `pan
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/pandoc/README.md](instances/pandoc/README.md).
 
+### pdf-python
+
+Документація бібліотек Python для роботи з файлами PDF англійською, 24 пакети в одному примірнику, щоб шукати від
+задачі. Читати й міняти наявний файл: pypdf (сайт ліній 3–7 і код ліній 1–7), його стара назва PyPDF2, pikepdf,
+pdfrw, програма командного рядка pdfly. Витягати текст і таблиці: pdfplumber, pdfminer.six, Camelot, tabula-py,
+pdftotext. Створювати PDF з коду: ReportLab (посібник користувача, код ліній 3.5–5.1), fpdf2, borb, svglib.
+Перетворювати HTML на PDF: WeasyPrint (сайт версій 52–70), xhtml2pdf, pdfkit. Перетворювати сторінки на зображення:
+pypdfium2, pdf2image. Форми — PyPDFForm, цифровий підпис — pyHanko, PDF на Word — pdf2docx, зображення на PDF —
+img2pdf. Для кожної бібліотеки взято сайт документації, запис PyPI і код пакета на тегах ліній, а також журнал змін
+чи релізи GitHub. 7 981 документ, 54 116 фрагментів.
+
+- порт `9001`; запис у Claude Code — `pdf-python-docs`, адреса `http://127.0.0.1:9001/mcp`; інструменти `search_docs`
+  і `read_section`;
+- колекція у Qdrant — `docs-pdf-python`, модель векторів — `bge-small`;
+- версія — лінія однієї бібліотеки з її префіксом (`version: "pypdf-7.1"`, `"pypdf2-3.0"`, `"reportlab-5.1"`,
+  `"pdfminer-20260107"`, `"weasyprint-70"`, `"fpdf2-2.9"`); сторінки сайту docs.reportlab.com і посібник із
+  прикладами borb версії не мають, і пошук із `version` їх не бачить;
+- код пакета лежить розділом на клас і функцію: з нього звіряють підпис і типове значення параметра в потрібній
+  лінії;
+- та сама сторінка із сайту і з репозиторію зведена в один розділ (`slug_rewrite` і `families` у `config.json`);
+- не входять: передрелізи, PyMuPDF (примірник `mupdf`), OCRmyPDF (примірник `tesseract`), бібліотеки JavaScript
+  (примірник `pdf-js`), утиліти poppler, Ghostscript і qpdf (примірник `doc-tools`), специфікація PDF, розбирачі
+  документів на машинному навчанні;
+- приклад питання агентові: `./df pdf-python ask "How do I merge two PDF files and add a password?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/pdf-python/README.md](instances/pdf-python/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

@@ -326,6 +326,23 @@ What building sixty-odd instances taught. Each line once cost a re-fetch or a wr
 - **A smoke query in the user's language must hold no latin word.** `ua_query` «Як перетворити Markdown на PDF» failed
   three checks at once: the word index keeps latin letters, so «Markdown» and «PDF» gave tokens and the search found
   documents where zero was expected.
+- **The built site for the newest line, the repository for the older ones** (pdf-python: pikepdf, Camelot, pyHanko and
+  five more). A Sphinx site builds its API reference from docstrings, so the docs folder holds only `automodule` stubs
+  and the full reference exists only in the built pages: take the newest line with `sphinx-html`, the older lines with
+  `ghdocs-history` at their tags, and leave the newest tag out of the second source. The two sources name the same
+  page differently («pikepdf-topics-pages» and «pikepdf-docs-topics-pages»): a `slug_rewrite` rule and a `families`
+  entry in `config.json` make them one section, otherwise every answer shows the page twice (257 passages collapsed in
+  pdf-python).
+- **Releases that the author marks as pre-releases give an empty source.** Every GitHub release of pyHanko carries
+  `prerelease: true` because the library is still 0.x, and `ghreleases-pattern` skips pre-releases, so the listing
+  failed with «no release matches `tag_pattern`». Look at the `prerelease` field before declaring the source; when all
+  releases carry it, take the change log from the site instead.
+- **A mirror without tags is pinned by commit.** The GitHub mirror of ReportLab stops tagging at 3.5.0. Each later
+  version is the last commit of the mirror on the day PyPI published that version (`/commits?until=DATE&per_page=1`),
+  and the commit hash stands in `tags` where a tag would.
+- **Do not stop or wait for a process with a pattern that your own command line contains.** `pkill -f "engine
+  --instance X"` kills the shell that runs it, and `until ! pgrep -f …` never ends, because the pattern is part of
+  that shell's command line. Write the pattern with a bracket (`pgrep -f "[e]ngine --instance X"`) or use the PID.
 - **A Tailwind UI Protocol site kept in the repository** (docs.uploadthing.com: `<Property name type since>` tags,
   `{{ tag, since }}` after headings, `docsMetadata({ title })`) — `ghdocs-history` with `protocol_mdx: true`: an option
   comes out with its name, type, default and the version it appeared in, a heading as «createUploadthing (function,
@@ -1601,6 +1618,23 @@ and what a taken port and a failed connection look like. A domain list in the ro
 - **Запит `smoke` мовою користувача не має містити жодного латинського слова.** `ua_query` «Як перетворити Markdown на
   PDF» провалив три перевірки одразу: індекс по словах тримає латинські літери, тож «Markdown» і «PDF» дали токени, і
   пошук знайшов документи там, де очікувався нуль.
+- **Найновіша лінія — із зібраного сайту, старіші — з репозиторію** (pdf-python: pikepdf, Camelot, pyHanko і ще
+  п'ять). Сайт Sphinx будує довідник API з рядків документації в коді, тож у теці документації лежать лише заглушки
+  `automodule`, а повний довідник є тільки в зібраних сторінках: найновішу лінію бере `sphinx-html`, старіші —
+  `ghdocs-history` на їхніх тегах, і найновішого тегу в другому джерелі немає. Два джерела називають ту саму сторінку
+  по-різному («pikepdf-topics-pages» і «pikepdf-docs-topics-pages»): правило `slug_rewrite` і запис `families` у
+  `config.json` роблять із них один розділ, інакше кожна відповідь показує сторінку двічі (у pdf-python так зведено
+  257 фрагментів).
+- **Релізи, які автор позначає попередніми, дають порожнє джерело.** Кожен реліз pyHanko на GitHub має `prerelease:
+  true`, бо бібліотека досі 0.x, а `ghreleases-pattern` попередні релізи відсіює, тож перелік упав з повідомленням
+  «жодного релізу з тегом за `tag_pattern`». Перш ніж оголошувати джерело, треба глянути на поле `prerelease`; коли
+  його мають усі релізи, журнал змін беруть із сайту.
+- **Дзеркало без тегів закріплюють комітом.** Дзеркало ReportLab на GitHub перестало ставити теги на версії 3.5.0.
+  Кожна пізніша версія — це останній коміт дзеркала на день, коли PyPI опублікував цю версію
+  (`/commits?until=ДАТА&per_page=1`), і хеш коміту стоїть у `tags` на місці тегу.
+- **Не зупиняти й не чекати процес за виразом, який є у власному рядку команди.** `pkill -f "engine --instance X"`
+  вбиває оболонку, що його виконує, а `until ! pgrep -f …` ніколи не закінчується, бо вираз — частина рядка команди
+  цієї оболонки. Вираз пишуть із квадратною дужкою (`pgrep -f "[e]ngine --instance X"`) або беруть PID.
 - **Сайт на шаблоні Tailwind UI Protocol у репозиторії** (docs.uploadthing.com: теги `<Property name type since>`,
   `{{ tag, since }}` після заголовків, `docsMetadata({ title })`) — `ghdocs-history` з `protocol_mdx: true`: опція
   виходить з іменем, типом, типовим значенням і версією появи, заголовок — «createUploadthing (function, since 5.0)» без
@@ -2860,6 +2894,23 @@ errada.
 - **Uma consulta de `smoke` na língua do utilizador não pode ter nenhuma palavra latina.** O `ua_query` «Як
   перетворити Markdown на PDF» falhou três verificações de uma vez: o índice de palavras guarda letras latinas, por
   isso «Markdown» e «PDF» deram tokens e a busca encontrou documentos onde se esperava zero.
+- **A linha mais nova vem do site montado, as mais antigas do repositório** (pdf-python: pikepdf, Camelot, pyHanko e
+  mais cinco). Um site Sphinx monta a referência da API a partir das docstrings, por isso a pasta de documentação só
+  tem marcadores `automodule` e a referência completa existe apenas nas páginas montadas: a linha mais nova é lida por
+  `sphinx-html`, as mais antigas por `ghdocs-history` nas suas tags, e a tag mais nova fica fora da segunda fonte. As
+  duas fontes dão nomes diferentes à mesma página («pikepdf-topics-pages» e «pikepdf-docs-topics-pages»): uma regra
+  `slug_rewrite` e uma entrada `families` no `config.json` fazem delas uma única seção; sem isso cada resposta mostra
+  a página duas vezes (257 trechos reunidos em pdf-python).
+- **Releases que o autor marca como pré-lançamento dão uma fonte vazia.** Todo release do pyHanko no GitHub traz
+  `prerelease: true`, porque a biblioteca ainda é 0.x, e `ghreleases-pattern` descarta pré-lançamentos; a listagem
+  falhou com «nenhum release com tag conforme `tag_pattern`». Olhe o campo `prerelease` antes de declarar a fonte;
+  quando todos os releases o trazem, o registro de mudanças vem do site.
+- **Um espelho sem tags é fixado por commit.** O espelho do ReportLab no GitHub parou de criar tags na versão 3.5.0.
+  Cada versão posterior é o último commit do espelho no dia em que o PyPI publicou essa versão
+  (`/commits?until=DATA&per_page=1`), e o hash do commit fica em `tags` no lugar da tag.
+- **Não pare nem espere um processo com um padrão que a sua própria linha de comando contém.** `pkill -f "engine
+  --instance X"` mata o shell que o executa, e `until ! pgrep -f …` nunca termina, porque o padrão faz parte da linha
+  de comando desse shell. Escreva o padrão com colchete (`pgrep -f "[e]ngine --instance X"`) ou use o PID.
 - **Um site no modelo Tailwind UI Protocol guardado no repositório** (docs.uploadthing.com: tags `<Property name type
   since>`, `{{ tag, since }}` depois dos títulos, `docsMetadata({ title })`) — `ghdocs-history` com `protocol_mdx: true`:
   uma opção sai com nome, tipo, valor padrão e a versão em que apareceu, um título como «createUploadthing (function,

@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 240. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 241. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–9000, вільний усередині: 8769. Наступний новий: 9001.
+Зайняті порти: 8760–9001, вільний усередині: 8769. Наступний новий: 9002.
 
 ## Як обирати
 
@@ -349,6 +349,7 @@
 | [`mupdf`](#mupdf) | 8998 | Працюєте з PDF та іншими документами через MuPDF мовою C, утиліту mutool або PyMuPDF у Python: відкрити документ і намалювати сторінку, витягти текст, таблиці й зображення, додати анотації, затерти текст, злити чи стиснути файли, перетворити PDF на Markdown (PyMuPDF4LLM). |
 | [`sharp`](#sharp) | 8999 | Обробляєте зображення в Node.js через sharp, мовою C чи з командного рядка через libvips (vips, vipsthumbnail) або в Python через pyvips: змінити розмір, обрізати, перетворити формат (JPEG, PNG, WebP, AVIF, GIF, TIFF), накласти зображення, прочитати метадані, поставити sharp у Docker чи на AWS Lambda. |
 | [`pandoc`](#pandoc) | 9000 | Перетворюєте документи між форматами через pandoc (Markdown, Word, HTML, LaTeX, EPUB, PDF): шукаєте параметр командного рядка, пишете шаблон, файл типових налаштувань чи фільтр мовою Lua, JavaScript або Python, викликаєте pandoc з Node.js, запускаєте його в браузері (pandoc-wasm) чи в Docker, нумеруєте рисунки через pandoc-crossref. |
+| [`pdf-python`](#pdf-python) | 9001 | Працюєте з PDF у Python і шукаєте, якою бібліотекою це зробити: об'єднати, поділити чи зашифрувати файл (pypdf, pikepdf), витягти текст і таблиці (pdfplumber, pdfminer.six, Camelot, tabula-py), створити документ із коду (ReportLab, fpdf2, borb), перетворити HTML на PDF (WeasyPrint, xhtml2pdf, pdfkit), перетворити сторінки на зображення (pypdfium2, pdf2image), заповнити форму (PyPDFForm), підписати файл (pyHanko), перетворити PDF на Word (pdf2docx). |
 
 ### Блокчейн і біржі
 
@@ -8618,7 +8619,7 @@ pdf-js-docs), the PDF specification and other Python PDF libraries are not here.
   на найновішу версію сторінки, а не на версію документа.
 - Передрелізи не беруться. Теги MuPDF з літерою (`1.10a`, `1.9a`, `1.7a`) несуть мітку без літери: `mupdf-1.10`.
 - Самого формату PDF (специфікація ISO 32000) тут немає. Утиліти poppler, Ghostscript і qpdf — у примірнику
-  `doc-tools`. Інших бібліотек PDF для Python (pypdf, pdfplumber, ReportLab) немає ніде.
+  `doc-tools`. Інші бібліотеки PDF для Python (pypdf, pdfplumber, ReportLab) — у примірнику `pdf-python`.
 
 **Далі в [README](../instances/mupdf/README.md):** Навіщо MuPDF і PyMuPDF в одному примірнику; Пакети й версії;
 Скільки цього; Що в цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу;
@@ -8716,6 +8717,50 @@ Haskell API reference and the specifications of the formats are not here.
 
 **Далі в [README](../instances/pandoc/README.md):** Що тут зібрано і навіщо разом; Пакети й версії; Скільки цього; Що
 в цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv;
+Збирання корпусу; Сервер під Claude Code.
+
+### pdf-python
+
+**Коли піднімати.** Працюєте з PDF у Python і шукаєте, якою бібліотекою це зробити: об'єднати, поділити чи зашифрувати файл (pypdf, pikepdf), витягти текст і таблиці (pdfplumber, pdfminer.six, Camelot, tabula-py), створити документ із коду (ReportLab, fpdf2, borb), перетворити HTML на PDF (WeasyPrint, xhtml2pdf, pdfkit), перетворити сторінки на зображення (pypdfium2, pdf2image), заповнити форму (PyPDFForm), підписати файл (pyHanko), перетворити PDF на Word (pdf2docx).
+
+**Порт** 9001, сервер `pdf-python-docs`. Підняти: `./df pdf-python serve`. Адреса: `http://127.0.0.1:9001/mcp`.
+
+**Обсяг.** Документів: 7 981, фрагментів: 54 116.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про роботу з файлами PDF мовою Python за документацією бібліотек. У
+Python немає однієї бібліотеки «для PDF»: одна читає й міняє готові файли, друга витягає текст і таблиці, третя
+створює новий документ, четверта перетворює HTML. Тому тут в одному примірнику зібрано 24 пакети, і шукати можна від
+задачі, а не від назви.
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the Python libraries for PDF -- pypdf and PyPDF2, pikepdf, pdfrw and pdfly for reading and changing
+files; pdfplumber, pdfminer.six, Camelot, tabula-py and pdftotext for text and tables; ReportLab, fpdf2, borb and
+svglib for creating files; WeasyPrint, xhtml2pdf and pdfkit for HTML to PDF; pypdfium2 and pdf2image for rendering
+pages; PyPDFForm for forms; pyHanko for signatures; pdf2docx and img2pdf for conversion: documentation sites, docs
+folders and package code at release tags, change logs, release notes and PyPI records. PyMuPDF, OCRmyPDF, the
+JavaScript libraries and the PDF specification are not here.
+
+**Межі.**
+
+- Код узято не на кожній лінії великих бібліотек: для pypdf, pikepdf, pypdfium2 і PyPDFForm — останній тег кожної
+  мажорної лінії, для WeasyPrint — дев'ять версій, для pyHanko — вісім ліній. Що мінялося між ними, каже журнал змін.
+- Сторінки сайту docs.reportlab.com і посібник із прикладами borb не мають версії, тому пошук із параметром `version`
+  їх не бачить.
+- Релізів pyHanko на GitHub немає в примірнику: автор позначає їх усі попередніми, а читач релізів попередні відсіює.
+  Журнал змін pyHanko є на його сайті.
+- Код пакета img2pdf лежить на власному GitLab автора, і з нього нічого не взято: є лише README і версії з PyPI.
+- Довідник API старих ліній pikepdf, Camelot, tabula-py і pyHanko — це код з рядками документації, а не оформлені
+  сторінки.
+- Запит про загальну задачу повертає розділи кількох бібліотек одразу. Це задумано, але модель мусить сама сказати,
+  чим вони різняться.
+- PyMuPDF, OCRmyPDF, бібліотек JavaScript, специфікації PDF і розбирачів документів на машинному навчанні (Docling,
+  Marker, Unstructured) тут немає.
+
+**Далі в [README](../instances/pdf-python/README.md):** Що тут зібрано і навіщо разом; Пакети й версії; Скільки цього;
+Що в цій теці; Звідки документація; Межі, про які треба пам'ятати; Архівний режим: сервер без корпусу; Установка venv;
 Збирання корпусу; Сервер під Claude Code.
 
 <!-- тема: Блокчейн і біржі -->

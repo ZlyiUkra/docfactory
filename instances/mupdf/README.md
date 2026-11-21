@@ -137,7 +137,7 @@ images from the command line» перші місця займають огляд
   на найновішу версію сторінки, а не на версію документа.
 - Передрелізи не беруться. Теги MuPDF з літерою (`1.10a`, `1.9a`, `1.7a`) несуть мітку без літери: `mupdf-1.10`.
 - Самого формату PDF (специфікація ISO 32000) тут немає. Утиліти poppler, Ghostscript і qpdf — у примірнику
-  `doc-tools`. Інших бібліотек PDF для Python (pypdf, pdfplumber, ReportLab) немає ніде.
+  `doc-tools`. Інші бібліотеки PDF для Python (pypdf, pdfplumber, ReportLab) — у примірнику `pdf-python`.
 
 ## Архівний режим: сервер без корпусу
 
