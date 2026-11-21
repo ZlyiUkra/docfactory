@@ -1198,7 +1198,9 @@ Go, запускаєте ті самі приклади і порівнюєте 
   досить трьох добутків: добуток сум половин мінус два крайні добутки дає середній доданок. Рівняння `T(n) = 3T(n/2) + n` дає
   `Θ(n^log₂3)`, приблизно `n^1,585`. Та сама ідея, менше рекурсивних викликів ціною додавань, дає алгоритм Штрассена для
   матриць.
-- **Читати:** Erickson — `Divide and Conquer`, `Fast Multiplication`; Kleinberg — `5.5 Integer Multiplication`; MIT 6.046J —
+- **Лекція:** [Лекція. Фаза 4, день 1. Розділяй і володарюй: множення Карацуби](lectures/f4-d01-divide-conquer-karatsuba.md).
+- **Розбір читання:** [Розбір читання. Фаза 4, день 1](reading/f4-d01-reading.md).
+- **Читати:** Erickson — `The Pattern`, `Fast Multiplication`; Kleinberg — `5.5 Integer Multiplication`; MIT 6.046J —
   `Lecture 2 Notes`; CLRS — `4.2 Strassen’s algorithm for matrix multiplication`.
 - **Сервери MCP:** `algorithms-docs`, `mdn-docs`.
 - **Зробити:** 1) напишіть множення в стовпчик і Карацубу для чисел, записаних масивами цифр, з лічильником множень цифр;
