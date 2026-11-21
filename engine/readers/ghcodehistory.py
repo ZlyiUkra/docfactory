@@ -13,6 +13,9 @@
                    `html_pages: true` — файли `.html` беруться як код (приклади Paper.js —
                    сторінки з вбудованим скриптом PaperScript); без поля файл, що починається з
                    `<!DOCTYPE html>`, вважається сторінкою помилки й не записується;
+                   `html_pages: "all"` — те саме для будь-якого файла з `include`, хоч би яке в
+                   нього розширення: шаблони pandoc `default.html5`, `default.revealjs`,
+                   `default.epub3` починаються з `<!DOCTYPE html>` і є саме тим, що треба взяти;
                    `outline_indent: "auto"` — відступ членів типу C# береться з першого рядка
                    його тіла, а не як відступ типу плюс чотири пробіли. Testcontainers for .NET
                    пише код з відступом у два пробіли (простір імен блоком, тип на 2, члени на
@@ -525,7 +528,8 @@ def ghcode_history(source: dict, ctx) -> list[Item]:
             # `html_pages: true` — файл `.html`, названий у `include`, і є кодом, який треба взяти
             # (приклади Paper.js — сторінки з вбудованим скриптом), а не сторінкою помилки. Без
             # поля HTML замість коду відхиляється, як і раніше.
-            if not (source.get("html_pages") is True and path.endswith((".html", ".htm"))):
+            if not (source.get("html_pages") == "all"
+                    or (source.get("html_pages") is True and path.endswith((".html", ".htm")))):
                 _markup.refuse_html(text, raw)
             lang = "solidity" if path.endswith(".sol") else _lang(path)
             if "go" in langs and path.endswith(".go"):
