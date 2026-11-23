@@ -2,7 +2,7 @@
 
 Захищений MCP-сервер, що відповідає на питання про офіційний Docker-образ PostgreSQL (`postgres` на Docker Hub) за його
 документацією: сторінкою образу в кожній редакції з 2014 року й репозиторієм `docker-library/postgres` — Dockerfile усіх
-стабільних мажорів від 8.4 до 18, скриптами входу, шаблонами та `versions.json`. Код спільний і лежить у
+стабільних мажорів від 8.4 до 19, скриптами входу, шаблонами та `versions.json`. Код спільний і лежить у
 `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
 [../../README.md](../../README.md).
 
@@ -22,12 +22,13 @@
 
 | Шар | Документів | Звідки |
 |-----|-----------:|--------|
-| Сторінка образу (`README.md`, `compose.yaml`) у кожній редакції | 402 | `docker-library/docs`, тека `postgres/`, 610 комітів історії |
-| Dockerfile мажорів 8.4–18, усі варіанти: Debian (стандартний, wheezy…trixie), alpine і всі alpine3.x | 1 775 | `docker-library/postgres`, 986 комітів |
-| Скрипти входу `docker-entrypoint.sh`, `docker-ensure-initdb.sh` у теках мажорів і в корені | 1 152 | те саме |
-| Шаблони, `update.sh`, `versions.sh`, `apply-templates.sh`, `generate-stackbrew-library.sh`, `versions.json` (194 редакції), `README.md` репозиторію | 466 | те саме |
+| Сторінка образу (`README.md`, `compose.yaml`) у кожній редакції | 408 | `docker-library/docs`, тека `postgres/`, 618 комітів історії |
+| Dockerfile мажорів 8.4–19, усі варіанти: Debian (стандартний, wheezy…trixie), alpine і всі alpine3.x | 1 843 | `docker-library/postgres`, 1 000 комітів |
+| Скрипти входу `docker-entrypoint.sh`, `docker-ensure-initdb.sh` у теках мажорів і в корені | 1 177 | те саме |
+| Шаблони, `update.sh`, `versions.sh`, `apply-templates.sh`, `generate-stackbrew-library.sh`, `versions.json` (205 редакцій), `README.md` репозиторію | 485 | те саме |
 
-Разом 3 795 документів; фрагментів в індексі — 7 233 (`expected_passages` у `checks.json`). Точні числа по шарах —
+Разом 3 913 документів; фрагментів в індексі — 7 451 (`expected_passages` у `checks.json`). Останнє оновлення —
+22–23.11.2026, після релізу PostgreSQL 19.0. Точні числа по шарах —
 у `./df postgres-image sources --why` і в паспорті.
 
 **Одиниця корпусу — неповторний вміст файла.** У репозиторію образу немає тегів: Dockerfile змінюється з кожним
@@ -80,14 +81,14 @@
 кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді ті самі до символа — кеш тримає повний текст
 кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/postgres-image-corpus-2026-10-09-all-variants.tar.gz` (7 МБ, 3 795 текстів і
-паспорт; перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів
-немає. Архів лежить лише на цій машині.
+**Де тексти.** В архіві `~/archives/docfactory/postgres-image-corpus-2026-11-23.tar.gz` (3 913 текстів і паспорт; перед
+видаленням звірений із диском) і в його копії `C:\Distr\postgres-image-corpus-2026-11-23.tar.gz`. В історії git
+текстів немає.
 
 **Як повернути тексти** — перед будь-яким оновленням корпусу:
 
 ```
-tar -xzf ~/archives/docfactory/postgres-image-corpus-2026-10-09-all-variants.tar.gz -C instances/postgres-image
+tar -xzf ~/archives/docfactory/postgres-image-corpus-2026-11-23.tar.gz -C instances/postgres-image
 ./df postgres-image smoke
 ```
 

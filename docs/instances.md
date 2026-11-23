@@ -4274,13 +4274,13 @@ Code.
 
 **Порт** 8807, сервер `postgres-image-docs`. Підняти: `./df postgres-image serve`. Адреса: `http://127.0.0.1:8807/mcp`.
 
-**Обсяг.** Документів: 3 795, фрагментів: 7 233.
+**Обсяг.** Документів: 3 913, фрагментів: 7 451.
 
 **Опис.**
 
 Захищений MCP-сервер, що відповідає на питання про офіційний Docker-образ PostgreSQL (`postgres` на Docker Hub) за
 його документацією: сторінкою образу в кожній редакції з 2014 року й репозиторієм `docker-library/postgres` —
-Dockerfile усіх стабільних мажорів від 8.4 до 18, скриптами входу, шаблонами та `versions.json`. Код спільний і лежить
+Dockerfile усіх стабільних мажорів від 8.4 до 19, скриптами входу, шаблонами та `versions.json`. Код спільний і лежить
 у `../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
 [../../README.md](../README.md).
 
@@ -4288,7 +4288,7 @@ Dockerfile усіх стабільних мажорів від 8.4 до 18, ск
 
 Documents of the official Docker image of PostgreSQL ("postgres" on Docker Hub) -- the image page
 (docker-library/docs, postgres/README.md and the compose example) in every revision since 2014, and the image
-repository docker-library/postgres: the Dockerfile of every stable PostgreSQL major from 8.4 to 18 in every variant
+repository docker-library/postgres: the Dockerfile of every stable PostgreSQL major from 8.4 to 19 in every variant
 the repository ever had (Debian default, wheezy to trixie, alpine and every alpine3.x) in every revision with its
 exact PostgreSQL version, the docker-entrypoint.sh and docker-ensure-initdb.sh scripts, the Dockerfile templates,
 update.sh, versions.sh, apply-templates.sh, generate-stackbrew-library.sh and versions.json, each distinct text once
