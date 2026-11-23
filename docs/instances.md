@@ -4236,7 +4236,7 @@ OWASP tools and the documentation of frameworks are not here.
 
 **Порт** 8792, сервер `postgresql-docs`. Підняти: `./df postgresql serve`. Адреса: `http://127.0.0.1:8792/mcp`.
 
-**Обсяг.** Документів: 3 620, фрагментів: 30 609.
+**Обсяг.** Документів: 3 623, фрагментів: 30 844.
 
 **Опис.**
 
