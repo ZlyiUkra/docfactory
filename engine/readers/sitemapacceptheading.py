@@ -7,6 +7,12 @@
                            («… (2026-07-29)»), як дата JSON-LD у `sitemap-accept`.
                            `md_suffix` — рядок, що дописується до адреси сторінки («.md»):
                            тоді markdown береться за цією адресою, а не на заголовок Accept.
+                           `title_strip` — вираз, що вирізається з назви (« | Netlify» у кінці).
+                           `date_from_url: true` — дата з адреси сторінки («/2021/12/02/»,
+                           «/2026-03-18-…») іде в назву в дужках, коли в тексті рядка дати немає.
+                           `md_url` — пара [вираз, заміна], що з адреси сторінки робить адресу
+                           markdown; `title_html: true` — назва береться з `<h1>` HTML самої
+                           сторінки (для markdown без шапки й без «# …»).
 Навіщо. vercel.com віддає markdown кожної сторінки на `Accept: text/markdown`, але шапку YAML
 з полем `title` мають лише документація (`/docs/…`) і уроки Academy. Статті довідки
 (`/kb/…`), записи журналу змін і блогу починаються одразу з «# Назва», а шапка, якщо є, несе
@@ -15,6 +21,12 @@
 назвою; у назві документа вона відповідає на «коли це з'явилося» вже у видачі пошуку.
 Сторінки кодів помилок (`/docs/errors/…`) на `Accept: text/markdown` віддають HTML, а markdown —
 лише за адресою з «.md»; для них і є `md_suffix`.
+www.netlify.com теж віддає markdown на `Accept`, з назвою в шапці YAML, але назва статті блогу
+закінчується на « | Netlify», а дата запису журналу змін і старої статті блогу є лише в адресі.
+Посібники developers.netlify.com markdown-двійника за адресою не мають: кнопка «Markdown» на
+сторінці бере текст з `/api/guides/<slug>/raw`. Той текст — чистий markdown з блоками коду,
+тоді як у HTML кожен рядок коду лежить окремим блоком і код злипався б в один рядок. Але назви
+в ньому немає, тож вона береться з `<h1>` сторінки: два звернення на посібник.
 Чому окремий модуль, а не поле в `sitemap-accept`: інші примірники з тим читачем зібрані й
 звірені, а правка спільного читача — ризик зсуву в готовій роботі. Модуль лише реєструє нове
 ім'я й перевикористовує помічники.
@@ -30,6 +42,9 @@ from engine.readers.sitemap import _LOC, _inside
 from engine.readers.sitemapaccept import _drops
 
 _PUBLISHED = re.compile(r"\*\*Published:\*\*\s*([A-Z][a-z]+ \d{1,2}, \d{4})")
+_H1 = re.compile(r"<h1[^>]*>(.*?)</h1>", re.S)
+_TAG = re.compile(r"<[^>]+>")
+_URL_DAY = re.compile(r"/(\d{4})[-/](\d{2})[-/](\d{2})(?=[-/]|$)")
 
 
 def _day(text: str) -> str:
@@ -44,19 +59,30 @@ def _day(text: str) -> str:
 
 
 def _page(ctx, source: dict, page: str, drops: list) -> str:
-    if source.get("md_suffix"):
+    if source.get("md_url"):
+        pattern, repl = source["md_url"]
+        text = ctx.text(re.sub(pattern, repl, page))
+    elif source.get("md_suffix"):
         text = ctx.text(page + source["md_suffix"])
     else:
         text = ctx.text(page, accept=source.get("accept") or "text/markdown")
     _markup.refuse_html(text, page)
     meta, rest = _markup.front_matter(text.replace("\r\n", "\n"))
     title = html.unescape(meta.get("title", "")).strip().strip('"')
+    if not title and source.get("title_html") is True:
+        m = _H1.search(ctx.text(page))
+        title = html.unescape(_TAG.sub("", m.group(1))).strip() if m else ""
     day = _day(rest) if source.get("date_published") is True else ""
+    if not day and source.get("date_from_url") is True:
+        m = _URL_DAY.search(urlsplit(page).path)
+        day = "-".join(m.groups()) if m else ""
     for pattern, repl in drops:
         rest = pattern.sub(repl, rest)
     if not title:
         title, rest = _split_title(rest)
         title = html.unescape(title).strip()
+    if title and source.get("title_strip"):
+        title = re.sub(source["title_strip"], "", title).strip()
     if title and day:
         title = f"{title} ({day})"
     body = _markup.markdown_body(rest)

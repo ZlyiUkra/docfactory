@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 242. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 243. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–9002, вільний усередині: 8769. Наступний новий: 9003.
+Зайняті порти: 8760–9003, вільний усередині: 8769. Наступний новий: 9004.
 
 ## Як обирати
 
@@ -295,6 +295,7 @@
 | [`certbot`](#certbot) | 8811 | Отримуєте й поновлюєте сертифікати TLS через Certbot. |
 | [`cloudflare`](#cloudflare) | 8937 | Працюєте з Cloudflare: Workers, Pages, DNS, wrangler. |
 | [`vercel`](#vercel) | 9002 | Розгортаєте застосунок на Vercel: vercel.json, функції та їхні ліміти, змінні оточення, домени, захист preview-розгортань, Blob, Cron Jobs, CLI vercel, REST API, ціни. |
+| [`netlify`](#netlify) | 9003 | Розгортаєте застосунок на Netlify: netlify.toml, _redirects, функції й Edge Functions, змінні оточення, Deploy Previews, Blobs, Forms, домени, CLI netlify, Netlify API, ціни. |
 | [`oracle-cloud`](#oracle-cloud) | 8825 | Розгортаєте на Oracle Cloud: безплатний рівень, обчислення, мережа, OKE. |
 | [`github-actions`](#github-actions) | 8794 | Пишете процеси CI в GitHub Actions. |
 | [`argocd`](#argocd) | 8907 | Розгортаєте в Kubernetes за підходом GitOps через Argo CD. |
@@ -7487,6 +7488,37 @@ flags, microfrontends, sdk); the changelogs and GitHub release notes of those pa
 version. Prereleases are not here.
 
 **Далі в [README](../instances/vercel/README.md):** Навіщо окремий примірник; Скільки цього; Що в цій теці; Звідки
+документація; Версії; Архівний режим: сервер без корпусу; Установка venv; Збирання корпусу; Сервер під Claude Code.
+
+### netlify
+
+**Коли піднімати.** Розгортаєте застосунок на Netlify: netlify.toml, _redirects, функції й Edge Functions, змінні оточення, Deploy Previews, Blobs, Forms, домени, CLI netlify, Netlify API, ціни.
+
+**Порт** 9003, сервер `netlify-docs`. Підняти: `./df netlify serve`. Адреса: `http://127.0.0.1:9003/mcp`.
+
+**Обсяг.** Документів: 5 099, фрагментів: 20 991.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про Netlify за його документацією: уся документація docs.netlify.com
+(збирання й `netlify.toml`, розгортання, Deploy Previews, змінні оточення, Netlify Functions, Edge Functions, Netlify
+Blobs, Netlify Database, кеш, Image CDN, переспрямування й `_redirects`, заголовки, домени, Forms, Identity, захист
+доступу, моніторинг, фреймворки, розширення, AI Gateway, плани й ліміти), посібники developers.netlify.com, журнал
+змін, блог і база знань www.netlify.com; довідник Netlify API з OpenAPI; довідник команд Netlify CLI на кожній
+стабільній мінорній лінії; README і журнали змін `netlify-cli` та пакетів `@netlify/*`. Код спільний і лежить у
+`../../engine/`, `../../server/` та `../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у
+[../../README.md](../README.md).
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the Netlify documentation -- every page of docs.netlify.com, the developer guides of
+developers.netlify.com, the changelog, the blog and the knowledge base of www.netlify.com as a current snapshot; the
+Netlify API reference from its OpenAPI file; the Netlify CLI command reference (the docs/ folder of netlify/cli) at
+the last release of every stable minor line from 3.0; the README of the last release of every stable minor line of
+netlify-cli and 19 @netlify packages and libraries; the changelogs of those packages. The site itself carries no
+version. Prereleases are not here.
+
+**Далі в [README](../instances/netlify/README.md):** Навіщо окремий примірник; Скільки цього; Що в цій теці; Звідки
 документація; Версії; Архівний режим: сервер без корпусу; Установка venv; Збирання корпусу; Сервер під Claude Code.
 
 ### oracle-cloud
