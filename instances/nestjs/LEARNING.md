@@ -1151,7 +1151,7 @@ Nest тут ще немає: джерела — TypeScript Handbook (примі�
   `@ApiProperty` сам за типами полів. `@ApiTags` групує маршрути, `@ApiResponse` описує відповіді, зокрема
   помилки. Сторінку `/docs` у продакшні не віддають усім — лише за змінною оточення або за входом.
 - **Читати:** розділ OpenAPI — глава `Introduction` (розділи Bootstrap і Standard Schema (Zod, Valibot)),
-  `Operations`, `CLI Plugin`, `Types and Parameters`; у примірнику `webstandards` — `OpenAPI Specification 3.1.1: 4
+  `Operations`, `CLI Plugin`, `Types and Parameters`; у примірнику `webstandards` — `OpenAPI Specification 3.1.2: 4
   Specification`, `JSON Schema 2020-12 Validation: 6 A Vocabulary for Structural Validation`; у примірнику
   `jsonschema` — `Understanding JSON Schema: object`, `Understanding JSON Schema: string`.
 - **Сервери MCP:** `nestjs-docs`, `webstandards-docs`, `jsonschema-docs`.

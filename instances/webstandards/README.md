@@ -23,19 +23,21 @@ OAuth 2.0 Security BCP, JWT, CSP, WCAG і ARIA; до цього примірни
 
 | Група | Джерел | Документів | Фрагментів | Що там |
 |-------|-------:|-----------:|-----------:|--------|
-| WHATWG: HTML | 1 | 55 | 3 564 | сторінки стандарту: елементи, цикл подій, навігація, скрипти, воркери, SSE, сховище, розбір |
-| WHATWG: решта | 16 | 131 | 1 740 | DOM, Fetch, URL, Streams, WebSockets, Infra, Web IDL, Encoding, MIME Sniffing, Storage, XHR, Cookie Store, Notifications, Fullscreen, Console, Compression |
-| W3C | 12 | 120 | 1 415 | CSP 3, Fetch Metadata, Referrer Policy, Permissions Policy, Secure Contexts, Mixed Content, Service Workers, Manifest, Push API, WAI-ARIA 1.2, ARIA in HTML, WCAG 2.2 |
-| WAI: Understanding WCAG 2.2 | 1 | 109 | 1 804 | пояснення до кожного критерію: навіщо, кому, приклади, техніки |
-| WAI: Techniques for WCAG 2.2 | 1 | 435 | 3 415 | техніки й типові помилки: HTML, ARIA, CSS, скрипти, сервер, PDF |
+| WHATWG: HTML | 1 | 55 | 3 653 | сторінки стандарту: елементи, цикл подій, навігація, скрипти, воркери, SSE, сховище, розбір |
+| WHATWG: решта | 16 | 131 | 1 744 | DOM, Fetch, URL, Streams, WebSockets, Infra, Web IDL, Encoding, MIME Sniffing, Storage, XHR, Cookie Store, Notifications, Fullscreen, Console, Compression |
+| W3C | 12 | 120 | 1 418 | CSP 3, Fetch Metadata, Referrer Policy, Permissions Policy, Secure Contexts, Mixed Content, Service Workers, Manifest, Push API, WAI-ARIA 1.2, ARIA in HTML, WCAG 2.2 |
+| WAI: Understanding WCAG 2.2 | 1 | 109 | 1 811 | пояснення до кожного критерію: навіщо, кому, приклади, техніки |
+| WAI: Techniques for WCAG 2.2 | 1 | 436 | 3 420 | техніки й типові помилки: HTML, ARIA, CSS, скрипти, сервер, PDF |
 | WAI: ARIA Authoring Practices | 2 | 39 | 468 | патерни віджетів і практики: ролі, клавіатура, фокус, назви |
-| IETF і OpenID | 23 | 271 | 2 416 | RFC 9110, 9111, 9112, 6265 і чернетка 6265bis, 6455, 6585, 6797, 9457, 7519, 7515, 7517, 7518, 8725, 6749, 6750, 7636, 9700, 9106; JSON Schema 2020-12 (core, validation); OpenID Connect Core і Discovery |
-| OpenAPI | 1 | 11 | 248 | OpenAPI Specification 3.1.1 |
+| IETF і OpenID | 23 | 272 | 2 416 | RFC 9110, 9111, 9112, 6265 і чернетка 6265bis, 6455, 6585, 6797, 9457, 7519, 7515, 7517, 7518, 8725, 6749, 6750, 7636, 9700, 9106; JSON Schema 2020-12 (core, validation); OpenID Connect Core і Discovery |
+| OpenAPI | 2 | 22 | 454 | OpenAPI Specification 3.1.2 і 3.0.4: лінія 3.1 стоїть на JSON Schema 2020-12, лінія 3.0 — найпоширеніша на 24.11.2026 і типова в `@nestjs/swagger` |
 | ERC | 3 | 3 | 91 | ERC-20, ERC-721, ERC-4361 (Sign-In with Ethereum) |
 
-Разом 1 175 документів; фрагментів в індексі — 15 161 (`expected_passages` у `checks.json`). Фрагменти — це шматки
-документів між заголовками, по яких іде пошук. Один документ фрагментів не має: розділ IANA в RFC 9700 — один рядок
-«This document has no IANA actions.», коротший за поріг фрагмента.
+Разом 1 187 документів; фрагментів в індексі — 15 475 (`expected_passages` у `checks.json`). Фрагменти — це шматки
+документів між заголовками, по яких іде пошук. П'ять документів фрагментів не мають. Розділ IANA в RFC 9700 — один
+рядок «This document has no IANA actions.», коротший за поріг фрагмента. Чотири розділи OpenAPI 3.1.2 (Introduction,
+Security Considerations, додатки B і F) слово в слово такі самі, як у 3.0.4. Обидві редакції — одна родина
+(`families` у `config.json`), тому однаковий текст лягає в індекс один раз, з адресою редакції 3.0.4.
 
 Замір `quality` на першому корпусі (05.10.2026): перша десятка (питання своїми словами) — по словах 4 із 10, за
 змістом 5, разом 5; друга, «як модель» (терміни самого стандарту, як велить промпт), — 10 із 10. Переказ без
@@ -101,15 +103,15 @@ KaTeX, а тут формул немає, зате є ReSpec і Wattsi.
 паспорт `index.json`, а сервер підіймається з кешу фрагментів (`index/passages.json`) і колекції Qdrant; відповіді
 ті самі до символа — кеш тримає повний текст кожного фрагмента.
 
-**Де тексти.** В архіві `~/archives/docfactory/webstandards-corpus-2026-10-05.tar.gz` (3,3 МБ, 1 175 текстів і
-паспорт; перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів немає
+**Де тексти.** В архіві `~/archives/docfactory/webstandards-corpus-2026-11-24.tar.gz` (17,2 МБ, 1 187 текстів,
+паспорт і сховище сирого `raw/`; перед видаленням розпакований окремо й звірений із диском — нуль розбіжностей). В історії git текстів немає
 ніде. Архів лежить лише на цій машині.
 
 **Як винести знову** — після оновлення, коли `vectors` і `smoke` пройшли:
 
 ```
 ls -l instances/webstandards/index/passages.json        # кеш має бути на місці й свіжий
-tar -czf ~/archives/docfactory/webstandards-corpus-РРРР-ММ-ДД.tar.gz -C instances/webstandards corpus
+tar -czf ~/archives/docfactory/webstandards-corpus-РРРР-ММ-ДД.tar.gz -C instances/webstandards corpus raw
 find instances/webstandards/corpus -maxdepth 1 -name '*.txt' -delete
 gzip -9 -c instances/webstandards/index/passages.json > instances/webstandards/index/passages.json.gz
 ```

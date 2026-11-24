@@ -876,7 +876,7 @@ Pull request-и репозиторію специфікації свідомо �
 
 **Порт** 8784, сервер `mdn-docs`. Підняти: `./df mdn serve`. Адреса: `http://127.0.0.1:8784/mcp`.
 
-**Обсяг.** Документів: 77 342, фрагментів: 181 548.
+**Обсяг.** Документів: 77 701, фрагментів: 182 328.
 
 **Опис.**
 
@@ -910,7 +910,7 @@ IETF) — розділ Specifications лише називає їх і дає а�
 
 **Порт** 8785, сервер `webstandards-docs`. Підняти: `./df webstandards serve`. Адреса: `http://127.0.0.1:8785/mcp`.
 
-**Обсяг.** Документів: 1 175, фрагментів: 15 161.
+**Обсяг.** Документів: 1 187, фрагментів: 15 475.
 
 **Опис.**
 
@@ -925,8 +925,9 @@ Documents of web standards in English -- the WHATWG living standards (HTML, DOM,
 eleven more), W3C specifications (CSP 3, Fetch Metadata, Referrer Policy, Permissions Policy, Secure Contexts, Mixed
 Content, Service Workers, Web App Manifest, Push API, WAI-ARIA 1.2, ARIA in HTML, WCAG 2.2 with Understanding,
 Techniques and the ARIA Authoring Practices Guide), IETF RFCs on HTTP, cookies, WebSocket, HSTS, problem details, JWT,
-OAuth 2.0, PKCE and Argon2, OpenID Connect Core and Discovery, OpenAPI 3.1.1, JSON Schema 2020-12 and ERC-20, ERC-721
-and ERC-4361. Browser support tables, tutorials, HTTP/2, HTTP/3, TLS, CSS and ECMAScript specifications are not here.
+OAuth 2.0, PKCE and Argon2, OpenID Connect Core and Discovery, OpenAPI 3.1.2 and 3.0.4, JSON Schema 2020-12 and
+ERC-20, ERC-721 and ERC-4361. Browser support tables, tutorials, HTTP/2, HTTP/3, TLS, CSS and ECMAScript
+specifications are not here.
 
 **Межі.**
 
