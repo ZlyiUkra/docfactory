@@ -274,8 +274,8 @@ Podman, libvirt і QEMU, MetalLB, CloudNativePG, Trivy.
 
 ### Astro
 
-1. Платформи розгортання: Vercel і Netlify (по 1) — документація Astro описує лише адаптери до них; Cloudflare має
-   примірник `cloudflare` (з 31.10.2026).
+1. Платформи розгортання: Netlify (1) — документація Astro описує лише адаптер до неї; Cloudflare має примірник
+   `cloudflare` (з 31.10.2026), Vercel — `vercel` (з 24.11.2026).
 2. Контент поза документацією Astro: remark і rehype (3), Shiki (1).
 3. Lighthouse (1).
 4. Лише в переліку плану, без днів: Preact (острови не на React).

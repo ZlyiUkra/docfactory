@@ -467,10 +467,12 @@ React — бібліотека інтерфейсу: маршрутів, кеш�
   версій npm) — `foundry`;
 - Cloudflare як хостинг (увесь developers.cloudflare.com: Pages, статичні ресурси Workers, wrangler, DNS, кеш)
   — `cloudflare`.
+- Vercel як хостинг (уся документація vercel.com/docs: розгортання, `vercel.json`, змінні оточення, домени, CLI
+  `vercel`; довідка, журнал змін) — `vercel`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
-- поза таблицями: хостинги, окрім Cloudflare (Netlify, Vercel).
+- поза таблицями: хостинги, окрім Cloudflare і Vercel (Netlify).
 
 ---
 
@@ -815,7 +817,7 @@ TypeScript та інструменти. Для кожного дня є лекц
 # Фаза 1. Ядро React — 20 днів
 
 **Сервери MCP фази:** `react-docs`, `testing-library-docs`, `htdp-book`, `vitest-docs`, `typescript-docs`,
-`vite-docs`, `eslint-docs`, `mdn-docs`, `ecma-spec`, `nodejs-docs`, `webdev-docs`, `cloudflare-docs`.
+`vite-docs`, `eslint-docs`, `mdn-docs`, `ecma-spec`, `nodejs-docs`, `webdev-docs`, `cloudflare-docs`, `vercel-docs`.
 
 Розділ Learn на react.dev у порядку самої документації: вона вибудувана правильно, і скорочувати її — найпоширеніша
 помилка самоучок. Глави `Quick Start` і `Tutorial: Tic-Tac-Toe` — для тих, хто бачить React уперше; мідлу їх
@@ -1531,7 +1533,7 @@ TypeScript та інструменти. Для кожного дня є лекц
   Cloudflare — оберіть один хостинг з безкоштовним планом), `Env Variables and Modes` (розділ `Protecting Secrets`); у
   примірнику `webdev` — `Largest Contentful Paint (LCP)` і `Cumulative Layout Shift (CLS)`.
 - **Сервери MCP:** `vite-docs`, `webdev-docs`, `vitest-docs`, `htdp-book`, `mdn-docs`; якщо хостинг — Cloudflare, ще
-  `cloudflare-docs`.
+  `cloudflare-docs`, якщо Vercel — `vercel-docs`.
 - **Зробити:** 1) У теці `spa/` виконайте `npm run build` і подивіться, які файли з'явилися в теці `dist`. Скопіюйте
   рядки звіту, що починаються з `dist/`. Теку `spa/src/lessons/f1-d20/` ще не створюйте, бо її заготовки зупинять `npm
   run build`; 2) Там само виконайте `npx vite preview` і відкрийте в браузері адресу, яку надрукує ця команда; 3)
