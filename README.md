@@ -5140,6 +5140,27 @@ img2pdf. Для кожної бібліотеки взято сайт докум
 - корпус і сховище сирого — в архіві від самого початку;
 - докладніше — у [instances/pdf-python/README.md](instances/pdf-python/README.md).
 
+### vercel
+
+Документація Vercel англійською: уся документація vercel.com/docs — розгортання, проєкти й середовища, змінні оточення,
+домени, Vercel Functions і Fluid compute, Routing Middleware, CDN і кеш, ISR, Blob, Global Config (колишній Edge
+Config), Cron Jobs, Queues, Sandbox, Firewall, Deployment Protection, Observability, `vercel.json` і `vercel.ts`, кожна
+команда CLI, довідник REST API, коди помилок, плани й ліміти —, довідка vercel.com/kb, журнал змін, блог і курси
+Vercel Academy поточним знімком (сайт версій не має); README останнього патча кожної стабільної мінорної лінії CLI
+`vercel` і 18 пакетів `@vercel/*` і `flags`; журнали змін дев'яти пакетів і релізи трьох. 7 016 документів, 55 760
+фрагментів; вектори — на відеокарті.
+
+- порт `9002`; запис у Claude Code — `vercel-docs`, адреса `http://127.0.0.1:9002/mcp`; інструменти `search_docs` і
+  `read_section`;
+- колекція у Qdrant — `docs-vercel`, модель векторів — `bge-small`;
+- версія — лише в пакетів, кожен зі своїм префіксом: CLI — `"cli-66"`, решта — за коротким іменем (`"functions-3"`,
+  `"blob-2"`, `"sdk-1"`, `"flags-4"`); сторінки сайту версії не несуть;
+- не входять: каталог моделей AI Gateway (документація самого AI Gateway є), маркетингові сторінки, сторінки-переліки
+  журналу змін, блогу й довідки, передрелізи пакетів, AI SDK (для нього є `vercel-ai-sdk`);
+- приклад питання агентові: `./df vercel ask "How do I set maxDuration for a Vercel Function?"`;
+- корпус і сховище сирого — в архіві від самого початку;
+- докладніше — у [instances/vercel/README.md](instances/vercel/README.md).
+
 ## Захист
 
 - Серверний санітар видачі — розтяжка на очевидні формулювання вшитих указівок, не класифікатор: зачеплений

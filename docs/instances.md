@@ -3,9 +3,9 @@
 Цей файл збирає `python3 tools/catalog.py`, руками його не правлять. Рядки «Коли піднімати» лежать у
 `docs/instance-topics.json`, а все інше береться з теки кожного примірника.
 
-Примірників: 241. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
+Примірників: 242. Кожен має власний порт, власну назву сервера й власну колекцію Qdrant, тому
 їх можна піднімати в будь-якому поєднанні. Скрипт перевіряє це щоразу й без цього файл не запише.
-Зайняті порти: 8760–9001, вільний усередині: 8769. Наступний новий: 9002.
+Зайняті порти: 8760–9002, вільний усередині: 8769. Наступний новий: 9003.
 
 ## Як обирати
 
@@ -294,6 +294,7 @@
 | [`nginx`](#nginx) | 8798 | Налаштовуєте nginx як вебсервер або зворотний проксі. |
 | [`certbot`](#certbot) | 8811 | Отримуєте й поновлюєте сертифікати TLS через Certbot. |
 | [`cloudflare`](#cloudflare) | 8937 | Працюєте з Cloudflare: Workers, Pages, DNS, wrangler. |
+| [`vercel`](#vercel) | 9002 | Розгортаєте застосунок на Vercel: vercel.json, функції та їхні ліміти, змінні оточення, домени, захист preview-розгортань, Blob, Cron Jobs, CLI vercel, REST API, ціни. |
 | [`oracle-cloud`](#oracle-cloud) | 8825 | Розгортаєте на Oracle Cloud: безплатний рівень, обчислення, мережа, OKE. |
 | [`github-actions`](#github-actions) | 8794 | Пишете процеси CI в GitHub Actions. |
 | [`argocd`](#argocd) | 8907 | Розгортаєте в Kubernetes за підходом GitOps через Argo CD. |
@@ -7456,6 +7457,36 @@ miniflare, create-cloudflare and @cloudflare/vitest-pool-workers from the worker
 carries no version. Prereleases are not here.
 
 **Далі в [README](../instances/cloudflare/README.md):** Навіщо окремий примірник; Скільки цього; Що в цій теці; Звідки
+документація; Версії; Архівний режим: сервер без корпусу; Установка venv; Збирання корпусу; Сервер під Claude Code.
+
+### vercel
+
+**Коли піднімати.** Розгортаєте застосунок на Vercel: vercel.json, функції та їхні ліміти, змінні оточення, домени, захист preview-розгортань, Blob, Cron Jobs, CLI vercel, REST API, ціни.
+
+**Порт** 9002, сервер `vercel-docs`. Підняти: `./df vercel serve`. Адреса: `http://127.0.0.1:9002/mcp`.
+
+**Обсяг.** Документів: 7 016, фрагментів: 55 760.
+
+**Опис.**
+
+Захищений MCP-сервер, що відповідає на питання про Vercel за його документацією: уся документація vercel.com/docs
+(розгортання, проєкти й середовища, змінні оточення, домени, Vercel Functions і Fluid compute, Routing Middleware, CDN
+і кеш, ISR, Blob, Global Config (колишній Edge Config), Cron Jobs, Queues, Sandbox, Firewall і BotID, Deployment
+Protection, Observability, мікрофронтенди, Flags, `vercel.json` і `vercel.ts`, кожна команда CLI, довідник REST API,
+коди помилок, плани й ліміти), довідка vercel.com/kb, журнал змін, блог і курси Vercel Academy; README CLI `vercel` і
+18 пакетів `@vercel/*`, їхні журнали змін і релізи. Код спільний і лежить у `../../engine/`, `../../server/` та
+`../../common/`; ця тека тримає самі дані домену. Загальний устрій фабрики — у [../../README.md](../README.md).
+
+**Склад (так його описано моделі, англійською).**
+
+Documents of the Vercel documentation -- every page of vercel.com/docs (the platform, the CLI, the REST API reference,
+error codes), the Knowledge Base guides, the changelog, the blog and Vercel Academy as a current snapshot; the README
+of the last release of every stable minor line of the vercel CLI and 18 @vercel packages (functions, blob,
+edge-config, global-config, kv, postgres, analytics, speed-insights, og, sandbox, firewall, oidc, config, queue,
+flags, microfrontends, sdk); the changelogs and GitHub release notes of those packages. The site itself carries no
+version. Prereleases are not here.
+
+**Далі в [README](../instances/vercel/README.md):** Навіщо окремий примірник; Скільки цього; Що в цій теці; Звідки
 документація; Версії; Архівний режим: сервер без корпусу; Установка venv; Збирання корпусу; Сервер під Claude Code.
 
 ### oracle-cloud
