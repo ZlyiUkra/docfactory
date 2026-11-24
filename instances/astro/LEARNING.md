@@ -305,7 +305,7 @@ Astro — фреймворк, що працює з HTML і мережею нап
   платформу й обґрунтувати. *Сервери MCP:* `astro-docs`.
 - **День 2 — адаптер платформи.** Cloudflare, Vercel, Netlify або Node — на вибір. *Вправа:* той самий проєкт,
   зібраний двома адаптерами; порівняти обмеження. *Сервери MCP:* `astro-docs`; для Cloudflare — ще `cloudflare-docs`,
-  для Vercel — `vercel-docs`.
+  для Vercel — `vercel-docs`, для Netlify — `netlify-docs`.
 - **День 3 — Docker.** Багатоетапний образ для адаптера Node, запуск не від root. *Вправа:* образ, що
   піднімається однією командою на чистій машині. *Сервери MCP:* `docker-docs`, `astro-docs`.
 - **День 4 — `docker-compose`.** Застосунок, база, міграції на старті. *Сервери MCP:* `docker-docs`.
@@ -375,7 +375,7 @@ Astro — фреймворк, що працює з HTML і мережею нап
 Окремо про інтеграції: глави `Integrations Guide` описують **шар підключення**, а не саму бібліотеку.
 `@astrojs/react` розповість, як вставити React-компонент у сторінку, і жодного слова про сам React. Це
 стосується і адаптерів: глава про Cloudflare — про те, як Astro на ньому збирається, а не про сам
-Cloudflare; про сам Cloudflare — сервер `cloudflare-docs`, про сам Vercel — `vercel-docs`.
+Cloudflare; про сам Cloudflare — сервер `cloudflare-docs`, про сам Vercel — `vercel-docs`, про сам Netlify — `netlify-docs`.
 
 ## Документація у фабриці
 
@@ -412,10 +412,11 @@ Cloudflare; про сам Cloudflare — сервер `cloudflare-docs`, про 
   wrangler, R2, D1, KV, DNS, кеш) — `cloudflare`.
 - Vercel як платформа розгортання (уся документація vercel.com/docs: `vercel.json`, функції та їхні ліміти, змінні
   оточення, домени, Deployment Protection, CLI `vercel`; довідка, журнал змін) — `vercel`.
+- Netlify як платформа розгортання (уся документація docs.netlify.com: `netlify.toml`, `_redirects`, функції й Edge
+  Functions, змінні оточення, домени, Forms; довідник команд CLI `netlify`, посібники, журнал змін) — `netlify`.
 
 **Примірника ще немає** — відповідь лише з практики або з чужого сайту:
 
 - фреймворки островів, окрім React: Preact;
-- платформи розгортання: Netlify;
 - спостереження: Lighthouse;
 - контент: Starlight, інші CMS, Shiki, remark і rehype поза документацією Astro.
