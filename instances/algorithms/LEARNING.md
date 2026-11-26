@@ -1261,20 +1261,23 @@ Go, запускаєте ті самі приклади і порівнюєте 
   таблицю треба вгадати. Насправді таблиця з'являється сама з рекурсії, якщо помітити, що рекурсія розв'язує ті самі
   менші задачі багато разів.
 - **Що це.** Рекурсивний `fib(n) = fib(n − 1) + fib(n − 2)` для `n = 40` робить 331 160 281 виклик, хоча різних задач лише
-  41. Мемоізація запам'ятовує відповідь кожної задачі після першого обчислення, і викликів стає 41. Табуляція обчислює ті
+  41. Мемоізація запам'ятовує відповідь кожної задачі після першого обчислення, і обчислень стає 41. Табуляція обчислює ті
   самі відповіді циклом від менших задач до більших, без рекурсії. Erickson дає рецепт: спершу напишіть рекурсію для
   відповіді (саме її, а не таблицю), потім визначте, які аргументи можуть бути в менших задачах, потім виберіть структуру,
   де зберігати відповіді, і порядок, у якому їх заповнювати. Задача про розрізання стрижня з CLRS показує це на першому
   справжньому прикладі.
-- **Читати:** BCtCI — `Ch 40. Dynamic Programming`; Erickson — `Memoization and Dynamic Programming`, `The Pattern: Smart
-  Recursion`; Kleinberg — `6.1 Weighted Interval Scheduling: A Recursive Procedure`, `6.2 Principles of Dynamic Programming:
-  Memoization or Iteration over Subproblems`; CLRS — `14.1 Rod cutting`, `14.3 Elements of dynamic programming`; MIT 6.006 —
-  `Lecture 15: Recursive Algorithms`, `Lecture 16: Dynamic Programming Subproblems`.
+- **Лекція:** [Лекція. Фаза 4, день 4. Динамічне програмування: від рекурсії до таблиці](lectures/f4-d04-dynamic-programming.md).
+- **Розбір читання:** [Розбір читання. Фаза 4, день 4](reading/f4-d04-reading.md).
+- **Читати:** BCtCI — `Ch 40. Dynamic Programming`; Erickson — `Mātrāvṛtta`, `The Pattern: Smart Recursion`,
+  `Memoization and Dynamic Programming`; Kleinberg — `6.1 Weighted Interval Scheduling: A Recursive Procedure`,
+  `6.2 Principles of Dynamic Programming: Memoization or Iteration over Subproblems`; CLRS — `14.1 Rod cutting`,
+  `14.3 Elements of dynamic programming`; MIT 6.006 — `Lecture 15: Recursive Algorithms`, `Lecture 16: Dynamic Programming
+  Subproblems`.
 - **Сервери MCP:** `algorithms-docs`.
 - **Зробити:** 1) напишіть `fib` рекурсивно з лічильником викликів, з мемоізацією і табуляцією; 2) розв'яжіть розрізання
   стрижня трьома способами; 3) розв'яжіть зважений вибір заявок і відновіть сам набір заявок, а не лише суму.
-- **Перевірити себе:** рекурсивний `fib(30)` зробив 2 692 537 викликів, мемоізований — 31, а всі три способи розрізання дають
-  ту саму відповідь.
+- **Перевірити себе:** рекурсивний `fib(30)` зробив 2 692 537 викликів, мемоізований обчислив 31 значення, а всі три
+  способи розрізання дають ту саму відповідь.
 - **Пастка:** починати з таблиці. Напишіть спершу рекурсію з чітким означенням: «`best(i)` — найкраща ціна для стрижня
   довжини `i`». Без цього речення таблиця заповнюється навмання.
 
